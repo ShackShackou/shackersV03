@@ -1,0 +1,244 @@
+import Phaser from 'phaser';
+import { CombatEngine } from '../engine/CombatEngine.js';
+
+// Combat scene powered by CombatEngine, rendering fighters with Spine
+export class FightSceneSpine extends Phaser.Scene {
+  constructor() { super({ key: 'FightSpine' }); }
+
+  preload() {
+    this.load.spineJson('spineboy-data', 'assets/spine/spineboy-pro.json');
+    this.load.spineAtlas('spineboy-atlas', 'assets/spine/spineboy.atlas');
+  }
+
+  create() {
+    // Camera baseline
+    this.cameras.main.setZoom(1);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.roundPixels = true;
+    this.cameras.main.setBounds(0, 0, 1024, 768);
+
+    // Background
+    const bg = this.add.image(512, 384, 'background');
+    bg.setScale(2.2).setDepth(-10);
+
+    // Combat zone like original
+    this.setupCombatZone();
+
+    const baseScale = 0.34; // slightly smaller
+
+    // Initial free positions
+    const leftBaseX = Phaser.Math.Between(this.combatZone.leftMinX, this.combatZone.leftMaxX);
+    const leftBaseY = Phaser.Math.Between(this.combatZone.minY, this.combatZone.maxY);
+    const rightBaseX = Phaser.Math.Between(this.combatZone.rightMinX, this.combatZone.rightMaxX);
+    const rightBaseY = Phaser.Math.Between(this.combatZone.minY, this.combatZone.maxY);
+
+    // Create fighters
+    const left = this.add.spine(leftBaseX, leftBaseY, 'spineboy-data', 'spineboy-atlas');
+    const sL = baseScale * this.getFighterScale(leftBaseY);
+    const right = this.add.spine(rightBaseX, rightBaseY, 'spineboy-data', 'spineboy-atlas');
+    const sR = baseScale * this.getFighterScale(rightBaseY);
+
+    // Harmonize sizes using smallest
+    const ref = Math.min(Math.abs(sL), Math.abs(sR));
+    left.setScale(ref, ref);
+    right.setScale(-ref, ref);
+
+    // Shadows
+    const shadowL = this.add.ellipse(leftBaseX, leftBaseY + this.getShadowOffset(leftBaseY), 100 * this.getShadowScale(leftBaseY), 25 * this.getShadowScale(leftBaseY), 0x000000, 0.35);
+    const shadowR = this.add.ellipse(rightBaseX, rightBaseY + this.getShadowOffset(rightBaseY), 100 * this.getShadowScale(rightBaseY), 25 * this.getShadowScale(rightBaseY), 0x000000, 0.35);
+
+    // Idle anims
+    this.setSpineAnim(left, 'idle', true);
+    this.setSpineAnim(right, 'idle', true);
+
+    // Fighters for engine
+    this.fighter1 = { sprite: left, shadow: shadowL, side: 'left', scene: this, baseX: leftBaseX, baseY: leftBaseY, baseScale };
+    this.fighter2 = { sprite: right, shadow: shadowR, side: 'right', scene: this, baseX: rightBaseX, baseY: rightBaseY, baseScale };
+
+    // Stats (quick defaults)
+    this.fighter1.stats = { name: 'Brute Alpha', health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 };
+    this.fighter2.stats = { name: 'Brute Beta',  health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 };
+
+    // Depths
+    this.updateDepthOrdering();
+
+    // UI
+    this.ui = this.createSimpleUI();
+
+    // Engine
+    this.engine = new CombatEngine(this.fighter1, this.fighter2);
+
+    // Start loop
+    this.time.delayedCall(200, () => this.executeTurn());
+  }
+
+  setSpineAnim(spineObj, name, loop=false) {
+    try { spineObj.animationState.setAnimation(0, name, loop); } catch(e) {}
+  }
+
+  // Anim helpers
+  playIdle(f) { this.setSpineAnim(f.sprite, 'idle', true); }
+  playRun(f) { this.setSpineAnim(f.sprite, 'walk', true); }
+  playAttack(f) { this.setSpineAnim(f.sprite, 'walk', false); this.time.delayedCall(180, () => this.playIdle(f)); }
+  playDodge(f) {
+    const dir = f.side === 'left' ? -140 : 140;
+    this.playRun(f);
+    this.tweens.add({ targets: f.sprite, x: f.sprite.x + dir, yoyo: true, duration: 150, ease: 'Power2', onComplete:()=>this.playIdle(f)});
+    this.tweens.add({ targets: f.shadow, x: f.shadow.x + dir, yoyo: true, duration: 150, ease: 'Power2' });
+  }
+  playBlock(f) { this.tweens.add({ targets: f.sprite, scaleY: Math.abs(f.sprite.scaleY)*0.9, duration: 80, yoyo: true, ease: 'Sine.easeInOut' }); }
+
+  // FX helpers
+  shakeLight() { this.cameras.main.shake(70, 0.0035); }
+  shakeMedium() { this.cameras.main.shake(110, 0.007); }
+  shakeTarget(target) { this.tweens.add({ targets: target.sprite, x: target.sprite.x + (target.side==='left'? -10:10), duration: 34, yoyo: true, repeat: 1 }); }
+  flashSpine(spineObj, color={r:1,g:0.6,b:0.6,a:1}, duration=100) {
+    try { const o = { ...spineObj.skeleton.color }; spineObj.skeleton.color.set(color.r,color.g,color.b,color.a); this.time.delayedCall(duration,()=>spineObj.skeleton.color.set(o.r,o.g,o.b,o.a)); }
+    catch(_) { const g=this.add.graphics(); g.fillStyle(0xffffff,0.25); g.fillRect(spineObj.x-60, spineObj.y-140, 120, 160); this.tweens.add({ targets:g, alpha:0, duration, onComplete:()=>g.destroy() }); }
+  }
+  showTextIndicator(target, text, color='#ffffff') {
+    const t = this.add.text(target.sprite.x, target.sprite.y - 110, text, { fontSize: '20px', color, stroke:'#000', strokeThickness:4 }).setOrigin(0.5).setDepth(2000);
+    this.tweens.add({ targets: t, y: t.y - 30, alpha: 0, duration: 480, ease: 'Power2', onComplete:()=>t.destroy() });
+  }
+  showMissEffect(target) { this.showTextIndicator(target, 'MISS', '#bbbbbb'); }
+  createDodgeIndicator(target) { this.showTextIndicator(target, 'DODGE', '#6cf'); }
+  showBlockIndicator(target) { this.showTextIndicator(target, 'BLOCK', '#ffd54a'); this.shakeLight(); }
+
+  executeTurn() {
+    if (this.combatOver) return;
+
+    let result;
+    try {
+      result = this.engine.executeTurn();
+    } catch (e) {
+      console.error('Combat error:', e);
+      // Continue loop to avoid freeze
+      this.time.delayedCall(120, () => this.executeTurn());
+      return;
+    }
+
+    if (!result) { this.time.delayedCall(180, () => this.executeTurn()); return; }
+
+    const attacker = result.attacker; const target = result.target;
+
+    if (result.type === 'attack' || result.type === 'multi_attack' || result.type === 'counter') {
+      const targetY = target.sprite.y;
+      const aScale = Math.abs(attacker.sprite.scaleX);
+      const tScale = Math.abs(target.sprite.scaleX);
+      const avgScale = (aScale + tScale) / 2;
+      const contactGap = Math.max(18, 64 * avgScale); // get visibly close
+      const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
+      const distance = Math.abs(attackX - attacker.sprite.x);
+      let runDuration = Phaser.Math.Clamp(distance * 0.7, 110, 340);
+
+      // Move shadow with approach
+      const shTargetScale = this.getShadowScale(targetY);
+      this.tweens.add({ targets: attacker.shadow, x: attackX, y: targetY + this.getShadowOffset(targetY), scaleX: shTargetScale, scaleY: shTargetScale, duration: runDuration, ease: 'Linear' });
+
+      this.playRun(attacker);
+      const approach = this.tweens.add({
+        targets: attacker.sprite,
+        x: attackX, y: targetY,
+        duration: runDuration,
+        ease: 'Linear',
+        onComplete: () => {
+          if (result.hit && result.damage > 0) {
+            this.flashSpine(target.sprite);
+            this.shakeTarget(target);
+            this.shakeMedium();
+            this.showDamageNumber(target, result.damage, !!result.critical);
+          } else if (result.type !== 'dodge') {
+            this.showMissEffect(target);
+          }
+          this.playAttack(attacker);
+          this.returnToPosition(attacker);
+        }
+      });
+
+      // Failsafe
+      this.time.delayedCall(runDuration + 120, () => { if (approach && approach.isPlaying()) { approach.stop(); this.returnToPosition(attacker); } });
+
+    } else if (result.type === 'block') {
+      this.playBlock(target);
+      this.showBlockIndicator(target);
+    } else if (result.type === 'dodge') {
+      this.playDodge(target);
+      this.createDodgeIndicator(target);
+    } else if (result.type === 'throw') {
+      if (result.hit && result.damage>0) { this.flashSpine(target.sprite); this.shakeMedium(); this.showDamageNumber(target, result.damage, !!result.critical); }
+      else { this.showMissEffect(target); }
+    } else if (result.type === 'special') {
+      this.cameras.main.shake(130, 0.004);
+    }
+
+    this.updateUI();
+    if (result.gameOver) {
+      this.combatOver = true;
+      this.add.text(512, 120, `${result.winner.stats.name} wins!`, { fontSize: '28px', color: '#fff' }).setOrigin(0.5);
+      return;
+    }
+
+    this.time.delayedCall(300, () => this.executeTurn());
+  }
+
+  // No-op indicators for engine hooks
+  showDodgeChanceIndicator(defender, dodgeChance, dodgeAttempted, dodgeSuccess) {}
+  showBlockChanceIndicator(defender, blockChance, blockAttempted, blockSuccess, hasStamina) {}
+
+  // Layout helpers
+  setupCombatZone() {
+    this.combatZone = { minY: 420, maxY: 580, leftMinX: 100, leftMaxX: 300, rightMinX: 724, rightMaxX: 924, centerX: 512 };
+  }
+  getFighterScale(y) { const n = (y - this.combatZone.minY) / (this.combatZone.maxY - this.combatZone.minY); return 0.8 + (n * 0.4); }
+  getShadowScale(y) { const n = (y - this.combatZone.minY) / (this.combatZone.maxY - this.combatZone.minY); return 0.8 + (n * 0.8); }
+  getShadowOffset(y) { return 5; }
+  updateDepthOrdering() {
+    const fighters = [this.fighter1, this.fighter2].filter(Boolean);
+    fighters.sort((a,b)=>a.sprite.y-b.sprite.y);
+    const base = 100; fighters.forEach((f,i)=>{ f.sprite.setDepth(base+i*10); if (f.shadow) f.shadow.setDepth(base-10); });
+  }
+
+  // Return to base position with optional free reposition, syncing shadow & scale
+  returnToPosition(fighter) {
+    const shouldChange = Math.random() < 0.4;
+    let targetX = fighter.baseX;
+    let targetY = fighter.baseY;
+    if (shouldChange) {
+      const minX = fighter.side === 'left' ? this.combatZone.leftMinX : this.combatZone.rightMinX;
+      const maxX = fighter.side === 'left' ? this.combatZone.leftMaxX : this.combatZone.rightMaxX;
+      targetX = Phaser.Math.Between(minX, maxX);
+      targetY = Phaser.Math.Between(this.combatZone.minY, this.combatZone.maxY);
+      fighter.baseX = targetX; fighter.baseY = targetY;
+    }
+    const dist = Math.abs(targetX - fighter.sprite.x);
+    const duration = Math.max(140, (dist / 700) * 1000);
+    this.tweens.add({ targets: fighter.sprite, x: targetX, y: targetY, duration, ease: 'Power2', onComplete: () => { this.playIdle(fighter); this.updateDepthOrdering(); } });
+    const shadowScale = this.getShadowScale(targetY);
+    this.tweens.add({ targets: fighter.shadow, x: targetX, y: targetY + this.getShadowOffset(targetY), scaleX: shadowScale, scaleY: shadowScale, duration, ease: 'Power2' });
+  }
+
+  // UI
+  createSimpleUI() {
+    const barWidth = 220, barHeight = 18;
+    const f1bg = this.add.rectangle(130, 40, barWidth, barHeight, 0x333333).setOrigin(0,0.5);
+    const f1 = this.add.rectangle(130, 40, barWidth, barHeight, 0x00ff66).setOrigin(0,0.5);
+    const f2bg = this.add.rectangle(1024-130, 40, barWidth, barHeight, 0x333333).setOrigin(1,0.5);
+    const f2 = this.add.rectangle(1024-130, 40, barWidth, barHeight, 0xff6666).setOrigin(1,0.5);
+    const f1t = this.add.text(130, 18, this.fighter1.stats.name, { fontSize:'14px', color:'#fff' }).setOrigin(0,0.5);
+    const f2t = this.add.text(1024-130, 18, this.fighter2.stats.name, { fontSize:'14px', color:'#fff' }).setOrigin(1,0.5);
+    return { f1, f2, f1bg, f2bg, f1t, f2t, w: barWidth };
+  }
+
+  updateUI() {
+    const p1 = this.fighter1.stats.health / this.fighter1.stats.maxHealth;
+    const p2 = this.fighter2.stats.health / this.fighter2.stats.maxHealth;
+    this.ui.f1.width = this.ui.w * Math.max(0, Math.min(1, p1));
+    this.ui.f2.width = this.ui.w * Math.max(0, Math.min(1, p2));
+  }
+
+  showDamageNumber(target, amount, critical=false) {
+    const t = this.add.text(target.sprite.x, target.sprite.y - 80, `${amount}`, { fontSize: critical ? '28px' : '22px', color: critical ? '#ffcc00' : '#ffffff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5).setDepth(2000);
+    this.tweens.add({ targets: t, y: t.y - 40, alpha: 0, duration: 600, ease: 'Power2', onComplete: () => t.destroy() });
+  }
+}
+
