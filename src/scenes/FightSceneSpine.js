@@ -104,20 +104,33 @@ export class FightSceneSpine extends Phaser.Scene {
   createDodgeIndicator(target) { this.showTextIndicator(target, 'DODGE', '#6cf'); }
   showBlockIndicator(target) { this.showTextIndicator(target, 'BLOCK', '#ffd54a'); this.shakeLight(); }
 
-  executeTurn() {
+  // Small helpers to sequence tweens and avoid overlaps
+  sleep(ms) { return new Promise(res => this.time.delayedCall(ms, res)); }
+  killFighterTweens(f) { this.tweens.killTweensOf(f.sprite); if (f.shadow) this.tweens.killTweensOf(f.shadow); }
+  moveFighterTo(f, x, y, duration, ease='Linear') {
+    this.killFighterTweens(f);
+    const p1 = new Promise(res => this.tweens.add({ targets: f.sprite, x, y, duration, ease, onComplete: res }));
+    const sScale = this.getShadowScale(y);
+    const p2 = f.shadow ? new Promise(res => this.tweens.add({ targets: f.shadow, x, y: y + this.getShadowOffset(y), scaleX: sScale, scaleY: sScale, duration, ease, onComplete: res })) : Promise.resolve();
+    return Promise.all([p1, p2]);
+  }
+
+  async executeTurn() {
     if (this.combatOver) return;
+    if (this.turnInProgress) return;
+    this.turnInProgress = true;
 
     let result;
     try {
       result = this.engine.executeTurn();
     } catch (e) {
       console.error('Combat error:', e);
-      // Continue loop to avoid freeze
-      this.time.delayedCall(120, () => this.executeTurn());
-      return;
+      this.turnInProgress = false;
+      await this.sleep(120);
+      return this.executeTurn();
     }
 
-    if (!result) { this.time.delayedCall(180, () => this.executeTurn()); return; }
+    if (!result) { this.turnInProgress = false; await this.sleep(140); return this.executeTurn(); }
 
     const attacker = result.attacker; const target = result.target;
 
@@ -126,59 +139,53 @@ export class FightSceneSpine extends Phaser.Scene {
       const aScale = Math.abs(attacker.sprite.scaleX);
       const tScale = Math.abs(target.sprite.scaleX);
       const avgScale = (aScale + tScale) / 2;
-      const contactGap = Math.max(18, 64 * avgScale); // get visibly close
+      const contactGap = Math.max(18, 64 * avgScale);
       const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
       const distance = Math.abs(attackX - attacker.sprite.x);
-      let runDuration = Phaser.Math.Clamp(distance * 0.7, 110, 340);
-
-      // Move shadow with approach
-      const shTargetScale = this.getShadowScale(targetY);
-      this.tweens.add({ targets: attacker.shadow, x: attackX, y: targetY + this.getShadowOffset(targetY), scaleX: shTargetScale, scaleY: shTargetScale, duration: runDuration, ease: 'Linear' });
+      const runDuration = Phaser.Math.Clamp(distance * 0.65, 100, 320);
 
       this.playRun(attacker);
-      const approach = this.tweens.add({
-        targets: attacker.sprite,
-        x: attackX, y: targetY,
-        duration: runDuration,
-        ease: 'Linear',
-        onComplete: () => {
-          if (result.hit && result.damage > 0) {
-            this.flashSpine(target.sprite);
-            this.shakeTarget(target);
-            this.shakeMedium();
-            this.showDamageNumber(target, result.damage, !!result.critical);
-          } else if (result.type !== 'dodge') {
-            this.showMissEffect(target);
-          }
-          this.playAttack(attacker);
-          this.returnToPosition(attacker);
-        }
-      });
+      await this.moveFighterTo(attacker, attackX, targetY, runDuration, 'Linear');
 
-      // Failsafe
-      this.time.delayedCall(runDuration + 120, () => { if (approach && approach.isPlaying()) { approach.stop(); this.returnToPosition(attacker); } });
+      if (result.hit && result.damage > 0) {
+        this.flashSpine(target.sprite);
+        this.shakeTarget(target);
+        this.shakeMedium();
+        this.showDamageNumber(target, result.damage, !!result.critical);
+      } else if (result.type !== 'dodge') {
+        this.showMissEffect(target);
+      }
+
+      this.playAttack(attacker);
+      await this.returnToPosition(attacker);
 
     } else if (result.type === 'block') {
       this.playBlock(target);
       this.showBlockIndicator(target);
+      await this.sleep(120);
     } else if (result.type === 'dodge') {
       this.playDodge(target);
       this.createDodgeIndicator(target);
+      await this.sleep(150);
     } else if (result.type === 'throw') {
       if (result.hit && result.damage>0) { this.flashSpine(target.sprite); this.shakeMedium(); this.showDamageNumber(target, result.damage, !!result.critical); }
       else { this.showMissEffect(target); }
+      await this.sleep(120);
     } else if (result.type === 'special') {
       this.cameras.main.shake(130, 0.004);
+      await this.sleep(140);
     }
 
     this.updateUI();
     if (result.gameOver) {
       this.combatOver = true;
       this.add.text(512, 120, `${result.winner.stats.name} wins!`, { fontSize: '28px', color: '#fff' }).setOrigin(0.5);
-      return;
+      return; // no next turn
     }
 
-    this.time.delayedCall(300, () => this.executeTurn());
+    this.turnInProgress = false;
+    await this.sleep(200);
+    return this.executeTurn();
   }
 
   // No-op indicators for engine hooks
@@ -199,7 +206,7 @@ export class FightSceneSpine extends Phaser.Scene {
   }
 
   // Return to base position with optional free reposition, syncing shadow & scale
-  returnToPosition(fighter) {
+  async returnToPosition(fighter) {
     const shouldChange = Math.random() < 0.4;
     let targetX = fighter.baseX;
     let targetY = fighter.baseY;
@@ -211,10 +218,10 @@ export class FightSceneSpine extends Phaser.Scene {
       fighter.baseX = targetX; fighter.baseY = targetY;
     }
     const dist = Math.abs(targetX - fighter.sprite.x);
-    const duration = Math.max(140, (dist / 700) * 1000);
-    this.tweens.add({ targets: fighter.sprite, x: targetX, y: targetY, duration, ease: 'Power2', onComplete: () => { this.playIdle(fighter); this.updateDepthOrdering(); } });
-    const shadowScale = this.getShadowScale(targetY);
-    this.tweens.add({ targets: fighter.shadow, x: targetX, y: targetY + this.getShadowOffset(targetY), scaleX: shadowScale, scaleY: shadowScale, duration, ease: 'Power2' });
+    const duration = Math.max(120, (dist / 800) * 1000);
+    await this.moveFighterTo(fighter, targetX, targetY, duration, 'Power2');
+    this.playIdle(fighter);
+    this.updateDepthOrdering();
   }
 
   // UI
