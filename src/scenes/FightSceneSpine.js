@@ -24,7 +24,7 @@ export class FightSceneSpine extends Phaser.Scene {
     // Combat zone like original
     this.setupCombatZone();
 
-    const baseScale = 0.34; // slightly smaller
+    const baseScale = 0.30; // slightly smaller again
 
     // Initial free positions
     const leftBaseX = Phaser.Math.Between(this.combatZone.leftMinX, this.combatZone.leftMaxX);
@@ -64,6 +64,7 @@ export class FightSceneSpine extends Phaser.Scene {
 
     // UI
     this.ui = this.createSimpleUI();
+    this.appendLog('Combat prêt.');
 
     // Engine
     this.engine = new CombatEngine(this.fighter1, this.fighter2);
@@ -97,8 +98,8 @@ export class FightSceneSpine extends Phaser.Scene {
     catch(_) { const g=this.add.graphics(); g.fillStyle(0xffffff,0.25); g.fillRect(spineObj.x-60, spineObj.y-140, 120, 160); this.tweens.add({ targets:g, alpha:0, duration, onComplete:()=>g.destroy() }); }
   }
   showTextIndicator(target, text, color='#ffffff') {
-    const t = this.add.text(target.sprite.x, target.sprite.y - 110, text, { fontSize: '20px', color, stroke:'#000', strokeThickness:4 }).setOrigin(0.5).setDepth(2000);
-    this.tweens.add({ targets: t, y: t.y - 30, alpha: 0, duration: 480, ease: 'Power2', onComplete:()=>t.destroy() });
+    const t = this.add.text(target.sprite.x, target.sprite.y - 120, text, { fontSize: '26px', color, stroke:'#000', strokeThickness:5 }).setOrigin(0.5).setDepth(2000);
+    this.tweens.add({ targets: t, y: t.y - 36, alpha: 0, duration: 520, ease: 'Power2', onComplete:()=>t.destroy() });
   }
   showMissEffect(target) { this.showTextIndicator(target, 'MISS', '#bbbbbb'); }
   createDodgeIndicator(target) { this.showTextIndicator(target, 'DODGE', '#6cf'); }
@@ -135,6 +136,8 @@ export class FightSceneSpine extends Phaser.Scene {
     const attacker = result.attacker; const target = result.target;
 
     if (result.type === 'attack' || result.type === 'multi_attack' || result.type === 'counter') {
+      this.appendLog(`${attacker.stats.name} attaque ${target.stats.name}${result.type==='multi_attack'?' (combo)':''}${result.critical?' [CRIT]':''}${result.hit?` et inflige ${result.damage}`:" mais rate"}`);
+
       const targetY = target.sprite.y;
       const aScale = Math.abs(attacker.sprite.scaleX);
       const tScale = Math.abs(target.sprite.scaleX);
@@ -160,18 +163,22 @@ export class FightSceneSpine extends Phaser.Scene {
       await this.returnToPosition(attacker);
 
     } else if (result.type === 'block') {
+      this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
       this.playBlock(target);
       this.showBlockIndicator(target);
       await this.sleep(120);
     } else if (result.type === 'dodge') {
+      this.appendLog(`${target.stats.name} esquive l'attaque de ${attacker.stats.name}`);
       this.playDodge(target);
       this.createDodgeIndicator(target);
       await this.sleep(150);
     } else if (result.type === 'throw') {
+      this.appendLog(`${attacker.stats.name} lance une arme sur ${target.stats.name}${result.hit?` et inflige ${result.damage}`:" mais rate"}`);
       if (result.hit && result.damage>0) { this.flashSpine(target.sprite); this.shakeMedium(); this.showDamageNumber(target, result.damage, !!result.critical); }
       else { this.showMissEffect(target); }
       await this.sleep(120);
     } else if (result.type === 'special') {
+      this.appendLog(`${attacker.stats.name} utilise une capacité spéciale !`);
       this.cameras.main.shake(130, 0.004);
       await this.sleep(140);
     }
@@ -226,13 +233,22 @@ export class FightSceneSpine extends Phaser.Scene {
 
   // UI
   createSimpleUI() {
-    const barWidth = 220, barHeight = 18;
-    const f1bg = this.add.rectangle(130, 40, barWidth, barHeight, 0x333333).setOrigin(0,0.5);
-    const f1 = this.add.rectangle(130, 40, barWidth, barHeight, 0x00ff66).setOrigin(0,0.5);
-    const f2bg = this.add.rectangle(1024-130, 40, barWidth, barHeight, 0x333333).setOrigin(1,0.5);
-    const f2 = this.add.rectangle(1024-130, 40, barWidth, barHeight, 0xff6666).setOrigin(1,0.5);
-    const f1t = this.add.text(130, 18, this.fighter1.stats.name, { fontSize:'14px', color:'#fff' }).setOrigin(0,0.5);
-    const f2t = this.add.text(1024-130, 18, this.fighter2.stats.name, { fontSize:'14px', color:'#fff' }).setOrigin(1,0.5);
+    const barWidth = 320, barHeight = 26; // larger HP bars
+    const f1bg = this.add.rectangle(80, 40, barWidth, barHeight, 0x222222).setOrigin(0,0.5);
+    const f1 = this.add.rectangle(80, 40, barWidth, barHeight, 0x00e676).setOrigin(0,0.5).setStrokeStyle(2, 0x000000, 0.8);
+    const f2bg = this.add.rectangle(1024-80, 40, barWidth, barHeight, 0x222222).setOrigin(1,0.5);
+    const f2 = this.add.rectangle(1024-80, 40, barWidth, barHeight, 0xff5252).setOrigin(1,0.5).setStrokeStyle(2, 0x000000, 0.8);
+    const f1t = this.add.text(80, 16, this.fighter1.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(0,0.5);
+    const f2t = this.add.text(1024-80, 16, this.fighter2.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(1,0.5);
+  appendLog(line) {
+    if (!this.logText) return;
+    // Keep it to one concise line; you can expand to a scroll later
+    this.logText.setText(line);
+  }
+
+    // Combat log area at bottom
+    this.logBox = this.add.rectangle(512, 740, 960, 44, 0x000000, 0.35).setStrokeStyle(2, 0xffffff, 0.2);
+    this.logText = this.add.text(48, 724, '', { fontSize:'16px', color:'#fff' });
     return { f1, f2, f1bg, f2bg, f1t, f2t, w: barWidth };
   }
 
