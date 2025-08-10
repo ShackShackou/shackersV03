@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LaBrute API Test</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 900px; }
+    fieldset { margin-bottom: 16px; }
+    label { display: block; margin: 6px 0 2px; }
+    input, select, button { padding: 8px; font-size: 14px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    pre { background: #111; color: #0f0; padding: 12px; overflow: auto; max-height: 260px; }
+    .ok { color: #0a0; }
+    .err { color: #a00; }
+  </style>
+</head>
+<body>
+  <h1>LaBrute API Test</h1>
+  <p>Backend attendu sur <code>http://localhost:4000</code></p>
+
+  <fieldset>
+    <legend>Health</legend>
+    <button id="btnHealth">GET /api</button>
+    <span id="healthStatus"></span>
+  </fieldset>
+
+  <fieldset>
+    <legend>Auth</legend>
+    <div class="row">
+      <div>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="you@example.com" />
+      </div>
+      <div>
+        <label>Mot de passe</label>
+        <input id="password" type="password" value="secret123" />
+      </div>
+      <div>
+        <label>Nom</label>
+        <input id="name" type="text" value="Demo" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <button id="btnRegister">POST /api/auth/register</button>
+      <button id="btnLogin">POST /api/auth/login</button>
+      <button id="btnLogout">Logout</button>
+      <span>Token: </span>
+      <input id="token" type="text" style="width:440px" readonly />
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Brutes</legend>
+    <div class="row">
+      <div>
+        <label>Nom</label>
+        <input id="bruteName" type="text" value="MaBrute" />
+      </div>
+      <div>
+        <label>Genre</label>
+        <select id="bruteGender">
+          <option value="male">male</option>
+          <option value="female">female</option>
+        </select>
+      </div>
+      <button id="btnCreateBrute">POST /api/brutes</button>
+      <button id="btnListBrutes">GET /api/brutes</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Fight</legend>
+    <div class="row">
+      <div>
+        <label>Brute A ID</label>
+        <input id="fightA" type="text" placeholder="bruteAId" />
+      </div>
+      <div>
+        <label>Brute B ID</label>
+        <input id="fightB" type="text" placeholder="bruteBId" />
+      </div>
+      <button id="btnFight">POST /api/fights</button>
+    </div>
+  </fieldset>
+
+  <h3>Réponse</h3>
+  <pre id="out"></pre>
+
+  <script>
+  const API = 'http://localhost:4000/api';
+  const out = document.getElementById('out');
+  const tokenEl = document.getElementById('token');
+
+  function log(obj, ok=true) {
+    out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    out.className = ok ? 'ok' : 'err';
+  }
+
+  async function jsonFetch(path, options={}) {
+    const { headers: optHeaders = {}, ...rest } = options;
+    const headers = { 'Content-Type': 'application/json', ...optHeaders };
+    const res = await fetch(API + path, { ...rest, headers });
+    const text = await res.text();
+    try { return { status: res.status, body: JSON.parse(text) }; }
+    catch { return { status: res.status, body: text }; }
+  }
+
+  function setToken(token) {
+    tokenEl.value = token || '';
+    if (token) localStorage.setItem('labrute_token', token);
+    else localStorage.removeItem('labrute_token');
+  }
+
+  // On load, restore token
+  (function init() {
+    const saved = localStorage.getItem('labrute_token');
+    if (saved) tokenEl.value = saved;
+  })();
+
+  document.getElementById('btnHealth').onclick = async () => {
+    try { const r = await fetch(API); log(await r.json()); }
+    catch (e) { log(String(e), false); }
+  };
+
+  document.getElementById('btnRegister').onclick = async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const name = document.getElementById('name').value;
+    const r = await jsonFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+    log(r, r.status === 200);
+    if (r.status === 200 && r.body?.token) setToken(r.body.token);
+  };
+
+  document.getElementById('btnLogin').onclick = async () => {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const r = await jsonFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    log(r, r.status === 200);
+    if (r.status === 200 && r.body?.token) setToken(r.body.token);
+  };
+
+  document.getElementById('btnLogout').onclick = () => {
+    setToken('');
+    log('Déconnecté.');
+  };
+
+  document.getElementById('btnCreateBrute').onclick = async () => {
+    const name = document.getElementById('bruteName').value + Math.floor(Math.random()*100000);
+    const gender = document.getElementById('bruteGender').value;
+    const token = tokenEl.value;
+    const r = await jsonFetch('/brutes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ name, gender }) });
+    log(r, r.status === 201);
+  };
+
+  document.getElementById('btnListBrutes').onclick = async () => {
+    const token = tokenEl.value;
+    const r = await jsonFetch('/brutes', { headers: { Authorization: `Bearer ${token}` } });
+    log(r, r.status === 200);
+    if (Array.isArray(r.body)) {
+      const [a,b] = r.body;
+      if (a) document.getElementById('fightA').value = a.id;
+      if (b) document.getElementById('fightB').value = b.id;
+    }
+  };
+
+  document.getElementById('btnFight').onclick = async () => {
+    const token = tokenEl.value;
+    const bruteAId = document.getElementById('fightA').value.trim();
+    const bruteBId = document.getElementById('fightB').value.trim();
+    const r = await jsonFetch('/fights', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ bruteAId, bruteBId }) });
+    log(r, r.status === 201);
+  };
+  </script>
+</body>
+</html>

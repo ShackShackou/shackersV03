@@ -49,38 +49,24 @@ export default class Preload extends Phaser.Scene {
 
 	/* START-USER-CODE */
 
-	// Write your code here
-
 	preload() {
-
 		this.editorCreate();
-
 		this.load.pack("asset-pack", "assets/asset-pack.json");
-
 		const width = this.progressBar.width;
-
 		this.load.on("progress", (value: number) => {
-
 			this.progressBar.width = width * value;
 		});
 	}
 
 	create() {
-
-		if (process.env.NODE_ENV === "development") {
-
-			const start = new URLSearchParams(location.search).get("start");
-
-			if (start) {
-
-				console.log(`Development: jump to ${start}`);
-				this.scene.start(start);
-
-				return;
-			}
+		const start = new URLSearchParams(location.search).get("start");
+		if (start) {
+			console.log(`[Preload] Jump to ${start}`);
+			this.scene.start(start);
+			return;
 		}
-
-		this.scene.start("Level");
+		// Default: always go to LoginScene
+		this.scene.start('LoginScene');
 	}
 
 	/* END-USER-CODE */

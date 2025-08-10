@@ -1,26 +1,30 @@
-package-lock.json
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Builds
+/dist/
+/build/
+server/dist/
+.vite/
+*.tsbuildinfo
 
 # Logs
-logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
+*.log
 
-node_modules
-dist
-dist-ssr
-*.local
+# Env
+.env
+server/.env
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Editors/OS
+.vscode/
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# Coverage/Temp
+coverage/
+.tmp/

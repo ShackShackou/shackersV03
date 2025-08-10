@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  male
+  female
+}
+
+model User {
+  id        String  @id @default(uuid())
+  email     String  @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  brutes    Brute[]
+}
+
+model Brute {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  gender    Gender
+  level     Int      @default(1)
+  hp        Int      @default(10)
+  strength  Int      @default(3)
+  agility   Int      @default(3)
+  speed     Int      @default(3)
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User    @relation(fields: [userId], references: [id])
+
+  fightsA Fight[] @relation("BruteA")
+  fightsB Fight[] @relation("BruteB")
+}
+
+model Fight {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  bruteAId String
+  bruteA   Brute  @relation("BruteA", fields: [bruteAId], references: [id])
+
+  bruteBId String
+  bruteB   Brute  @relation("BruteB", fields: [bruteBId], references: [id])
+
+  winnerId String
+  log      String
+}
