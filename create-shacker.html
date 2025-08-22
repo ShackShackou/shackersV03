@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Create SHACKER</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            color: #00ff88;
+            margin-bottom: 40px;
+        }
+        
+        /* Create Form */
+        .create-form {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #cccccc;
+            font-size: 18px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            color: white;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        /* Gender Selection */
+        .gender-selector {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .gender-option {
+            flex: 1;
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .gender-option:hover {
+            border-color: #666;
+        }
+        
+        .gender-option.active {
+            background: #00ff88;
+            color: black;
+            border-color: #00ff88;
+        }
+        
+        .gender-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        /* Preview Section */
+        .preview-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .preview-title {
+            color: #cccccc;
+            margin-bottom: 15px;
+        }
+        
+        .preview-name {
+            font-size: 28px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        /* Action Buttons */
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-create {
+            background: #00ff88;
+            color: black;
+        }
+        
+        .btn-create:hover {
+            background: #00cc70;
+            transform: translateY(-2px);
+        }
+        
+        .btn-cancel {
+            background: #666;
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            background: #888;
+        }
+        
+        /* Success/Error Messages */
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.success {
+            background: #00ff88;
+            color: black;
+        }
+        
+        .message.error {
+            background: #ff4444;
+            color: white;
+        }
+        
+        /* Random Name Button */
+        .random-btn {
+            background: #00ccff;
+            color: black;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        
+        .random-btn:hover {
+            background: #0099cc;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html">Home</a>
+                <a href="/create-shacker.html" class="active">Create SHACKER</a>
+                <a href="/my-shackers.html">My SHACKERS</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1>Create your SHACKER</h1>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="create-form">
+            <form id="createForm" onsubmit="createShacker(event)">
+                <div class="form-group">
+                    <label for="shackerName">
+                        SHACKER Name
+                        <button type="button" class="random-btn" onclick="generateRandomName()">Random</button>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="shackerName" 
+                        placeholder="Enter a unique name"
+                        required
+                        maxlength="30"
+                        oninput="updatePreview()"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label>Gender</label>
+                    <div class="gender-selector">
+                        <div class="gender-option active" onclick="selectGender('male')" data-gender="male">
+                            <div class="gender-icon">♂️</div>
+                            <div>Male</div>
+                        </div>
+                        <div class="gender-option" onclick="selectGender('female')" data-gender="female">
+                            <div class="gender-icon">♀️</div>
+                            <div>Female</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Character Type Selection -->
+                <div class="form-section">
+                    <label>Character Type</label>
+                    <div class="gender-selector">
+                        <div class="gender-option active" onclick="selectCharacterType('spineboy')" data-type="spineboy">
+                            <img src="assets/images/characters/spineboy-preview.png" style="width: 60px; height: 60px; object-fit: contain;">
+                            <div>Human</div>
+                        </div>
+                        <div class="gender-option" onclick="selectCharacterType('raptor')" data-type="raptor">
+                            <img src="assets/images/characters/raptor-preview.png" style="width: 60px; height: 60px; object-fit: contain;">
+                            <div>Raptor</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <div class="preview-title">Preview</div>
+                    <img id="previewImage" src="assets/images/characters/spineboy-preview.png" style="width: 100px; height: 100px; margin: 10px; object-fit: contain;">
+                    <div class="preview-name" id="previewName">Your SHACKER</div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-create">Create SHACKER</button>
+                    <button type="button" class="btn btn-cancel" onclick="window.location.href='/my-shackers.html'">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        const token = localStorage.getItem('labrute_token');
+        let selectedGender = 'male';
+        let selectedCharacterType = 'spineboy';
+        
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        // Random name suggestions
+        const randomNames = [
+            'Thunderstrike', 'Shadowblade', 'Ironheart', 'Stormbringer', 'Nightfury',
+            'Blazehammer', 'Frostbite', 'Darkstorm', 'Steelclaw', 'Fireborn',
+            'Moonwalker', 'Sunbreaker', 'Voidcrusher', 'Earthshaker', 'Windrunner',
+            'Dragonheart', 'Wolfbane', 'Lionroar', 'Eagleeye', 'Serpentfang'
+        ];
+        
+        function generateRandomName() {
+            const randomName = randomNames[Math.floor(Math.random() * randomNames.length)];
+            const randomNum = Math.floor(Math.random() * 1000);
+            document.getElementById('shackerName').value = `${randomName}${randomNum}`;
+            updatePreview();
+        }
+        
+        function selectCharacterType(type) {
+            selectedCharacterType = type;
+            document.querySelectorAll('[data-type]').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            // Update preview image
+            document.getElementById('previewImage').src = `assets/images/characters/${type}-preview.png`;
+        }
+        
+        function selectGender(gender) {
+            selectedGender = gender;
+            document.querySelectorAll('[data-gender]').forEach(option => {
+                option.classList.remove('active');
+            });
+            document.querySelector(`[data-gender="${gender}"]`).classList.add('active');
+            updatePreview();
+        }
+        
+        function updatePreview() {
+            const name = document.getElementById('shackerName').value || 'Your SHACKER';
+            const genderIcon = selectedGender === 'female' ? '♀️' : '♂️';
+            document.getElementById('previewName').textContent = `${name} ${genderIcon}`;
+        }
+        
+        async function createShacker(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('shackerName').value.trim();
+            const messageEl = document.getElementById('message');
+            
+            if (!name) {
+                showMessage('Please enter a name for your SHACKER', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/shackers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        gender: selectedGender,
+                        characterType: selectedCharacterType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Failed to create SHACKER');
+                }
+                
+                showMessage(`SHACKER "${data.name}" created successfully!`, 'success');
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/my-shackers.html';
+                }, 2000);
+                
+            } catch (error) {
+                showMessage(error.message || 'Error creating SHACKER', 'error');
+            }
+        }
+        
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

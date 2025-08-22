@@ -1,23 +1,19 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>LaBrute RebornV05</title>
-    <style>
-        html, body { height: 100%; margin: 0; background: #1a1a1a; }
-        #page { height: 100%; display: flex; align-items: center; justify-content: center; }
-        #game-container {
-            width: 1280px; height: 720px; /* fixed area for FIT scaling (no crop) */
-            box-sizing: content-box;      /* border doesn't affect content size */
-            border: 3px solid #3e2723;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    <title>SHACKERS</title>
+    <script>
+        // Redirect to home if logged in, otherwise to login
+        const token = localStorage.getItem('labrute_token');
+        if (token) {
+            window.location.href = '/home.html';
+        } else {
+            window.location.href = '/login.html';
         }
-    </style>
+    </script>
 </head>
 <body>
-    <div id="page">
-        <div id="game-container"></div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
+    <p>Redirecting...</p>
 </body>
 </html>

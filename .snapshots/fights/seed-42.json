@@ -1,0 +1,201 @@
+{
+  "seed": "42",
+  "maxTurns": 500,
+  "totalTurns": 6,
+  "winner": "Alpha",
+  "final": {
+    "Alpha": {
+      "hp": 140,
+      "sp": 25
+    },
+    "Bravo": {
+      "hp": 0,
+      "sp": 60
+    }
+  },
+  "steps": [
+    {
+      "turn": 2,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 24,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 24 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 100
+        },
+        "Bravo": {
+          "hp": 116,
+          "sp": 120
+        }
+      }
+    },
+    {
+      "turn": 4,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 100
+        },
+        "Bravo": {
+          "hp": 116,
+          "sp": 100
+        }
+      }
+    },
+    {
+      "turn": 6,
+      "type": "throw",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 83.60000000000001,
+      "critical": true,
+      "combo": 0,
+      "message": "Alpha hurls their spear for 83.60000000000001 damage! CRITICAL THROW! Weapon is lost!",
+      "dodgedAction": null,
+      "weaponLost": true,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 65
+        },
+        "Bravo": {
+          "hp": 32.39999999999999,
+          "sp": 100
+        }
+      }
+    },
+    {
+      "turn": 8,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 65
+        },
+        "Bravo": {
+          "hp": 32.39999999999999,
+          "sp": 80
+        }
+      }
+    },
+    {
+      "turn": 10,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 19,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 19 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 45
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 80
+        }
+      }
+    },
+    {
+      "turn": 12,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 45
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 60
+        }
+      }
+    },
+    {
+      "turn": 14,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 18,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 18 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 25
+        },
+        "Bravo": {
+          "hp": 0,
+          "sp": 60
+        }
+      }
+    }
+  ],
+  "snapshotHash": "3e42882f9b11796b6c8d700d60831ad7a8cfba08a3df6ed81ea061286614fc82"
+}

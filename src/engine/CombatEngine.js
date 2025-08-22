@@ -353,26 +353,53 @@ export class CombatEngine {
           // Check if it's a thrown-type weapon (shuriken, piopio, noodleBowl)
           const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
           if (thrownWeapons.includes(attacker.weaponType)) {
-            throwChance = 0.5; // 50% for thrown-type weapons
+            throwChance = 0.7; // 70% for thrown-type weapons (augmenté pour test)
           } else {
             // Formula: 1/(33 - tempo*5) for normal weapons
             const tempo = weaponData.tempo || 1.2;
             throwChance = 1 / Math.max(10, 33 - tempo * 5);
+            // TEMPORAIRE: Augmenter beaucoup pour tester
+            throwChance = Math.max(throwChance, 0.3); // Minimum 30% pour tester
           }
+          console.log(`Weapon throw chance for ${attacker.weaponType}: ${throwChance}`);
         }
       }
       
+      // NO_WEAPON_TOSS: 10% chance to attack bare hands even with weapon
+      const NO_WEAPON_TOSS = 0.10;
+      const useBareHands = attacker.hasWeapon && this.rng.chance(NO_WEAPON_TOSS);
+      
       // Prevent throwing if a weapon was thrown in the last 2 turns to avoid simultaneous throws
-      const canThrowWeapon = attacker.hasWeapon && (this.currentTurn - this.lastWeaponThrowTurn) > 2;
+      const canThrowWeapon = attacker.hasWeapon && !useBareHands && (this.currentTurn - this.lastWeaponThrowTurn) >= 2;
       const throwWeapon = canThrowWeapon && this.rng.chance(throwChance);
       
+      // Debug logs
+      console.log(`Throw check - Can throw: ${canThrowWeapon}, Will throw: ${throwWeapon}, Stamina: ${attacker.stats.stamina}, Turn: ${this.currentTurn}, Last throw: ${this.lastWeaponThrowTurn}`);
+      
       let result;
-      if (throwWeapon && attacker.stats.stamina >= 35) {
+      if (throwWeapon && attacker.stats.stamina >= 20) { // Réduit de 35 à 20 pour tester
+        console.log(`${attacker.stats.name} is throwing weapon!`);
         result = this.executeWeaponThrow(attacker, defender);
       } else if (useSpecialMove && attacker.stats.stamina >= 40) {
         result = this.executeSpecialMove(attacker, defender);
       } else {
+        // Si on décide d'utiliser les mains nues, on désactive temporairement l'arme
+        const originalWeapon = attacker.weaponType;
+        const originalHasWeapon = attacker.hasWeapon;
+        
+        if (useBareHands) {
+          attacker.weaponType = null;
+          attacker.hasWeapon = false;
+        }
+        
         result = this.calculateAttack(attacker, defender);
+        
+        // Restaurer l'arme après l'attaque à mains nues
+        if (useBareHands) {
+          attacker.weaponType = originalWeapon;
+          attacker.hasWeapon = originalHasWeapon;
+          result.bareHands = true; // Marquer que c'était une attaque à mains nues
+        }
       }
       
       if (unlockedMove) {
@@ -867,8 +894,8 @@ export class CombatEngine {
     // Record this turn as having a weapon throw
     this.lastWeaponThrowTurn = this.currentTurn;
     
-    // Stamina cost for weapon throw
-    attacker.stats.stamina -= 35;
+    // Stamina cost for weapon throw (reduced for testing)
+    attacker.stats.stamina -= 20;
     
     // Base accuracy for thrown weapons (higher than normal due to surprise)
     let accuracy = 0.85;

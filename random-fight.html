@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat Aléatoire - SHACKERS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0a0a;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            width: 1280px;
+            height: 720px;
+            margin: 50px auto;
+            border: 3px solid #3e2723;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            background: #2a2a2a;
+            position: relative;
+        }
+        
+        /* Loading screen */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .loading h2 {
+            color: #ffaa00;
+            font-size: 32px;
+            margin-bottom: 20px;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .fighters-info {
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .fighter-preview {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+        
+        .fighter-name {
+            color: #00ff88;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .fighter-stats {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            color: #ccc;
+        }
+        
+        .stat-value {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        
+        /* Canvas styling */
+        canvas {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="loading" id="loadingScreen">
+            <h2>🎲 Génération du combat aléatoire...</h2>
+            <div class="fighters-info" id="fightersInfo"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+        // Récupérer les données du combat aléatoire
+        const fightData = JSON.parse(sessionStorage.getItem('randomFightData'));
+        
+        if (!fightData) {
+            console.error('Pas de données de combat aléatoire');
+            alert('Erreur: Pas de données de combat. Retour à l\'accueil.');
+            window.location.href = '/home.html';
+        } else {
+            // Afficher les infos des combattants
+            const fightersInfo = document.getElementById('fightersInfo');
+            fightersInfo.innerHTML = `
+                <div class="fighter-preview">
+                    <div class="fighter-name">⚔️ ${fightData.fighter1.name}</div>
+                    <div class="fighter-stats">
+                        <span class="stat">HP: <span class="stat-value">${fightData.fighter1.health}</span></span>
+                        <span class="stat">Force: <span class="stat-value">${fightData.fighter1.strength}</span></span>
+                        <span class="stat">Agilité: <span class="stat-value">${fightData.fighter1.agility}</span></span>
+                        <span class="stat">Arme: <span class="stat-value">${fightData.fighter1.weapon || 'Mains nues'}</span></span>
+                        <span class="stat">Type: <span class="stat-value">${fightData.fighter1.characterType}</span></span>
+                    </div>
+                </div>
+                <div style="text-align: center; margin: 15px 0; font-size: 24px;">VS</div>
+                <div class="fighter-preview">
+                    <div class="fighter-name">⚔️ ${fightData.fighter2.name}</div>
+                    <div class="fighter-stats">
+                        <span class="stat">HP: <span class="stat-value">${fightData.fighter2.health}</span></span>
+                        <span class="stat">Force: <span class="stat-value">${fightData.fighter2.strength}</span></span>
+                        <span class="stat">Agilité: <span class="stat-value">${fightData.fighter2.agility}</span></span>
+                        <span class="stat">Arme: <span class="stat-value">${fightData.fighter2.weapon || 'Mains nues'}</span></span>
+                        <span class="stat">Type: <span class="stat-value">${fightData.fighter2.characterType}</span></span>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 15px; color: #666;">
+                    Décor: ${fightData.background}
+                </div>
+            `;
+            
+            // Attendre que le jeu soit chargé
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    // Cacher l'écran de chargement
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    
+                    // Attendre que le jeu Phaser soit prêt
+                    const checkGame = setInterval(() => {
+                        if (window.game && window.game.scene) {
+                            clearInterval(checkGame);
+                            
+                            // Lancer directement la scène de combat avec les données
+                            window.game.scene.start('FightSpine', {
+                                a: fightData.fighter1,
+                                b: fightData.fighter2,
+                                background: fightData.background
+                            });
+                            
+                            console.log('Combat aléatoire lancé avec:', fightData);
+                        }
+                    }, 100);
+                    
+                }, 2000); // Attendre 2 secondes pour montrer les infos
+            });
+        }
+    </script>
+</body>
+</html>

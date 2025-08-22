@@ -7,6 +7,16 @@ export class FightSceneSpine extends Phaser.Scene {
   constructor() { super({ key: 'FightSpine' }); }
 
   init(data) {
+    // IMPORTANT: Réinitialiser toutes les variables de combat pour éviter la persistance
+    this.combatOver = false;
+    this.turnInProgress = false;
+    this.stopCombat = false;
+    this.engine = null;
+    this.fighter1 = null;
+    this.fighter2 = null;
+    
+    console.log('=== SCENE INITIALIZED - Combat variables reset ===' );
+    
     // Expect data: { a: {name, ...stats}, b: {name, ...stats} }
     // Sauvegarder les stats initiales pour le rematch
     if (data?.a && data?.b) {
@@ -52,6 +62,10 @@ export class FightSceneSpine extends Phaser.Scene {
   create() {
     const W = this.scale.width;
     const H = this.scale.height;
+    
+    // IMPORTANT: Réinitialiser la caméra pour éviter les shakes résiduels du combat précédent
+    this.cameras.main.stopFollow();
+    this.cameras.main.resetFX();
     
     // Show combat controls
     if (window.showCombatControls) {
@@ -316,6 +330,8 @@ export class FightSceneSpine extends Phaser.Scene {
     
     this.fighter1.stats = statsA;
     this.fighter2.stats = statsB;
+    
+    // Initialisation simple des HP
 
     this.updateDepthOrdering();
 
@@ -323,17 +339,17 @@ export class FightSceneSpine extends Phaser.Scene {
     this.ui = this.createSimpleUI(W, H);
     this.appendLog('Combat prêt.');
     
-    // Initialiser les barres de vie au maximum
+    // NE PAS appeler updateUI avant que le moteur soit créé
     console.log(`Combat Start - ${this.fighter1.stats.name}: ${this.fighter1.stats.health}/${this.fighter1.stats.maxHealth} HP`);
     console.log(`Combat Start - ${this.fighter2.stats.name}: ${this.fighter2.stats.health}/${this.fighter2.stats.maxHealth} HP`);
-    this.updateUI();
 
     // Attribution ALÉATOIRE des armes et pets (beaucoup combattent à mains nues dans LaBrute!)
     // Utiliser les armes officielles LaBrute avec 50% de chance d'avoir une arme
     const labruteWeapons = ['knife', 'broadsword', 'lance', 'fan', 'sai', 'shuriken', 
                            'axe', 'bumps', 'flail', 'mammothBone', 'halberd', 'whip'];
     const weapons = [...labruteWeapons, null, null]; // 50% chance d'avoir une arme
-    const pets = [null, null, null, null, null, null, null, null, 'dog']; // Très rare d'avoir un pet au début
+    // AUGMENTÉ : 40% de chance d'avoir un pet (pour tester)
+    const pets = ['dog', 'dog', 'bear', 'panther', null, null, null, null, null, null]; 
     
     // Armes aléatoires
     this.fighter1.weapon = weapons[Math.floor(Math.random() * weapons.length)];
@@ -343,11 +359,15 @@ export class FightSceneSpine extends Phaser.Scene {
     this.fighter1.pet = pets[Math.floor(Math.random() * pets.length)];
     this.fighter2.pet = pets[Math.floor(Math.random() * pets.length)];
     
-    // Transmettre les armes au moteur
-    this.fighter1.stats.weapons = this.fighter1.weapon ? [this.fighter1.weapon] : [];
-    this.fighter2.stats.weapons = this.fighter2.weapon ? [this.fighter2.weapon] : [];
+    // Transmettre les armes au moteur - IMPORTANT: weapons est un tableau pour LaBruteCombatEngine
+    this.fighter1.weapons = this.fighter1.weapon ? [this.fighter1.weapon] : [];
+    this.fighter2.weapons = this.fighter2.weapon ? [this.fighter2.weapon] : [];
+    this.fighter1.stats.weapons = this.fighter1.weapons;
+    this.fighter2.stats.weapons = this.fighter2.weapons;
     
-    // Transmettre les pets au moteur
+    // Transmettre les pets au moteur - IMPORTANT: sur le fighter directement pour LaBruteCombatEngine
+    this.fighter1.pet = this.fighter1.pet; // Déjà défini
+    this.fighter2.pet = this.fighter2.pet; // Déjà défini
     this.fighter1.stats.pet = this.fighter1.pet;
     this.fighter2.stats.pet = this.fighter2.pet;
     
@@ -367,11 +387,36 @@ export class FightSceneSpine extends Phaser.Scene {
     this.stopCombat = false;
     this.turnInProgress = false;
     
-    // Start loop
-    this.time.delayedCall(200, () => {
-      if (!this.stopCombat) {
+    // Synchroniser les HP initiaux depuis le moteur
+    if (this.engine && this.engine.fighters) {
+      const engineF1 = this.engine.fighters.find(f => f.name === this.fighter1.stats.name);
+      const engineF2 = this.engine.fighters.find(f => f.name === this.fighter2.stats.name);
+      
+      if (engineF1) {
+        this.fighter1.stats.health = engineF1.currentHp;
+        console.log(`[INIT] ${this.fighter1.stats.name}: ${engineF1.currentHp} HP`);
+      }
+      if (engineF2) {
+        this.fighter2.stats.health = engineF2.currentHp;
+        console.log(`[INIT] ${this.fighter2.stats.name}: ${engineF2.currentHp} HP`);
+      }
+    }
+    
+    // Initialiser les barres avec les vraies valeurs du moteur
+    this.updateUI();
+    this.combatOver = false; // S'assurer que c'est bien false
+    
+    // Start combat loop with a recursive function
+    this.startCombatLoop = () => {
+      if (!this.stopCombat && !this.combatOver) {
         this.executeTurn();
       }
+    };
+    
+    // Start loop with a small delay
+    this.time.delayedCall(500, () => {
+      console.log('Starting combat loop...');
+      this.startCombatLoop();
     });
   }
 
@@ -445,6 +490,28 @@ export class FightSceneSpine extends Phaser.Scene {
     f.deathAnimPlayed = true;
     f.isDead = true; // Empêcher toute autre animation
     
+    // Faire tomber l'arme au sol
+    if (f.weaponSprite && !f.weaponThrown) {
+      this.tweens.add({
+        targets: f.weaponSprite,
+        y: f.sprite.y + 30, // Tomber au sol
+        rotation: 0, // À l'horizontale
+        alpha: 0.7, // Légèrement transparent
+        duration: 300,
+        ease: 'Power2'
+      });
+      
+      // Faire tomber aussi le texte de l'arme
+      if (f.weaponText) {
+        this.tweens.add({
+          targets: f.weaponText,
+          y: f.sprite.y + 50,
+          alpha: 0,
+          duration: 300
+        });
+      }
+    }
+    
     // Adapter l'ombre pour un personnage allongé - seulement pour Spineboy, pas pour le raptor
     if (f.shadow && f.characterType !== 'raptor') {
       // Élargir l'ombre horizontalement car le personnage est allongé
@@ -513,6 +580,14 @@ export class FightSceneSpine extends Phaser.Scene {
     this.playRun(f);
     this.tweens.add({ targets: f.sprite, x: f.sprite.x + dir, yoyo: true, duration: 150, ease: 'Power2', onComplete:()=>this.playIdle(f)});
     this.tweens.add({ targets: f.shadow, x: f.shadow.x + dir, yoyo: true, duration: 150, ease: 'Power2' });
+    // Faire suivre l'arme pendant l'esquive
+    if (f.weaponSprite && !f.weaponThrown) {
+      const weaponDir = f.side === 'left' ? -140 : 140;
+      this.tweens.add({ targets: f.weaponSprite, x: f.weaponSprite.x + weaponDir, yoyo: true, duration: 150, ease: 'Power2' });
+      if (f.weaponText) {
+        this.tweens.add({ targets: f.weaponText, x: f.weaponText.x + weaponDir, yoyo: true, duration: 150, ease: 'Power2' });
+      }
+    }
   }
   playBlock(f) { 
     // Animation de blocage plus visible : le personnage se protège
@@ -661,7 +736,7 @@ export class FightSceneSpine extends Phaser.Scene {
       const weapon1 = this.add.rectangle(
         handX, 
         handY,
-        50, 8, color
+        100, 20, color  // Beaucoup plus gros pour être bien visible
       );
       weapon1.setOrigin(0.1, 0.5); // Pivot près de la garde
       weapon1.rotation = -0.785; // 45 degrés vers le haut
@@ -692,7 +767,7 @@ export class FightSceneSpine extends Phaser.Scene {
       const weapon2 = this.add.rectangle(
         handX,
         handY,
-        50, 8, color  
+        100, 20, color  // Beaucoup plus gros pour être bien visible
       );
       weapon2.setOrigin(0.9, 0.5); // Pivot près de la garde
       weapon2.rotation = 0.785; // 45 degrés vers le haut
@@ -726,13 +801,15 @@ export class FightSceneSpine extends Phaser.Scene {
     
     if (this.fighter1.pet) {
       const petColor = petColors[this.fighter1.pet] || 0x666666;
-      const petSize = this.fighter1.pet.includes('bear') ? 30 : (this.fighter1.pet.includes('panther') ? 25 : 20);
+      // GROSSI : Tailles augmentées pour meilleure visibilité
+      const petSize = this.fighter1.pet.includes('bear') ? 45 : (this.fighter1.pet.includes('panther') ? 35 : 30);
       const pet1 = this.add.circle(
-        this.fighter1.sprite.x - 60,
+        this.fighter1.sprite.x - 80,
         this.fighter1.sprite.y + 30,
         petSize, petColor
       );
-      pet1.setStrokeStyle(2, 0xffffff);
+      pet1.setStrokeStyle(3, 0xffffff);
+      pet1.setDepth(this.fighter1.sprite.depth + 10); // Au-dessus du personnage et de son ombre
       this.fighter1.petSprite = pet1;
       
       // Animation d'idle pour le pet (respiration/mouvement)
@@ -748,23 +825,25 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Label du pet
       const petLabel1 = this.add.text(
-        this.fighter1.sprite.x - 60,
-        this.fighter1.sprite.y + 55,
+        this.fighter1.sprite.x - 80,
+        this.fighter1.sprite.y + 65,
         this.fighter1.pet.toUpperCase(),
-        { fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
-      ).setOrigin(0.5);
+        { fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter1.sprite.depth + 11);
       this.fighter1.petText = petLabel1;
     }
     
     if (this.fighter2.pet) {
       const petColor = petColors[this.fighter2.pet] || 0x666666;
-      const petSize = this.fighter2.pet.includes('bear') ? 30 : (this.fighter2.pet.includes('panther') ? 25 : 20);
+      // GROSSI : Tailles augmentées pour meilleure visibilité
+      const petSize = this.fighter2.pet.includes('bear') ? 45 : (this.fighter2.pet.includes('panther') ? 35 : 30);
       const pet2 = this.add.circle(
-        this.fighter2.sprite.x + 60,
+        this.fighter2.sprite.x + 80,
         this.fighter2.sprite.y + 30,
         petSize, petColor
       );
-      pet2.setStrokeStyle(2, 0xffffff);
+      pet2.setStrokeStyle(3, 0xffffff);
+      pet2.setDepth(this.fighter2.sprite.depth + 10); // Au-dessus du personnage et de son ombre
       this.fighter2.petSprite = pet2;
       
       // Animation d'idle pour le pet (respiration/mouvement)
@@ -780,11 +859,11 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Label du pet
       const petLabel2 = this.add.text(
-        this.fighter2.sprite.x + 60,
-        this.fighter2.sprite.y + 55,
+        this.fighter2.sprite.x + 80,
+        this.fighter2.sprite.y + 65,
         this.fighter2.pet.toUpperCase(),
-        { fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
-      ).setOrigin(0.5);
+        { fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter2.sprite.depth + 11);
       this.fighter2.petText = petLabel2;
     }
   }
@@ -868,6 +947,37 @@ export class FightSceneSpine extends Phaser.Scene {
   async executeTurn() {
     if (this.combatOver) return;
     if (this.turnInProgress) return;
+    
+    // Vérifier si un combattant est déjà mort
+    if (this.fighter1.stats.health <= 0 || this.fighter2.stats.health <= 0) {
+      console.log('Combat should be over - a fighter has 0 HP');
+      this.combatOver = true;
+      // Déterminer qui est mort et qui a gagné
+      const winner = this.fighter1.stats.health > 0 ? this.fighter1 : this.fighter2;
+      const loser = this.fighter1.stats.health <= 0 ? this.fighter1 : this.fighter2;
+      
+      // Animation de fin
+      if (loser && loser.sprite && !loser.deathAnimPlayed) {
+        const isRaptor = loser.characterType === 'raptor';
+        if (isRaptor) {
+          this.setSpineAnim(loser.sprite, 'roar-long', false);
+          this.tweens.add({
+            targets: loser.sprite,
+            y: loser.sprite.y + 50,
+            alpha: 0.5,
+            duration: 800,
+            ease: 'Power2'
+          });
+        } else {
+          this.setSpineAnim(loser.sprite, 'death', false);
+        }
+        loser.deathAnimPlayed = true;
+      }
+      
+      this.showWinner(winner, loser);
+      return;
+    }
+    
     this.turnInProgress = true;
 
     let result;
@@ -886,11 +996,47 @@ export class FightSceneSpine extends Phaser.Scene {
       return this.executeTurn(); 
     }
     
-    const attacker = result.attacker; const target = result.target;
+    const attacker = result.attacker; 
+    const target = result.target;
+    
+    // Vérifier si le combat est terminé AVANT d'animer
+    if (result.gameOver && result.damage === 0 && !result.hit) {
+      // C'est un cas où le personnage était déjà mort avant de pouvoir attaquer
+      console.log('Fighter was already dead, skipping attack animation');
+      this.combatOver = true;
+      this.updateUI();
+      
+      // Animation de victoire/défaite
+      const loser = result.loser;
+      const winner = result.winner;
+      
+      if (loser && loser.sprite && !loser.deathAnimPlayed) {
+        const isRaptor = loser.characterType === 'raptor';
+        if (isRaptor) {
+          this.setSpineAnim(loser.sprite, 'roar-long', false);
+          this.tweens.add({
+            targets: loser.sprite,
+            y: loser.sprite.y + 50,
+            alpha: 0.5,
+            duration: 800,
+            ease: 'Power2'
+          });
+        } else {
+          this.setSpineAnim(loser.sprite, 'death', false);
+        }
+        loser.deathAnimPlayed = true;
+      }
+      
+      // Pas d'animation de victoire - le gagnant reste en idle
+      
+      this.showWinner(winner, loser);
+      this.turnInProgress = false;
+      return;
+    }
 
     if (result.type === 'attack' || result.type === 'multi_attack' || result.type === 'counter') {
       // Affichage clair de l'action avec l'arme utilisée
-      const weaponName = attacker.weaponType ? ` avec ${attacker.weaponType}` : ' à mains nues';
+      const weaponName = result.bareHands ? ' à mains nues' : (attacker.weaponType ? ` avec ${attacker.weaponType}` : ' à mains nues');
       this.appendLog(`${attacker.stats.name} attaque${weaponName} ${target.stats.name}${result.type==='multi_attack'?' (combo)':''}${result.critical?' [CRIT]':''}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
 
       const contactGap = this.getContactGap(attacker, target, 14);
@@ -903,40 +1049,72 @@ export class FightSceneSpine extends Phaser.Scene {
       const runDuration = Math.max(80, (distance / LABRUTE_SPEED) * 1000);
 
       this.playRun(attacker);
+      
+      // Lancer l'animation de l'arme PENDANT le déplacement (sauf si mains nues)
+      if (attacker.weaponSprite && attacker.hasWeapon && !result.bareHands) {
+        // Attendre un peu plus puis commencer l'animation d'arme pendant le déplacement
+        this.time.delayedCall(runDuration * 0.75, () => {
+          // Animation de frappe avec l'arme
+          const originalRotation = attacker.weaponSprite.rotation;
+          
+          // Lever l'arme pour frapper
+          this.tweens.add({
+            targets: attacker.weaponSprite,
+            rotation: attacker.side === 'left' ? -2.0 : 2.0, // Lever haut
+            duration: 80,  // Timing original
+            ease: 'Power2',
+            onComplete: () => {
+              // Petite pause en position haute avant de frapper
+              this.time.delayedCall(40, () => {
+                // Frapper vers le bas
+                this.tweens.add({
+                targets: attacker.weaponSprite,
+                rotation: attacker.side === 'left' ? 0.5 : -0.5, // Frapper bas
+                scaleX: 1.3,
+                scaleY: 1.3,
+                duration: 70,
+                ease: 'Power3',
+                onComplete: () => {
+                  // Retour à la position normale
+                  this.tweens.add({
+                    targets: attacker.weaponSprite,
+                    rotation: originalRotation,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 100,
+                    ease: 'Power2'
+                  });
+                }
+              });
+              });
+            }
+          });
+        });
+      }
+      
       await this.moveFighterTo(attacker, attackX, contactY, runDuration, 'Linear');
       
       // Mettre l'attaquant au premier plan (devant la cible)
-      // Beaucoup plus de depth pour les raptors pour être sûr qu'ils soient devant
       const depthBonus = attacker.characterType === 'raptor' ? 50 : 10;
       attacker.sprite.setDepth(target.sprite.depth + depthBonus);
       if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
       if (attacker.weaponSprite) attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
       
-      // Animation d'attaque avec effet visuel de l'arme
+      // Animation d'attaque
       this.playAttack(attacker);
-      
-      // Effet visuel de l'arme qui frappe
-      if (attacker.weaponSprite && attacker.hasWeapon) {
-        // Flash de l'arme pour montrer qu'elle est utilisée
-        this.tweens.add({
-          targets: attacker.weaponSprite,
-          scaleX: 1.5,
-          scaleY: 1.5,
-          duration: 100,
-          yoyo: true,
-          ease: 'Power2'
-        });
-      }
 
       if (result.hit && result.damage > 0) {
         // Debug log pour vérifier les dégâts
-        console.log(`HIT: ${attacker.stats.name} -> ${target.stats.name}: ${result.damage} dmg (HP: ${target.stats.health}/${target.stats.maxHealth})`);
-        
-        // MISE À JOUR INSTANTANÉE AU MOMENT DU HIT - SEULEMENT LA CIBLE
-        this.updateFighterHP(target); // SEULEMENT la barre de la CIBLE descend !
+        console.log(`HIT CONFIRMED: ${attacker.stats.name} -> ${target.stats.name}: ${result.damage} dmg${result.bareHands ? ' (BARE HANDS)' : ''}`);
+        console.log(`Target HP before hit: ${target.stats.health}/${target.stats.maxHealth}`);
         
         // Affichage des dégâts au-dessus du personnage
         this.showDamageText(target, result.damage, result.critical);
+        
+        // Mise à jour des HP avec animation
+        this.updateFighterHP(target);
+        
+        console.log(`Target HP after update: ${target.stats.health}/${target.stats.maxHealth}`);
         
         // Animations visuelles simultanées
         this.playHit(target);
@@ -949,13 +1127,21 @@ export class FightSceneSpine extends Phaser.Scene {
         } catch(_) {}
 
         this.shakeTarget(target);
-        this.shakeMedium();
+        // Retarder le shake pour les armes (après l'animation de frappe)
+        if (attacker.weaponSprite && attacker.hasWeapon && !result.bareHands) {
+          this.time.delayedCall(140, () => this.shakeMedium()); // Après l'animation d'arme
+        } else {
+          this.shakeMedium(); // Immédiat pour les mains nues
+        }
         const g2 = this.add.graphics();
         g2.fillStyle(0xff2a2a, 0.45);
         g2.fillCircle(target.sprite.x + (target.side==='left'?-5:5), target.sprite.y - 46, 6);
         this.tweens.add({targets:g2, alpha:0, scale:2.2, duration:320, onComplete:()=>g2.destroy()});
 
         this.showDamageNumber(target, result.damage, !!result.critical);
+        
+        // IMPORTANT: Mettre à jour la barre de vie
+        this.updateFighterHP(target);
         
         // Vérifier si mort
         if (target.stats.health <= 0) {
@@ -966,8 +1152,8 @@ export class FightSceneSpine extends Phaser.Scene {
         this.playEvadeTick(target);
       }
 
-      // playAttack déjà fait au moment du contact
-      await this.sleep(20); // Lightning transition
+      // Attendre que l'animation d'arme se termine
+      await this.sleep(240); // Temps pour l'animation complète de l'arme
       await this.returnToPosition(attacker);
       
       // Vérifier si l'attaquant est mort (peut arriver avec des contres)
@@ -1000,6 +1186,9 @@ export class FightSceneSpine extends Phaser.Scene {
       this.playAttack(attacker);
       
       // La cible BLOQUE visiblement
+      // Mise à jour immédiate des HP de la cible
+      this.updateFighterHP(target);
+      
       this.playBlock(target);
       this.showBlockIndicator(target);
       
@@ -1035,9 +1224,10 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Rétablir l'ordre de profondeur après un délai pour laisser voir l'attaque
       this.time.delayedCall(300, () => this.updateDepthOrdering());
-    } else if (result.type === 'dodge') {
-      this.appendLog(`${target.stats.name} esquive l'attaque de ${attacker.stats.name}`);
       
+      // Commentaire APRÈS l'animation de blocage
+      this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
+    } else if (result.type === 'dodge') {
       // L'attaquant doit d'abord tenter d'attaquer
       const contactGap = this.getContactGap(attacker, target, 14);
       const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
@@ -1056,6 +1246,8 @@ export class FightSceneSpine extends Phaser.Scene {
       if (attacker.weaponSprite) attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
       
       // Puis la cible esquive
+      // Pas de mise à jour HP car pas de dégâts
+      
       this.playDodge(target);
       this.createDodgeIndicator(target);
       
@@ -1070,137 +1262,335 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Rétablir l'ordre de profondeur après un délai
       this.time.delayedCall(300, () => this.updateDepthOrdering());
-    } else if (result.type === 'throw') {
-      // Message clair pour le lancer d'arme
-      const weaponThrown = attacker.weaponType || 'son arme';
-      this.appendLog(`🎯 ${attacker.stats.name} LANCE ${weaponThrown} sur ${target.stats.name}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
       
-      // Animation VISIBLE du lancer d'arme - L'ATTAQUANT NE BOUGE PAS
+      // Commentaire APRÈS l'animation d'esquive
+      this.appendLog(`${target.stats.name} esquive l'attaque de ${attacker.stats.name}`);
+    } else if (result.type === 'throw') {
+      // Animation VISIBLE du lancer d'arme avec préparation
       if (attacker.weaponSprite) {
-        // Pas d'animation spéciale pour le personnage, on se concentre sur l'arme
-        
-        // Utiliser directement l'arme existante pour le lancer
+        // Marquer l'arme comme lancée pour qu'elle ne tombe pas lors de la mort
+        attacker.weaponThrown = true;
         const thrownWeapon = attacker.weaponSprite;
-        thrownWeapon.setDepth(200); // Au-dessus de tout
+        const originalRotation = thrownWeapon.rotation;
         
-        // Trajectoire parabolique de l'arme
-        const startX = thrownWeapon.x;
-        const startY = thrownWeapon.y;
-        const endX = result.hit ? target.sprite.x : target.sprite.x + Phaser.Math.Between(-200, 200);
-        const endY = result.hit ? target.sprite.y - 50 : this.scale.height + 100;
-        const midX = (startX + endX) / 2;
-        const midY = Math.min(startY, endY) - 150; // Point haut de la parabole
-        
-        // Animation de vol avec rotation
+        // Animation de préparation : lever l'arme pour le lancer
         this.tweens.add({
           targets: thrownWeapon,
-          x: endX,
-          y: endY,
-          rotation: thrownWeapon.rotation + (Math.PI * 6), // 3 tours complets
-          duration: 800,
-          ease: 'Quad.easeIn',
-          onUpdate: (tween) => {
-            // Trajectoire parabolique manuelle
-            const progress = tween.progress;
-            const x = Phaser.Math.Interpolation.Linear([startX, midX, endX], progress);
-            const y = Phaser.Math.Interpolation.Bezier([startY, midY, endY], progress);
-            thrownWeapon.x = x;
-            thrownWeapon.y = y;
-          },
+          rotation: attacker.side === 'left' ? -2.5 : -2.5, // CORRIGÉ: même rotation pour les deux côtés
+          x: attacker.sprite.x + (attacker.side === 'left' ? -30 : 30),
+          y: attacker.sprite.y - 120,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 250,
+          ease: 'Back.easeOut',
           onComplete: () => {
-            // Effet d'impact ou disparition
-            if (result.hit) {
-              // Petit effet d'impact
-              this.cameras.main.shake(100, 0.01);
-            }
+            // Maintenant lancer l'arme
+            thrownWeapon.setDepth(200); // Au-dessus de tout
             
-            // Vérifier si c'est une arme de type "thrown" qui reste
-            const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
-            if (thrownWeapons.includes(attacker.weaponType)) {
-              // L'arme revient au personnage (comme un yo-yo ou boomerang)
-              this.tweens.add({
-                targets: thrownWeapon,
-                x: attacker.sprite.x,
-                y: attacker.sprite.y - 50,
-                rotation: thrownWeapon.rotation + (Math.PI * 4),
-                duration: 600,
-                ease: 'Power2',
-                onComplete: () => {
-                  // Repositionner l'arme normalement
-                  if (attacker.weaponSprite) {
-                    attacker.weaponSprite.x = attacker.sprite.x;
-                    attacker.weaponSprite.y = attacker.sprite.y - 50;
-                    attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
+            // Trajectoire parabolique de l'arme
+            const startX = thrownWeapon.x;
+            const startY = thrownWeapon.y;
+            const endX = result.hit ? target.sprite.x : target.sprite.x + Phaser.Math.Between(-200, 200);
+            const endY = result.hit ? target.sprite.y - 50 : this.scale.height + 100;
+            const midX = (startX + endX) / 2;
+            const midY = Math.min(startY, endY) - 200; // Point haut de la parabole
+            
+            // Animation de vol avec rotation plus rapide
+            this.tweens.add({
+              targets: thrownWeapon,
+              x: endX,
+              y: endY,
+              rotation: thrownWeapon.rotation + (attacker.side === 'left' ? Math.PI * 8 : -Math.PI * 8), // Rotation selon le côté
+              scaleX: 1.5,
+              scaleY: 1.5,
+              duration: 600,
+              ease: 'Quad.easeIn',
+              onUpdate: (tween) => {
+                // Trajectoire parabolique manuelle
+                const progress = tween.progress;
+                const x = Phaser.Math.Interpolation.Linear([startX, midX, endX], progress);
+                const y = Phaser.Math.Interpolation.Bezier([startY, midY, endY], progress);
+                thrownWeapon.x = x;
+                thrownWeapon.y = y;
+              },
+              onComplete: () => {
+                // Effet d'impact ou disparition
+                if (result.hit) {
+                  // Camera shake important lors de l'impact
+                  this.cameras.main.shake(200, 0.02);
+                  
+                  // Flash de l'arme à l'impact
+                  this.tweens.add({
+                    targets: thrownWeapon,
+                    alpha: 0,
+                    duration: 100,
+                    yoyo: true,
+                    repeat: 2
+                  });
+                  
+                  // Afficher les dégâts au moment de l'impact
+                  if (result.damage > 0) {
+                    this.updateFighterHP(target);
+                    this.flashSpine(target.sprite);
+                    this.showDamageNumber(target, result.damage, !!result.critical);
                   }
                 }
-              });
-            } else {
-              // Arme normale disparaît
-              thrownWeapon.destroy();
-              attacker.weaponSprite = null;
-            }
-            if (attacker.weaponText) {
-              attacker.weaponText.destroy();
-              attacker.weaponText = null;
-            }
-            attacker.hasWeapon = false;
-            attacker.weapon = null;
+                
+                // TOUTES les armes disparaissent après un lancer (comme dans LaBrute officiel)
+                // Faire disparaître l'arme après l'impact
+                this.tweens.add({
+                  targets: thrownWeapon,
+                  alpha: 0,
+                  duration: 300,
+                  delay: 100,
+                  onComplete: () => {
+                    thrownWeapon.destroy();
+                    attacker.weaponSprite = null;
+                    // IMPORTANT: Mettre à jour weaponType pour que les attaques suivantes soient à mains nues
+                    attacker.weaponType = null;
+                  }
+                });
+                if (attacker.weaponText) {
+                  attacker.weaponText.destroy();
+                  attacker.weaponText = null;
+                }
+                attacker.hasWeapon = false;
+                attacker.weapon = null;
+              }
+            });
           }
         });
         
-        // Attendre un peu avant de montrer les dégâts
-        await this.sleep(400);
-      }
-      
-      if (result.hit && result.damage>0) { 
-        this.updateFighterHP(target);
-        this.flashSpine(target.sprite); 
-        this.shakeMedium(); 
-        this.showDamageNumber(target, result.damage, !!result.critical);
-      }
-      else { 
-        this.showMissEffect(target);
-        this.appendLog(`L'arme manque sa cible et disparaît !`);
+        // Attendre que l'animation de lancer se termine
+        await this.sleep(850); // 250ms de préparation + 600ms de vol
+        
+        // Commentaire APRÈS le lancer
+        const weaponThrown = attacker.weaponType || 'son arme';
+        this.appendLog(`🎯 ${attacker.stats.name} LANCE ${weaponThrown} sur ${target.stats.name}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
+      } else {
+        // Si pas de sprite d'arme, afficher quand même les dégâts
+        if (result.hit && result.damage > 0) { 
+          this.updateFighterHP(target);
+          this.flashSpine(target.sprite); 
+          this.cameras.main.shake(150, 0.015);
+          this.showDamageNumber(target, result.damage, !!result.critical);
+        } else { 
+          this.showMissEffect(target);
+        }
       }
     } else if (result.type === 'special') {
-      this.appendLog(`${attacker.stats.name} utilise une capacité spéciale !`);
       this.cameras.main.shake(130, 0.004);
       await this.sleep(140);
+      this.appendLog(`${attacker.stats.name} utilise une capacité spéciale !`);
     }
 
     // Vérifier si il y a une action de pet
-    if (result.petAssist) {
+    if (result.petAssist && result.petAssist.damage && result.petAssist.damage > 0) {
+      console.log('PET ASSIST DETECTED WITH DAMAGE:', result.petAssist);
+      
+      // Si le combat est déjà terminé par le pet (depuis le moteur), gérer directement
+      if (result.gameOver) {
+        console.log('Combat ended by pet attack (from engine)');
+        this.combatOver = true;
+        this.updateUI();
+        
+        // Animations de fin
+        const loser = result.loser || target;
+        const winner = result.winner || attacker;
+        
+        if (loser && loser.sprite && !loser.deathAnimPlayed) {
+          const isRaptor = loser.characterType === 'raptor';
+          if (isRaptor) {
+            this.setSpineAnim(loser.sprite, 'roar-long', false);
+            this.tweens.add({
+              targets: loser.sprite,
+              y: loser.sprite.y + 50,
+              alpha: 0.5,
+              duration: 800,
+              ease: 'Power2'
+            });
+          } else {
+            this.setSpineAnim(loser.sprite, 'death', false);
+          }
+          loser.deathAnimPlayed = true;
+        }
+        
+        // Pas d'animation de victoire - le gagnant reste en idle
+        
+        this.showWinner(winner, loser);
+        this.turnInProgress = false;
+        return;
+      }
+      
       await this.sleep(200);
-      this.appendLog(`🐾 Le ${result.petAssist.petType || 'pet'} de ${attacker.stats.name} attaque et inflige ${result.petAssist.damage} dégâts!`);
       
       // Animation du pet qui attaque
-      if (attacker.petSprite) {
+      if (attacker.petSprite && attacker.petText) {
+        console.log('Animating pet attack with damage:', result.petAssist.damage);
+        const pet = attacker.petSprite;
+        const petLabel = attacker.petText;
+        
+        // Grossir temporairement le pet pour l'attaque
         this.tweens.add({
-          targets: attacker.petSprite,
-          x: target.sprite.x + (attacker.side === 'left' ? -80 : 80),
-          y: target.sprite.y,
-          duration: 300,
-          yoyo: true,
-          ease: 'Power2',
-          onYoyo: () => {
+          targets: pet,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 150,
+          ease: 'Back.easeOut'
+        });
+        
+        // Positions originales
+        const originalX = pet.x;
+        const originalY = pet.y;
+        const originalLabelX = petLabel.x;
+        const originalLabelY = petLabel.y;
+        
+        // Calculer la position cible
+        const targetX = target.sprite.x + (attacker.side === 'left' ? -50 : 50);
+        const targetY = target.sprite.y + 20;
+        
+        // Mouvement d'attaque du pet ET de son label
+        this.tweens.add({
+          targets: [pet, petLabel],
+          x: targetX,
+          y: targetY,
+          duration: 400,
+          ease: 'Power2.easeOut',
+          onUpdate: (tween) => {
+            // Faire suivre le label sous le pet
+            petLabel.x = pet.x;
+            petLabel.y = pet.y + 35;
+          },
+          onComplete: () => {
+            // Impact
+            this.cameras.main.shake(150, 0.015);
+            
+            // Flash du pet pour montrer l'attaque
+            this.tweens.add({
+              targets: pet,
+              alpha: 0.3,
+              duration: 50,
+              yoyo: true,
+              repeat: 2
+            });
+            
             if (result.petAssist.damage > 0) {
-              this.showDamageText(target, result.petAssist.damage, false);
-              this.updateFighterHP(target);
+              const damage = result.petAssist.damage;
+              // IMPORTANT: Le pet du ATTACKER attaque le TARGET (pas l'attacker!)
+              console.log(`PET DAMAGE APPLICATION: ${attacker.stats.name}'s pet attacks ${target.stats.name} for ${damage} damage`);
+              
+              // NE PAS calculer les HP ici - laisser le moteur gérer
+              // Synchroniser depuis le moteur
+              this.updateFighterHP(target); // Pas de valeur forcée - récupérer depuis le moteur
+              
+              // Afficher les dégâts
+              this.showDamageNumber(target, damage, false);
+              
+              // Effets visuels
+              this.flashSpine(target.sprite);
+              this.cameras.main.shake(100, 0.01);
+              
+              console.log(`Target HP after update: ${target.stats.health}`);
+              
+              // VÉRIFIER SI LE COMBAT EST TERMINÉ APRÈS L'ATTAQUE DU PET
+              if (target.stats.health <= 0) {
+                console.log(`${target.stats.name} KILLED BY PET! Ending combat...`);
+                this.combatOver = true;
+                
+                // Animation de mort IMMÉDIATE
+                const isRaptor = target.characterType === 'raptor';
+                if (isRaptor) {
+                  this.setSpineAnim(target.sprite, 'roar-long', false);
+                  this.tweens.add({
+                    targets: target.sprite,
+                    y: target.sprite.y + 50,
+                    alpha: 0.5,
+                    duration: 800,
+                    ease: 'Power2'
+                  });
+                } else {
+                  this.setSpineAnim(target.sprite, 'death', false);
+                }
+                target.deathAnimPlayed = true;
+                
+                // Faire retourner le pet à sa base EN PARALLÈLE
+                this.tweens.add({
+                  targets: pet,
+                  x: originalX,
+                  y: originalY,
+                  scaleX: 1,
+                  scaleY: 1,
+                  duration: 400,
+                  ease: 'Power2.easeInOut',
+                  onUpdate: (tween) => {
+                    // Faire suivre le label
+                    petLabel.x = pet.x;
+                    petLabel.y = pet.y + 35;
+                  },
+                  onComplete: () => {
+                    // Remettre exactement les positions originales
+                    petLabel.x = originalLabelX;
+                    petLabel.y = originalLabelY;
+                    
+                    // Commentaire APRÈS l'animation du pet
+                    this.appendLog(`🐾 Le ${result.petAssist.petType || 'pet'} de ${attacker.stats.name} attaque et inflige ${result.petAssist.damage} dégâts!`);
+                  }
+                });
+                
+                // Afficher le gagnant après un court délai
+                this.time.delayedCall(500, () => {
+                  this.showWinner(attacker, target);
+                  this.turnInProgress = false; // Libérer le verrou
+                });
+                
+                // Ne pas continuer avec l'animation normale
+                return;
+              }
             }
+            
+            // Retour à la position originale
+            this.tweens.add({
+              targets: pet,
+              x: originalX,
+              y: originalY,
+              scaleX: 1,
+              scaleY: 1,
+              duration: 400,
+              ease: 'Power2.easeInOut',
+              onUpdate: (tween) => {
+                // Faire suivre le label
+                petLabel.x = pet.x;
+                petLabel.y = pet.y + 35;
+              },
+              onComplete: () => {
+                // Remettre exactement les positions originales
+                petLabel.x = originalLabelX;
+                petLabel.y = originalLabelY;
+              }
+            });
           }
         });
+        
+        // Attendre que l'animation se termine
+        await this.sleep(800);
       }
     }
     
     // Pas de mise à jour finale - tout est déjà synchronisé
     
     if (result.gameOver) {
-      // Attendre que la dernière animation se termine
-      await this.sleep(500);
-      
       this.combatOver = true;
-      // Mise à jour finale pour s'assurer que les barres sont correctes
+      
+      // Forcer la mise à jour IMMÉDIATE et COMPLÈTE des barres
+      // S'assurer que le perdant est bien à 0 HP
+      if (result.loser) {
+        // Les HP viennent du moteur uniquement
+        this.updateFighterHP(result.loser, 0); // Forcer à 0
+      }
       this.updateUI();
+      
+      // Attendre un peu avant les animations de fin
+      await this.sleep(200);
       
       // Animation de défaite pour le perdant
       const loser = result.winner === this.fighter1 ? this.fighter2 : this.fighter1;
@@ -1366,12 +1756,178 @@ export class FightSceneSpine extends Phaser.Scene {
     return { f1, f2, f1bg, f2bg, f1t, f2t, w: barWidth };
   }
   appendLog(line) { if (this.logText) this.logText.setText(line); }
+  
+  showWinner(winner, loser) {
+    console.log(`[SHOW WINNER] Called with winner=${winner.stats?.name || winner.name}, loser=${loser.stats?.name || loser.name}`);
+    
+    // Déterminer qui est VRAIMENT le gagnant selon le moteur
+    let realWinner = winner;
+    let realLoser = loser;
+    
+    if (this.engine && this.engine.winner) {
+      // Le moteur a le nom du vrai gagnant
+      const engineWinnerName = this.engine.winner;
+      console.log(`[ENGINE] Real winner according to engine: ${engineWinnerName}`);
+      
+      // Trouver le bon fighter selon le nom
+      if (this.fighter1.stats.name === engineWinnerName) {
+        realWinner = this.fighter1;
+        realLoser = this.fighter2;
+      } else if (this.fighter2.stats.name === engineWinnerName) {
+        realWinner = this.fighter2;
+        realLoser = this.fighter1;
+      }
+      
+      // Ne PAS modifier stats.health ici - on va utiliser les valeurs du moteur
+      
+      console.log(`[FINAL] Winner: ${realWinner.stats.name} (${realWinner.stats.health} HP)`);
+      console.log(`[FINAL] Loser: ${realLoser.stats.name} (${realLoser.stats.health} HP)`);
+    }
+    
+    // Synchroniser les HP finaux depuis le moteur
+    if (this.engine && this.engine.fighters) {
+      const engineWinner = this.engine.fighters.find(f => f.name === realWinner.stats.name);
+      const engineLoser = this.engine.fighters.find(f => f.name === realLoser.stats.name);
+      
+      if (engineWinner) {
+        realWinner.stats.health = Math.max(0, engineWinner.currentHp);
+      }
+      if (engineLoser) {
+        realLoser.stats.health = 0; // Le perdant est forcément à 0
+      }
+    }
+    
+    const winnerHP = realWinner.stats.health;
+    const loserHP = realLoser.stats.health;
+    
+    console.log(`[FINAL] ${realWinner.stats.name}: ${winnerHP} HP`);
+    console.log(`[FINAL] ${realLoser.stats.name}: ${loserHP} HP`);
+    
+    // FORCER visuellement les barres immédiatement sans animation
+    // Barre du gagnant
+    const winnerIsF1 = (realWinner === this.fighter1);
+    const winnerBar = winnerIsF1 ? this.ui.f1 : this.ui.f2;
+    const loserBar = winnerIsF1 ? this.ui.f2 : this.ui.f1;
+    
+    // Calculer les largeurs finales basées sur les HP du moteur
+    const winnerPercent = winnerHP / realWinner.stats.maxHealth;
+    const winnerWidth = this.ui.w * Math.max(0, Math.min(1, winnerPercent));
+    
+    // Barre du perdant basée sur ses vrais HP
+    const loserPercent = loserHP / realLoser.stats.maxHealth;
+    const loserWidth = this.ui.w * Math.max(0, Math.min(1, loserPercent));
+    
+    // Appliquer DIRECTEMENT sans animation pour le résultat final
+    // Gagnant
+    if (winnerBar.isRightBar && winnerBar.mask) {
+      // Pour la barre droite du gagnant
+      const maskWidth = this.ui.w * (1 - winnerPercent);
+      winnerBar.mask.width = maskWidth;
+    } else if (winnerBar.health) {
+      winnerBar.health.width = winnerWidth;
+    } else {
+      winnerBar.width = winnerWidth;
+    }
+    
+    // Perdant
+    if (loserBar.isRightBar && loserBar.mask) {
+      // Pour la barre droite du perdant
+      const maskWidth = this.ui.w * (1 - loserPercent);
+      loserBar.mask.width = maskWidth;
+    } else if (loserBar.health) {
+      loserBar.health.width = loserWidth;
+    } else {
+      loserBar.width = loserWidth;
+    }
+    
+    console.log(`[BARS] Winner bar (${realWinner.stats.name}): ${winnerPercent*100}% (${winnerHP}/${realWinner.stats.maxHealth})`);
+    console.log(`[BARS] Loser bar (${realLoser.stats.name}): ${loserPercent*100}% (${loserHP}/${realLoser.stats.maxHealth})`);
+    
+    // Utiliser les vrais noms
+    const winnerName = realWinner.stats?.name || realWinner.name || 'Gagnant';
+    const loserName = realLoser.stats?.name || realLoser.name || 'Perdant';
+    
+    this.appendLog(`🏆 ${winnerName} remporte le combat! ${loserName} est KO.`);
+    
+    // Ajouter un gros texte au centre
+    const victoryText = this.add.text(
+      this.cameras.main.centerX,
+      this.cameras.main.centerY - 100,
+      `${winnerName} GAGNE!`,
+      { 
+        fontSize: '48px', 
+        color: '#ffff00', 
+        stroke: '#000000', 
+        strokeThickness: 6,
+        fontStyle: 'bold'
+      }
+    ).setOrigin(0.5).setDepth(3000);
+    
+    // Animation du texte
+    this.tweens.add({
+      targets: victoryText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 500,
+      yoyo: true,
+      repeat: 2
+    });
+    
+    // Bouton rematch après 3 secondes
+    this.time.delayedCall(3000, () => {
+      const rematchBtn = this.add.text(
+        this.cameras.main.centerX,
+        this.cameras.main.centerY + 50,
+        '[CLIC pour REMATCH]',
+        { fontSize: '24px', color: '#00ff00', stroke: '#000000', strokeThickness: 3 }
+      ).setOrigin(0.5).setInteractive().setDepth(3001);
+      
+      rematchBtn.on('pointerdown', () => {
+        console.log('=== REMATCH DÉCLENCHÉ ===');
+        
+        // Arrêter TOUT immédiatement
+        this.combatOver = true;
+        this.turnInProgress = false;
+        this.stopCombat = true;
+        
+        // Arrêter toutes les animations et tweens
+        this.tweens.killAll();
+        this.time.removeAllEvents();
+        
+        // Nettoyer le moteur de combat
+        if (this.engine) {
+          this.engine = null;
+        }
+        
+        // Nettoyer les sprites
+        if (this.fighter1.sprite) {
+          this.fighter1.sprite.destroy();
+        }
+        if (this.fighter2.sprite) {
+          this.fighter2.sprite.destroy();
+        }
+        
+        // Redémarrer proprement la scène
+        console.log('Restarting scene...');
+        this.scene.restart();
+      });
+    });
+  }
 
   updateFighterHP(fighter) {
+    // VERSION SIMPLE QUI FONCTIONNAIT
     // Met à jour SEULEMENT la barre du combattant spécifié
     const isF1 = (fighter === this.fighter1);
     const healthBar = isF1 ? this.ui.f1 : this.ui.f2;
     const stats = fighter.stats;
+    
+    // Synchroniser avec le moteur si disponible
+    if (this.engine && this.engine.fighters) {
+      const engineFighter = this.engine.fighters.find(f => f.name === stats.name);
+      if (engineFighter) {
+        stats.health = Math.max(0, engineFighter.currentHp);
+      }
+    }
     
     const healthPercent = Math.max(0, stats.health) / stats.maxHealth;
     const newWidth = this.ui.w * Math.max(0, Math.min(1, healthPercent));
@@ -1383,17 +1939,26 @@ export class FightSceneSpine extends Phaser.Scene {
       this.tweens.add({
         targets: healthBar.mask,
         width: maskWidth,
-        duration: 50, // TRÈS RAPIDE
+        duration: 50, // TRÈS RAPIDE comme avant
         ease: 'Power2'
       });
     } else {
       // Pour la barre gauche : comportement normal
-      this.tweens.add({
-        targets: healthBar,
-        width: newWidth,
-        duration: 50, // TRÈS RAPIDE
-        ease: 'Power2'
-      });
+      if (healthBar.health) {
+        this.tweens.add({
+          targets: healthBar.health,
+          width: newWidth,
+          duration: 50, // TRÈS RAPIDE comme avant
+          ease: 'Power2'
+        });
+      } else {
+        this.tweens.add({
+          targets: healthBar,
+          width: newWidth,
+          duration: 50, // TRÈS RAPIDE comme avant
+          ease: 'Power2'
+        });
+      }
     }
   }
   

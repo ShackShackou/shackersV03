@@ -1,0 +1,1933 @@
+{
+  "seed": "42",
+  "maxTurns": 500,
+  "totalTurns": 9,
+  "winner": "Alpha",
+  "final": {
+    "Alpha": {
+      "hp": 103,
+      "sp": 5
+    },
+    "Bravo": {
+      "hp": 0,
+      "sp": 35
+    }
+  },
+  "steps": [
+    {
+      "turn": 1,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 24,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 24 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 100
+        },
+        "Bravo": {
+          "hp": 116,
+          "sp": 120
+        }
+      }
+    },
+    {
+      "turn": 2,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 100
+        },
+        "Bravo": {
+          "hp": 116,
+          "sp": 100
+        }
+      }
+    },
+    {
+      "turn": 3,
+      "type": "throw",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 83.60000000000001,
+      "critical": true,
+      "combo": 0,
+      "message": "Alpha hurls their spear for 83.60000000000001 damage! CRITICAL THROW! Weapon is lost!",
+      "dodgedAction": null,
+      "weaponLost": true,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 65
+        },
+        "Bravo": {
+          "hp": 32.39999999999999,
+          "sp": 100
+        }
+      }
+    },
+    {
+      "turn": 4,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 65
+        },
+        "Bravo": {
+          "hp": 32.39999999999999,
+          "sp": 80
+        }
+      }
+    },
+    {
+      "turn": 5,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 19,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 19 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 45
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 80
+        }
+      }
+    },
+    {
+      "turn": 6,
+      "type": "attack",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 45
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 60
+        }
+      }
+    },
+    {
+      "turn": 7,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha misses!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 140,
+          "sp": 25
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 60
+        }
+      }
+    },
+    {
+      "turn": 8,
+      "type": "dodge",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": false,
+      "damage": 0,
+      "critical": false,
+      "combo": 0,
+      "message": "💨 Alpha dodges!",
+      "dodgedAction": "attack",
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": {
+        "type": "multi_attack",
+        "damage": 37,
+        "message": "💨 Bravo is quick enough for a follow-up attack, dealing 37 damage!"
+      },
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 103,
+          "sp": 25
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 5
+        }
+      }
+    },
+    {
+      "turn": 9,
+      "type": "rest",
+      "attacker": "Bravo",
+      "target": "Alpha",
+      "hit": null,
+      "damage": null,
+      "critical": false,
+      "combo": 0,
+      "message": "Bravo recovers stamina!",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 103,
+          "sp": 25
+        },
+        "Bravo": {
+          "hp": 13.399999999999991,
+          "sp": 35
+        }
+      }
+    },
+    {
+      "turn": 10,
+      "type": "attack",
+      "attacker": "Alpha",
+      "target": "Bravo",
+      "hit": true,
+      "damage": 22,
+      "critical": false,
+      "combo": 0,
+      "message": "Alpha hits for 22 damage",
+      "dodgedAction": null,
+      "weaponLost": null,
+      "specialMove": null,
+      "multiAttack": null,
+      "petAssist": null,
+      "state": {
+        "Alpha": {
+          "hp": 103,
+          "sp": 5
+        },
+        "Bravo": {
+          "hp": 0,
+          "sp": 35
+        }
+      }
+    }
+  ],
+  "debug": {
+    "enabled": true,
+    "instrumentFormulas": true,
+    "logs": [
+      {
+        "turn": 0,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.8968269985821098
+      },
+      {
+        "turn": 0,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9388644675165415
+      },
+      {
+        "turn": 0,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.8968269985821098
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 0.9388644675165415
+        },
+        "order": [
+          "Alpha",
+          "Bravo"
+        ]
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.02
+      },
+      {
+        "turn": 1,
+        "event": "counter_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "counterChance": 0.02,
+        "willCounter": false,
+        "defenderStamina": 120
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 1,
+        "event": "block_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "blockChance": 0.08,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 1,
+        "event": "dodge_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "dodgeChance": 0.08,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          "spear"
+        ],
+        "result": 0.75
+      },
+      {
+        "turn": 1,
+        "event": "hit_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "accuracy": 0.75,
+        "hit": true,
+        "weaponType": "spear"
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeBaseDamage",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          true,
+          "spear"
+        ],
+        "result": 38.400000000000006
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeDamageVariation",
+        "args": [
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.8563989467220381
+      },
+      {
+        "turn": 1,
+        "event": "formula.computeCritChance",
+        "args": [
+          "spear"
+        ],
+        "result": 0.13
+      },
+      {
+        "turn": 1,
+        "event": "damage_calc",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "baseDamage": 38.400000000000006,
+        "damageVariation": 0.8563989467220381,
+        "effectiveDefense": 8,
+        "criticalChance": 0.13,
+        "critical": false,
+        "finalDamage": 24,
+        "damageModifier": 1
+      },
+      {
+        "turn": 1,
+        "event": "turn_switch",
+        "prev": "Alpha",
+        "next": "Bravo",
+        "prevIndex": 0,
+        "nextIndex": 1,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.01
+      },
+      {
+        "turn": 2,
+        "event": "counter_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "counterChance": 0.01,
+        "willCounter": false,
+        "defenderStamina": 100
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.09
+      },
+      {
+        "turn": 2,
+        "event": "block_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "blockChance": 0.09,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.112
+      },
+      {
+        "turn": 2,
+        "event": "dodge_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "dodgeChance": 0.112,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          "hammer"
+        ],
+        "result": 0.65
+      },
+      {
+        "turn": 2,
+        "event": "hit_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "accuracy": 0.65,
+        "hit": false,
+        "weaponType": "hammer"
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9289378931932152
+      },
+      {
+        "turn": 2,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 1.0051224935706706
+      },
+      {
+        "turn": 2,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.9289378931932152
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 1.0051224935706706
+        },
+        "order": [
+          "Alpha",
+          "Bravo"
+        ]
+      },
+      {
+        "turn": 2,
+        "event": "turn_switch",
+        "prev": "Bravo",
+        "next": "Alpha",
+        "prevIndex": 1,
+        "nextIndex": 0,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 3,
+        "event": "throw_dodge_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "dodgeChance": 0.06,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 3,
+        "event": "throw_hit_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "accuracy": 0.9,
+        "hit": true,
+        "weaponType": "spear"
+      },
+      {
+        "turn": 3,
+        "event": "throw_damage_calc",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "baseDamage": 43.67999999999999,
+        "damageVariation": 1.0034006213769318,
+        "effectiveDefense": 5,
+        "critical": true,
+        "finalDamage": 83.60000000000001
+      },
+      {
+        "turn": 3,
+        "event": "turn_switch",
+        "prev": "Alpha",
+        "next": "Bravo",
+        "prevIndex": 0,
+        "nextIndex": 1,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.01
+      },
+      {
+        "turn": 4,
+        "event": "counter_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "counterChance": 0.01,
+        "willCounter": false,
+        "defenderStamina": 65
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.09
+      },
+      {
+        "turn": 4,
+        "event": "block_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "blockChance": 0.09,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.112
+      },
+      {
+        "turn": 4,
+        "event": "dodge_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "dodgeChance": 0.112,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          "hammer"
+        ],
+        "result": 0.65
+      },
+      {
+        "turn": 4,
+        "event": "hit_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "accuracy": 0.65,
+        "hit": false,
+        "weaponType": "hammer"
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9621346467128024
+      },
+      {
+        "turn": 4,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9918885856540874
+      },
+      {
+        "turn": 4,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.9621346467128024
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 0.9918885856540874
+        },
+        "order": [
+          "Alpha",
+          "Bravo"
+        ]
+      },
+      {
+        "turn": 4,
+        "event": "turn_switch",
+        "prev": "Bravo",
+        "next": "Alpha",
+        "prevIndex": 1,
+        "nextIndex": 0,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.02
+      },
+      {
+        "turn": 5,
+        "event": "counter_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "counterChance": 0.02,
+        "willCounter": false,
+        "defenderStamina": 80
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 5,
+        "event": "block_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "blockChance": 0.08,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 5,
+        "event": "dodge_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "dodgeChance": 0.08,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          "spear"
+        ],
+        "result": 0.75
+      },
+      {
+        "turn": 5,
+        "event": "hit_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "accuracy": 0.75,
+        "hit": true,
+        "weaponType": "spear"
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeBaseDamage",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          false,
+          "spear"
+        ],
+        "result": 25.200000000000003
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeDamageVariation",
+        "args": [
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 1.101503337151371
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeCritChance",
+        "args": [
+          "spear"
+        ],
+        "result": 0.13
+      },
+      {
+        "turn": 5,
+        "event": "damage_calc",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "baseDamage": 25.200000000000003,
+        "damageVariation": 1.101503337151371,
+        "effectiveDefense": 8,
+        "criticalChance": 0.13,
+        "critical": false,
+        "finalDamage": 19,
+        "damageModifier": 1
+      },
+      {
+        "turn": 5,
+        "event": "formula.computeComboChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.15
+      },
+      {
+        "turn": 5,
+        "event": "turn_switch",
+        "prev": "Alpha",
+        "next": "Bravo",
+        "prevIndex": 0,
+        "nextIndex": 1,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.01
+      },
+      {
+        "turn": 6,
+        "event": "counter_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "counterChance": 0.01,
+        "willCounter": false,
+        "defenderStamina": 45
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.09
+      },
+      {
+        "turn": 6,
+        "event": "block_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "blockChance": 0.09,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.112
+      },
+      {
+        "turn": 6,
+        "event": "dodge_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "dodgeChance": 0.112,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          "hammer"
+        ],
+        "result": 0.65
+      },
+      {
+        "turn": 6,
+        "event": "hit_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "accuracy": 0.65,
+        "hit": false,
+        "weaponType": "hammer"
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9036421351321041
+      },
+      {
+        "turn": 6,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9226867239596322
+      },
+      {
+        "turn": 6,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.9036421351321041
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 0.9226867239596322
+        },
+        "order": [
+          "Alpha",
+          "Bravo"
+        ]
+      },
+      {
+        "turn": 6,
+        "event": "turn_switch",
+        "prev": "Bravo",
+        "next": "Alpha",
+        "prevIndex": 1,
+        "nextIndex": 0,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 7,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.02
+      },
+      {
+        "turn": 7,
+        "event": "counter_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "counterChance": 0.02,
+        "willCounter": false,
+        "defenderStamina": 60
+      },
+      {
+        "turn": 7,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 7,
+        "event": "block_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "blockChance": 0.08,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 7,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 7,
+        "event": "dodge_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "dodgeChance": 0.08,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 7,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          "spear"
+        ],
+        "result": 0.75
+      },
+      {
+        "turn": 7,
+        "event": "hit_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "accuracy": 0.75,
+        "hit": false,
+        "weaponType": "spear"
+      },
+      {
+        "turn": 7,
+        "event": "turn_switch",
+        "prev": "Alpha",
+        "next": "Bravo",
+        "prevIndex": 0,
+        "nextIndex": 1,
+        "order": [
+          "Alpha",
+          "Bravo"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.01
+      },
+      {
+        "turn": 8,
+        "event": "counter_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "counterChance": 0.01,
+        "willCounter": false,
+        "defenderStamina": 25
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.09
+      },
+      {
+        "turn": 8,
+        "event": "block_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "blockChance": 0.09,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.112
+      },
+      {
+        "turn": 8,
+        "event": "dodge_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "dodgeChance": 0.112,
+        "dodgeSuccess": true
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.01
+      },
+      {
+        "turn": 8,
+        "event": "counter_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "counterChance": 0.01,
+        "willCounter": false,
+        "defenderStamina": 25
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.09
+      },
+      {
+        "turn": 8,
+        "event": "block_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "blockChance": 0.09,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          }
+        ],
+        "result": 0.112
+      },
+      {
+        "turn": 8,
+        "event": "dodge_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "dodgeChance": 0.112,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          "hammer"
+        ],
+        "result": 0.65
+      },
+      {
+        "turn": 8,
+        "event": "hit_check",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "accuracy": 0.65,
+        "hit": true,
+        "weaponType": "hammer"
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeBaseDamage",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          true,
+          "hammer"
+        ],
+        "result": 65
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeDamageVariation",
+        "args": [
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 1.1936148210661486
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeCritChance",
+        "args": [
+          "hammer"
+        ],
+        "result": 0.15
+      },
+      {
+        "turn": 8,
+        "event": "damage_calc",
+        "attacker": "Bravo",
+        "defender": "Alpha",
+        "baseDamage": 65,
+        "damageVariation": 1.1936148210661486,
+        "effectiveDefense": 9,
+        "criticalChance": 0.15,
+        "critical": false,
+        "finalDamage": 37,
+        "damageModifier": 0.6
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9616742445807904
+      },
+      {
+        "turn": 8,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9150835621310398
+      },
+      {
+        "turn": 8,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.9616742445807904
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 0.9150835621310398
+        },
+        "order": [
+          "Bravo",
+          "Alpha"
+        ]
+      },
+      {
+        "turn": 8,
+        "event": "turn_switch",
+        "prev": "Bravo",
+        "next": "Bravo",
+        "prevIndex": 1,
+        "nextIndex": 0,
+        "order": [
+          "Bravo",
+          "Alpha"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 9,
+        "event": "turn_switch",
+        "prev": "Bravo",
+        "next": "Alpha",
+        "prevIndex": 0,
+        "nextIndex": 1,
+        "order": [
+          "Bravo",
+          "Alpha"
+        ],
+        "roundComplete": false
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeCounterChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.02
+      },
+      {
+        "turn": 10,
+        "event": "counter_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "counterChance": 0.02,
+        "willCounter": false,
+        "defenderStamina": 35
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeBlockChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 10,
+        "event": "block_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "blockChance": 0.08,
+        "hasStaminaForBlock": true,
+        "blockSuccess": false
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeDodgeChance",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          }
+        ],
+        "result": 0.08
+      },
+      {
+        "turn": 10,
+        "event": "dodge_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "dodgeChance": 0.08,
+        "dodgeSuccess": false
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeAccuracy",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          "spear"
+        ],
+        "result": 0.75
+      },
+      {
+        "turn": 10,
+        "event": "hit_check",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "accuracy": 0.75,
+        "hit": true,
+        "weaponType": "spear"
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeBaseDamage",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          false,
+          "spear"
+        ],
+        "result": 25.200000000000003
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeDamageVariation",
+        "args": [
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 1.2003697189502418
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeCritChance",
+        "args": [
+          "spear"
+        ],
+        "result": 0.13
+      },
+      {
+        "turn": 10,
+        "event": "damage_calc",
+        "attacker": "Alpha",
+        "defender": "Bravo",
+        "baseDamage": 25.200000000000003,
+        "damageVariation": 1.2003697189502418,
+        "effectiveDefense": 8,
+        "criticalChance": 0.13,
+        "critical": false,
+        "finalDamage": 22,
+        "damageModifier": 1
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Alpha",
+            "strength": 24,
+            "defense": 9,
+            "agility": 14,
+            "speed": 12,
+            "baseInitiative": 1,
+            "combo": 1,
+            "counter": 1
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9379069901956245
+      },
+      {
+        "turn": 10,
+        "event": "formula.computeInitiative",
+        "args": [
+          {
+            "name": "Bravo",
+            "strength": 26,
+            "defense": 8,
+            "agility": 10,
+            "speed": 9,
+            "baseInitiative": 1,
+            "combo": 0,
+            "counter": 2
+          },
+          {
+            "_state": 2869721998
+          }
+        ],
+        "result": 0.9354197563277558
+      },
+      {
+        "turn": 10,
+        "event": "initiative",
+        "f1": {
+          "name": "Alpha",
+          "base": 1,
+          "speed": 12,
+          "value": 0.9379069901956245
+        },
+        "f2": {
+          "name": "Bravo",
+          "base": 1,
+          "speed": 9,
+          "value": 0.9354197563277558
+        },
+        "order": [
+          "Bravo",
+          "Alpha"
+        ]
+      },
+      {
+        "turn": 10,
+        "event": "turn_switch",
+        "prev": "Alpha",
+        "next": "Alpha",
+        "prevIndex": 1,
+        "nextIndex": 0,
+        "order": [
+          "Bravo",
+          "Alpha"
+        ],
+        "roundComplete": false
+      }
+    ]
+  },
+  "snapshotHash": "223d38cd454274840e14ad8451b50ce749d5f4be1272d61f5d2e1d1d6c26eeca"
+}

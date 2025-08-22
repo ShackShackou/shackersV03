@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(for:*)",
+      "Bash(done)",
+      "Bash(dir prisma)",
+      "Bash(npm install)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(dir)",
+      "Bash(rd:*)",
+      "Bash(rm:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(copy:*)",
+      "Bash(cp:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(del serverprismanul)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

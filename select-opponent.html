@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Select Opponent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            color: #ff6688;
+            margin-bottom: 20px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 20px;
+            color: #cccccc;
+            margin-bottom: 40px;
+        }
+        
+        /* Selected Fighter Display */
+        .selected-fighter {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 40px;
+            text-align: center;
+            border: 2px solid #00ff88;
+        }
+        
+        .selected-fighter h2 {
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+        
+        .fighter-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        /* Opponents Grid */
+        .opponents-section h2 {
+            text-align: center;
+            font-size: 32px;
+            color: #ffffff;
+            margin-bottom: 30px;
+        }
+        
+        .opponents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .opponent-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+            text-align: center;
+            position: relative;
+        }
+        
+        .opponent-card:hover {
+            border-color: #ff6688;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(255,102,136,0.2);
+        }
+        
+        .opponent-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .opponent-card.disabled:hover {
+            border-color: transparent;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .opponent-name {
+            font-size: 22px;
+            color: #ff6688;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .opponent-level {
+            background: #ff6688;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .opponent-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .opponent-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        
+        .btn-select {
+            background: #ff6688;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn-select:hover {
+            background: #ff4466;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html">Home</a>
+                <a href="/create-shacker.html">Create SHACKER</a>
+                <a href="/my-shackers.html">My SHACKERS</a>
+                <a href="/arena.html" class="active">Arena</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1>⚔️ Select Opponent ⚔️</h1>
+        <p class="subtitle">Choose an opponent for your SHACKER</p>
+        
+        <div id="selectedFighter" class="selected-fighter" style="display: none;">
+            <h2>YOUR FIGHTER</h2>
+            <div id="fighterInfo"></div>
+        </div>
+        
+        <div class="opponents-section">
+            <h2>Choose Your Opponent</h2>
+            <div id="opponentsGrid" class="opponents-grid">
+                <div class="empty-state">Loading opponents...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        const token = localStorage.getItem('labrute_token');
+        let myShackers = [];
+        let selectedShacker = null;
+        
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        async function loadOpponents() {
+            try {
+                // D'abord, charger le Shacker sélectionné
+                const preselectedId = localStorage.getItem('selectedShacker');
+                let shackerParam = '';
+                
+                if (preselectedId) {
+                    // Charger les infos du Shacker sélectionné
+                    const myShackerResponse = await fetch(`${API_BASE}/shackers/${preselectedId}/details`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (myShackerResponse.ok) {
+                        selectedShacker = await myShackerResponse.json();
+                        showSelectedFighter();
+                        shackerParam = `?shackerId=${preselectedId}`;
+                    }
+                }
+                
+                // Charger les opposants (Shackers des AUTRES joueurs)
+                const response = await fetch(`${API_BASE}/shackers/opponents${shackerParam}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load opponents');
+                }
+                
+                const opponents = await response.json();
+                
+                if (opponents.length === 0) {
+                    document.getElementById('opponentsGrid').innerHTML = `
+                        <div class="empty-state">
+                            <p>No opponents available at the moment.</p>
+                            <p>Other players need to create SHACKERS first!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                renderOpponents(opponents);
+                
+            } catch (error) {
+                console.error('Error loading opponents:', error);
+                document.getElementById('opponentsGrid').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading opponents. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function showSelectedFighter() {
+            const container = document.getElementById('selectedFighter');
+            const info = document.getElementById('fighterInfo');
+            
+            const genderIcon = selectedShacker.gender === 'female' ? '♀️' : '♂️';
+            
+            info.innerHTML = `
+                <h3 style="color: #00ff88; font-size: 28px; margin-bottom: 15px;">
+                    ${selectedShacker.name} ${genderIcon}
+                </h3>
+                <div class="fighter-stats">
+                    <div class="stat-box">
+                        <div class="stat-value">${selectedShacker.level}</div>
+                        <div class="stat-label">Level</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${selectedShacker.hp}</div>
+                        <div class="stat-label">HP</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${selectedShacker.strength}</div>
+                        <div class="stat-label">STR</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${selectedShacker.agility}</div>
+                        <div class="stat-label">AGI</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${selectedShacker.speed}</div>
+                        <div class="stat-label">SPD</div>
+                    </div>
+                </div>
+            `;
+            
+            container.style.display = 'block';
+        }
+        
+        function renderOpponents(opponents) {
+            const grid = document.getElementById('opponentsGrid');
+            grid.innerHTML = '';
+            
+            opponents.forEach(shacker => {
+                const card = createOpponentCard(shacker);
+                grid.appendChild(card);
+            });
+        }
+        
+        function createOpponentCard(shacker) {
+            const card = document.createElement('div');
+            card.className = 'opponent-card';
+            
+            const genderIcon = shacker.gender === 'female' ? '♀️' : '♂️';
+            const ownerName = shacker.user ? shacker.user.name : 'Unknown';
+            
+            card.innerHTML = `
+                <div class="opponent-name">${shacker.name} ${genderIcon}</div>
+                <div style="color: #888; font-size: 12px; margin-bottom: 10px;">Owner: ${ownerName}</div>
+                <div class="opponent-level">Lvl ${shacker.level}</div>
+                <div class="opponent-stats">
+                    <div class="opponent-stat">
+                        <span>HP:</span>
+                        <span style="color:#ff6688">${shacker.hp}</span>
+                    </div>
+                    <div class="opponent-stat">
+                        <span>STR:</span>
+                        <span style="color:#ff6688">${shacker.strength}</span>
+                    </div>
+                    <div class="opponent-stat">
+                        <span>AGI:</span>
+                        <span style="color:#ff6688">${shacker.agility}</span>
+                    </div>
+                    <div class="opponent-stat">
+                        <span>SPD:</span>
+                        <span style="color:#ff6688">${shacker.speed}</span>
+                    </div>
+                </div>
+                <button class="btn-select" onclick="selectOpponent('${shacker.id}')">Fight!</button>
+            `;
+            
+            return card;
+        }
+        
+        function selectOpponent(opponentId) {
+            if (!selectedShacker) {
+                alert('Please select your fighter first from My SHACKERS page!');
+                window.location.href = '/my-shackers.html';
+            } else {
+                // Fighter already selected, this is the opponent
+                localStorage.setItem('opponentShacker', opponentId);
+                window.location.href = '/arena.html';
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/login.html';
+        }
+        
+        // Load opponents on page load
+        loadOpponents();
+    </script>
+</body>
+</html>

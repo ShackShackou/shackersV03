@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import Level from "./scenes/Level";
 import Preload from "./scenes/Preload";
-import LoginScene from "./scenes/LoginScene";
-import CharacterCreateScene from "./scenes/CharacterCreateScene";
-import MyBrutesScene from "./scenes/MyBrutesScene";
+import LoginScene from "./scenes/LoginScene.ts";
+import CharacterCreateScene from "./scenes/CharacterCreateScene.ts";
+import MyShackersScene from "./scenes/MyShackersScene.ts";
+import WaitingScene from "./scenes/WaitingScene.ts";
 import { SpinePlugin } from '@esotericsoftware/spine-phaser';
 // Fight scene implemented in JS
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -21,11 +22,18 @@ class Boot extends Phaser.Scene {
     }
 
     create() {
-       this.scene.start("Preload");
+       // Start with waiting scene
+       this.scene.start("WaitingScene");
     }
 }
 
 window.addEventListener('load', function () {
+    // Check if user is logged in
+    const token = localStorage.getItem('labrute_token');
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
     
     const game = new Phaser.Game({
         width: 1280,
@@ -41,8 +49,11 @@ window.addEventListener('load', function () {
                 { key: 'SpinePlugin', plugin: SpinePlugin, mapping: 'spine' }
             ]
         },
-        scene: [Boot, Preload, LoginScene, CharacterCreateScene, MyBrutesScene, FightSceneSpine, Level]
+        scene: [Boot, Preload, WaitingScene, CharacterCreateScene, MyShackersScene, FightSceneSpine, Level]
     });
 
     game.scene.start("Boot");
+    
+    // Expose game globally for external control
+    (window as any).game = game;
 });

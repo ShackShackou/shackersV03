@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaBrute Reborn - Hub Ultra</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            border: 2px solid #444;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .error {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: #ff0000;
+            color: #ffffff;
+            padding: 10px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="loading">Chargement du Hub Ultra...</div>
+    </div>
+    
+    <div class="error" id="error-message"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+
+    <script>
+        // Gestion des erreurs
+        window.addEventListener('error', function(e) {
+            document.getElementById('error-message').textContent = 'Erreur: ' + e.message;
+            document.getElementById('error-message').style.display = 'block';
+            console.error('Erreur capturée:', e);
+        });
+
+        // Configuration simplifiée
+        const config = {
+            type: Phaser.AUTO,
+            scale: {
+                mode: Phaser.Scale.FIT,
+                parent: 'game-container',
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                width: 1024,
+                height: 768
+            },
+            backgroundColor: '#87CEEB',
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        // Variables globales
+        let playerData = {
+            level: 1,
+            gold: 1000,
+            gems: 50,
+            stats: {
+                strength: 10,
+                agility: 10,
+                defense: 10,
+                magic: 5
+            }
+        };
+
+        function preload() {
+            // Créer des textures de base
+            this.load.on('complete', () => {
+                console.log('Chargement terminé');
+                document.querySelector('.loading').style.display = 'none';
+            });
+        }
+
+        function create() {
+            console.log('Scene créée');
+            
+            // Ciel dégradé simple
+            const graphics = this.add.graphics();
+            for (let i = 0; i < 768; i++) {
+                const ratio = i / 768;
+                const r = Math.floor(135 + (255 - 135) * ratio);
+                const g = Math.floor(206 + (228 - 206) * ratio);
+                const b = Math.floor(235 + (181 - 235) * ratio);
+                graphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b));
+                graphics.fillRect(0, i, 1024, 1);
+            }
+            
+            // Sol
+            this.add.rectangle(512, 650, 1024, 300, 0x3B7F3C);
+            
+            // Titre
+            this.add.text(512, 50, 'Hub Ultra - Votre Village', {
+                fontSize: '48px',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 6
+            }).setOrigin(0.5);
+            
+            // Créer les bâtiments
+            createBuildings.call(this);
+            
+            // Stats du joueur
+            this.add.text(20, 20, `Niveau ${playerData.level} | Or: ${playerData.gold} | Gemmes: ${playerData.gems}`, {
+                fontSize: '20px',
+                color: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 10, y: 5 }
+            });
+            
+            // Instructions
+            this.add.text(512, 720, 'Cliquez sur un bâtiment pour entrer', {
+                fontSize: '18px',
+                color: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 10, y: 5 }
+            }).setOrigin(0.5);
+        }
+
+        function createBuildings() {
+            const buildings = [
+                {
+                    name: 'Centre d\'Entraînement',
+                    x: 250,
+                    y: 400,
+                    color: 0xFF6347,
+                    icon: '⚔️'
+                },
+                {
+                    name: 'Taverne',
+                    x: 450,
+                    y: 380,
+                    color: 0x8B4513,
+                    icon: '🍺'
+                },
+                {
+                    name: 'Forge',
+                    x: 650,
+                    y: 400,
+                    color: 0x696969,
+                    icon: '🔨'
+                },
+                {
+                    name: 'Arène',
+                    x: 850,
+                    y: 420,
+                    color: 0xFFD700,
+                    icon: '🏟️'
+                }
+            ];
+            
+            buildings.forEach(building => {
+                // Base du bâtiment
+                const rect = this.add.rectangle(building.x, building.y, 120, 150, building.color);
+                rect.setInteractive();
+                rect.setStrokeStyle(3, 0xffffff);
+                
+                // Toit
+                const roof = this.add.triangle(
+                    building.x, building.y - 90,
+                    60, 40,
+                    0, 0,
+                    120, 40,
+                    building.color * 0.8
+                );
+                
+                // Icône
+                this.add.text(building.x, building.y - 20, building.icon, {
+                    fontSize: '36px'
+                }).setOrigin(0.5);
+                
+                // Nom
+                this.add.text(building.x, building.y + 90, building.name, {
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 5, y: 2 }
+                }).setOrigin(0.5);
+                
+                // Interaction
+                rect.on('pointerover', () => {
+                    rect.setScale(1.1);
+                    roof.setScale(1.1);
+                });
+                
+                rect.on('pointerout', () => {
+                    rect.setScale(1);
+                    roof.setScale(1);
+                });
+                
+                rect.on('pointerdown', () => {
+                    this.cameras.main.flash(200);
+                    showMessage.call(this, `${building.name} - Bientôt disponible!`);
+                });
+            });
+        }
+
+        function showMessage(text) {
+            const msg = this.add.text(512, 300, text, {
+                fontSize: '32px',
+                color: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 }
+            }).setOrigin(0.5);
+            
+            this.tweens.add({
+                targets: msg,
+                alpha: 0,
+                y: 250,
+                duration: 2000,
+                onComplete: () => msg.destroy()
+            });
+        }
+
+        function update() {
+            // Mise à jour si nécessaire
+        }
+
+        // Créer le jeu
+        const game = new Phaser.Game(config);
+        console.log('Jeu créé');
+    </script>
+</body>
+</html>

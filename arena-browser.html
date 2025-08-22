@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Arena Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1a1a 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: rgba(42, 42, 42, 0.95);
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .arena-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 52px;
+            color: #ff6688;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #cccccc;
+        }
+        
+        /* Filter Section */
+        .filters {
+            background: rgba(42, 42, 42, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .filter-label {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .filter-select {
+            background: #1a1a1a;
+            color: white;
+            border: 2px solid #00ff88;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .stats-summary {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* Shackers Grid */
+        .shackers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+        
+        .shacker-card {
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.9) 0%, rgba(30, 30, 30, 0.9) 100%);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shacker-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff6688, #00ff88);
+            border-radius: 15px;
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s;
+        }
+        
+        .shacker-card:hover::before {
+            opacity: 1;
+        }
+        
+        .shacker-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255,102,136,0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .shacker-name {
+            font-size: 22px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .shacker-level {
+            background: linear-gradient(135deg, #ff6688, #ff4466);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .owner-info {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .owner-badge {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .stat-name {
+            color: #cccccc;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            color: #ff6688;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .special-info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .weapons, .skills, .pet {
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .label {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .value {
+            color: #ccc;
+            margin-left: 5px;
+        }
+        
+        .pet-icon {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .btn-fight {
+            width: 100%;
+            background: linear-gradient(135deg, #ff6688, #ff4466);
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .btn-fight:hover {
+            background: linear-gradient(135deg, #ff4466, #ff2244);
+            transform: scale(1.05);
+        }
+        
+        /* My Fighter Selection */
+        .my-fighter-section {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .my-fighter-title {
+            color: #00ff88;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .my-fighters-list {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        
+        .my-fighter-card {
+            background: rgba(42, 42, 42, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 200px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .my-fighter-card.selected {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+        }
+        
+        .my-fighter-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            background: rgba(42, 42, 42, 0.8);
+            border-radius: 10px;
+            margin-top: 40px;
+        }
+        
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">⚔️ SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html">Home</a>
+                <a href="/my-shackers.html">My SHACKERS</a>
+                <a href="/arena-browser.html" class="active">Arena</a>
+                <a href="/create-shacker.html">Create</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="arena-header">
+            <h1>⚔️ ARENA BROWSER ⚔️</h1>
+            <p class="subtitle">Challenge fighters from all around the world!</p>
+        </div>
+        
+        <!-- My Fighter Selection -->
+        <div class="my-fighter-section" id="myFighterSection">
+            <h2 class="my-fighter-title">Select Your Fighter</h2>
+            <div class="my-fighters-list" id="myFightersList">
+                <div style="color: #888;">Loading your fighters...</div>
+            </div>
+        </div>
+        
+        <!-- Filters and Stats -->
+        <div class="filters">
+            <div class="filter-group">
+                <span class="filter-label">Level Range:</span>
+                <select class="filter-select" id="levelFilter" onchange="filterShackers()">
+                    <option value="all">All Levels</option>
+                    <option value="1-5">Level 1-5</option>
+                    <option value="6-10">Level 6-10</option>
+                    <option value="11-15">Level 11-15</option>
+                    <option value="16+">Level 16+</option>
+                </select>
+                
+                <span class="filter-label">Sort by:</span>
+                <select class="filter-select" id="sortFilter" onchange="sortShackers()">
+                    <option value="level-desc">Level (High to Low)</option>
+                    <option value="level-asc">Level (Low to High)</option>
+                    <option value="name">Name (A-Z)</option>
+                    <option value="owner">Owner</option>
+                </select>
+            </div>
+            
+            <div class="stats-summary">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalShackers">0</div>
+                    <div class="stat-label">Total Fighters</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalPlayers">0</div>
+                    <div class="stat-label">Players</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Shackers Grid -->
+        <div id="shackersGrid" class="shackers-grid">
+            <div class="empty-state">
+                <div class="empty-icon">⏳</div>
+                <p>Loading fighters...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        const token = localStorage.getItem('labrute_token');
+        let allShackers = [];
+        let myShackers = [];
+        let selectedFighter = null;
+        
+        if (!token) {
+            window.location.href = '/public/login.html';
+        }
+        
+        async function loadData() {
+            try {
+                // Load my Shackers
+                const myResponse = await fetch(`${API_BASE}/shackers`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (myResponse.ok) {
+                    myShackers = await myResponse.json();
+                    renderMyFighters();
+                }
+                
+                // Load all Shackers
+                const response = await fetch(`${API_BASE}/shackers/all`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load fighters');
+                }
+                
+                allShackers = await response.json();
+                updateStats();
+                renderShackers(allShackers);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('shackersGrid').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <p>Error loading fighters. Please refresh the page.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderMyFighters() {
+            const container = document.getElementById('myFightersList');
+            
+            if (myShackers.length === 0) {
+                container.innerHTML = '<div style="color: #888;">You have no fighters. <a href="/create-shacker.html" style="color: #00ff88;">Create one!</a></div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            myShackers.forEach(shacker => {
+                const card = document.createElement('div');
+                card.className = 'my-fighter-card';
+                card.innerHTML = `
+                    <div style="font-weight: bold; color: #00ff88; margin-bottom: 10px;">${shacker.name}</div>
+                    <div style="font-size: 14px; color: #ccc;">Level ${shacker.level}</div>
+                    <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                        HP: ${shacker.hp} | STR: ${shacker.strength}
+                    </div>
+                `;
+                card.onclick = () => selectMyFighter(shacker, card);
+                container.appendChild(card);
+            });
+        }
+        
+        function selectMyFighter(shacker, cardElement) {
+            selectedFighter = shacker;
+            localStorage.setItem('selectedShacker', shacker.id);
+            
+            // Update UI
+            document.querySelectorAll('.my-fighter-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            cardElement.classList.add('selected');
+        }
+        
+        function updateStats() {
+            document.getElementById('totalShackers').textContent = allShackers.length;
+            
+            const uniquePlayers = new Set(allShackers.map(s => s.user?.email || 'unknown'));
+            document.getElementById('totalPlayers').textContent = uniquePlayers.size;
+        }
+        
+        function renderShackers(shackers) {
+            const grid = document.getElementById('shackersGrid');
+            
+            if (shackers.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <p>No fighters found matching your criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = '';
+            shackers.forEach(shacker => {
+                const card = createShackerCard(shacker);
+                grid.appendChild(card);
+            });
+        }
+        
+        function createShackerCard(shacker) {
+            const card = document.createElement('div');
+            card.className = 'shacker-card';
+            
+            const genderIcon = shacker.gender === 'female' ? '♀️' : '♂️';
+            const ownerName = shacker.user?.name || 'Unknown';
+            const isMyShacker = myShackers.some(s => s.id === shacker.id);
+            
+            // Parse weapons, skills, and pet
+            let weapons = [];
+            let skills = [];
+            try {
+                weapons = shacker.weapons ? JSON.parse(shacker.weapons) : [];
+                skills = shacker.skills ? JSON.parse(shacker.skills) : [];
+            } catch (e) {
+                console.error('Error parsing data:', e);
+            }
+            
+            const petIcon = shacker.pet === 'dog' ? '🐕' : 
+                           shacker.pet === 'panther' ? '🐆' : 
+                           shacker.pet === 'bear' ? '🐻' : '';
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="shacker-name">${shacker.name} ${genderIcon}</div>
+                    <div class="shacker-level">Lvl ${shacker.level}</div>
+                </div>
+                <div class="owner-info">
+                    Owner: ${ownerName}
+                    ${isMyShacker ? '<span class="owner-badge">YOU</span>' : ''}
+                </div>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-name">HP:</span>
+                        <span class="stat-value">${shacker.hp}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Strength:</span>
+                        <span class="stat-value">${shacker.strength}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Agility:</span>
+                        <span class="stat-value">${shacker.agility}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Speed:</span>
+                        <span class="stat-value">${shacker.speed}</span>
+                    </div>
+                </div>
+                ${(weapons.length > 0 || skills.length > 0 || shacker.pet) ? `
+                    <div class="special-info">
+                        ${weapons.length > 0 ? `<div class="weapons"><span class="label">Weapons:</span><span class="value">${weapons.length}</span></div>` : ''}
+                        ${skills.length > 0 ? `<div class="skills"><span class="label">Skills:</span><span class="value">${skills.length}</span></div>` : ''}
+                        ${shacker.pet ? `<div class="pet"><span class="label">Pet:</span><span class="value">${shacker.pet}</span><span class="pet-icon">${petIcon}</span></div>` : ''}
+                    </div>
+                ` : ''}
+                ${!isMyShacker ? `<button class="btn-fight" onclick="startFight('${shacker.id}')">⚔️ FIGHT!</button>` : '<div style="text-align: center; color: #666; margin-top: 15px;">Your Fighter</div>'}
+            `;
+            
+            return card;
+        }
+        
+        function filterShackers() {
+            const filter = document.getElementById('levelFilter').value;
+            let filtered = [...allShackers];
+            
+            if (filter !== 'all') {
+                if (filter === '1-5') {
+                    filtered = allShackers.filter(s => s.level >= 1 && s.level <= 5);
+                } else if (filter === '6-10') {
+                    filtered = allShackers.filter(s => s.level >= 6 && s.level <= 10);
+                } else if (filter === '11-15') {
+                    filtered = allShackers.filter(s => s.level >= 11 && s.level <= 15);
+                } else if (filter === '16+') {
+                    filtered = allShackers.filter(s => s.level >= 16);
+                }
+            }
+            
+            renderShackers(filtered);
+        }
+        
+        function sortShackers() {
+            const sortBy = document.getElementById('sortFilter').value;
+            let sorted = [...allShackers];
+            
+            if (sortBy === 'level-desc') {
+                sorted.sort((a, b) => b.level - a.level);
+            } else if (sortBy === 'level-asc') {
+                sorted.sort((a, b) => a.level - b.level);
+            } else if (sortBy === 'name') {
+                sorted.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (sortBy === 'owner') {
+                sorted.sort((a, b) => (a.user?.name || '').localeCompare(b.user?.name || ''));
+            }
+            
+            renderShackers(sorted);
+        }
+        
+        function startFight(opponentId) {
+            if (!selectedFighter) {
+                alert('Please select your fighter first!');
+                document.getElementById('myFighterSection').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+            
+            localStorage.setItem('opponentShacker', opponentId);
+            window.location.href = '/arena.html';
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/public/login.html';
+        }
+        
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>

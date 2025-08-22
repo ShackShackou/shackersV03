@@ -1,0 +1,3 @@
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/labrute?schema=public"
+JWT_SECRET="your-secret-key-here-change-in-production"
+PORT=4000

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Hub</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #game-container {
+            border: 3px solid #3e2723;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <!-- Phaser -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+
+    <!-- Plugin Spine -->
+    <script src="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-phaser@4.2.0/dist/SpinePlugin.min.js"></script>
+
+    <script type="module">
+        import Phaser from 'phaser';
+        import { SpinePlugin } from '@esotericsoftware/spine-phaser';
+        import { HubScene } from './src/scenes/HubScene.js';
+        import { TrainingScene } from './src/scenes/TrainingScene.js';
+        
+        const config = {
+            type: Phaser.AUTO,
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                parent: 'game-container',
+                width: 1024,
+                height: 768
+            },
+            backgroundColor: '#2d2419',
+            plugins: {
+                scene: [
+                    {
+                        key: 'SpinePlugin',
+                        plugin: SpinePlugin,
+                        mapping: 'spine'
+                    }
+                ]
+            },
+            scene: [HubScene, TrainingScene]
+        };
+
+        const game = new Phaser.Game(config);
+        
+        // Démarrer directement sur le hub
+        game.scene.start('HubScene');
+    </script>
+</body>
+</html>

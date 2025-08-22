@@ -13,52 +13,52 @@ export default class CharacterCreateScene extends Phaser.Scene {
   create() {
     const { width } = this.scale;
 
-    this.add.text(width / 2, 120, 'Création de Brute', { fontSize: '36px', color: '#ffffff' }).setOrigin(0.5);
+    this.add.text(width / 2, 120, 'Create your SHACKER', { fontSize: '36px', color: '#ffffff' }).setOrigin(0.5);
 
-    this.nameText = this.add.text(width / 2, 200, 'Nom: MaBrute', { fontSize: '22px', color: '#ffffaa' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', async () => {
-      const val = window.prompt('Nom de ta brute:', 'MaBrute');
-      if (val) this.nameText.setText('Nom: ' + val);
+    this.nameText = this.add.text(width / 2, 200, 'Name: MyShacker', { fontSize: '22px', color: '#ffffaa' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', async () => {
+      const val = window.prompt('Name your SHACKER:', 'MyShacker');
+      if (val) this.nameText.setText('Name: ' + val);
     });
 
-    const genderText = this.add.text(width / 2, 240, 'Genre: male (cliquer pour changer)', { fontSize: '18px', color: '#ccccff' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
+    const genderText = this.add.text(width / 2, 240, 'Gender: male (click to change)', { fontSize: '18px', color: '#ccccff' }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
       this.gender = this.gender === 'male' ? 'female' : 'male';
-      genderText.setText(`Genre: ${this.gender} (cliquer pour changer)`);
+      genderText.setText(`Gender: ${this.gender} (click to change)`);
     });
 
-    this.add.text(width / 2, 320, '[ Créer ma brute ]', { fontSize: '24px', color: '#00ff88' })
+    this.add.text(width / 2, 320, '[ Create my SHACKER ]', { fontSize: '24px', color: '#00ff88' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerup', async () => {
-        await this.createBrute();
+        await this.createShacker();
       });
 
-    this.add.text(width / 2, 380, '[ Mes brutes ]', { fontSize: '20px', color: '#ffffff' })
+    this.add.text(width / 2, 380, '[ My SHACKERS ]', { fontSize: '20px', color: '#ffffff' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
-      .on('pointerup', () => this.scene.start('MyBrutesScene'));
+      .on('pointerup', () => this.scene.start('MyShackersScene'));
   }
 
-  private async createBrute() {
+  private async createShacker() {
     const token = localStorage.getItem('labrute_token');
     if (!token) {
-      alert('Tu dois te connecter.');
+      alert('You must sign in.');
       this.scene.start('LoginScene');
       return;
     }
-    const name = this.nameText.text.replace(/^Nom:\s*/i, '');
+    const name = this.nameText.text.replace(/^Name:\s*/i, '');
     try {
-      const res = await fetch(`${API_BASE}/brutes`, {
+      const res = await fetch(`${API_BASE}/shackers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: name + Math.floor(Math.random()*100000), gender: this.gender }),
+        body: JSON.stringify({ name: name, gender: this.gender }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Création échouée');
-      alert('Brute créée: ' + data.name);
-      this.scene.start('MyBrutesScene');
+      if (!res.ok) throw new Error(data?.error || 'Creation failed');
+      alert('SHACKER created: ' + data.name);
+      this.scene.start('MyShackersScene');
     } catch (e: any) {
       alert(e.message || String(e));
     }

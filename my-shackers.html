@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - My SHACKERS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            color: #00ff88;
+            margin-bottom: 30px;
+        }
+        
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+        
+        .btn-create {
+            background: #00ff88;
+            color: black;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-create:hover {
+            background: #00cc70;
+            transform: translateY(-2px);
+        }
+        
+        .refresh-btn {
+            background: #00ccff;
+            color: black;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #0099cc;
+        }
+        
+        /* SHACKERS Grid */
+        .shackers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .shacker-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        
+        .character-preview {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            opacity: 0.8;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        
+        .shacker-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0,255,136,0.2);
+        }
+        
+        .shacker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .shacker-name {
+            font-size: 24px;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .shacker-level {
+            background: #00ccff;
+            color: black;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+        
+        .shacker-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #444;
+        }
+        
+        .stat-name {
+            color: #cccccc;
+        }
+        
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .shacker-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn-action {
+            flex: 1;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-fight {
+            background: #ff6688;
+            color: white;
+        }
+        
+        .btn-fight:hover {
+            background: #ff4466;
+        }
+        
+        .btn-view {
+            background: #666;
+            color: white;
+        }
+        
+        .btn-view:hover {
+            background: #888;
+        }
+        
+        /* Loading and Empty States */
+        .loading, .empty-state {
+            text-align: center;
+            padding: 50px;
+            font-size: 20px;
+            color: #cccccc;
+        }
+        
+        .empty-state {
+            background: #2a2a2a;
+            border-radius: 10px;
+        }
+        
+        /* Gender Icon */
+        .gender-icon {
+            font-size: 20px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html">Home</a>
+                <a href="/create-shacker.html">Create SHACKER</a>
+                <a href="/my-shackers.html" class="active">My SHACKERS</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1>My SHACKERS</h1>
+        
+        <div class="action-bar">
+            <div>
+                Total SHACKERS: <span id="totalCount">0</span>
+            </div>
+            <div>
+                <button class="refresh-btn" onclick="loadShackers()">Refresh</button>
+                <a href="/create-shacker.html" class="btn-create">Create New SHACKER</a>
+            </div>
+        </div>
+        
+        <div id="shackersContainer">
+            <div class="loading">Loading your SHACKERS...</div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        const token = localStorage.getItem('labrute_token');
+        
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        async function loadShackers() {
+            const container = document.getElementById('shackersContainer');
+            container.innerHTML = '<div class="loading">Loading your SHACKERS...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/shackers`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load SHACKERS');
+                }
+                
+                const shackers = await response.json();
+                document.getElementById('totalCount').textContent = shackers.length;
+                
+                if (shackers.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <p>You don't have any SHACKERS yet.</p>
+                            <br>
+                            <a href="/create-shacker.html" class="btn-create">Create Your First SHACKER</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const grid = document.createElement('div');
+                grid.className = 'shackers-grid';
+                
+                shackers.forEach(shacker => {
+                    const card = createShackerCard(shacker);
+                    grid.appendChild(card);
+                });
+                
+                container.innerHTML = '';
+                container.appendChild(grid);
+                
+            } catch (error) {
+                console.error('Error loading SHACKERS:', error);
+                container.innerHTML = '<div class="empty-state">Error loading SHACKERS. Please try again.</div>';
+            }
+        }
+        
+        function createShackerCard(shacker) {
+            const card = document.createElement('div');
+            card.className = 'shacker-card';
+            
+            const genderIcon = shacker.gender === 'female' ? '♀️' : '♂️';
+            const characterType = shacker.characterType || 'spineboy';
+            const previewImage = `assets/images/characters/${characterType}-preview.png`;
+            
+            card.innerHTML = `
+                <img src="${previewImage}" alt="${characterType}" class="character-preview">
+                <div class="shacker-header">
+                    <div class="shacker-name">${shacker.name}${genderIcon}</div>
+                    <div class="shacker-level">Lvl ${shacker.level}</div>
+                </div>
+                <div class="shacker-stats">
+                    <div class="stat">
+                        <span class="stat-name">HP:</span>
+                        <span class="stat-value">${shacker.hp}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Strength:</span>
+                        <span class="stat-value">${shacker.strength}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Agility:</span>
+                        <span class="stat-value">${shacker.agility}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-name">Speed:</span>
+                        <span class="stat-value">${shacker.speed}</span>
+                    </div>
+                </div>
+                <div class="shacker-actions">
+                    <button class="btn-action btn-fight" onclick="goToArena('${shacker.id}')">Fight</button>
+                    <button class="btn-action btn-view" onclick="viewDetails('${shacker.id}')">Details</button>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        function goToArena(shackerId) {
+            // Store selected shacker for opponent selection
+            localStorage.setItem('selectedShacker', shackerId);
+            localStorage.removeItem('opponentShacker'); // Clear any previous opponent
+            window.location.href = '/select-opponent.html';
+        }
+        
+        function viewDetails(shackerId) {
+            // Could open a modal or go to a details page
+            alert('Details view coming soon!');
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/login.html';
+        }
+        
+        // Load shackers on page load
+        loadShackers();
+    </script>
+</body>
+</html>

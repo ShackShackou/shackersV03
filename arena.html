@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Arena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            color: #ff6688;
+            margin-bottom: 40px;
+        }
+        
+        /* Fight Setup */
+        .fight-setup {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 40px;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        
+        .fighter-select {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .fighter-select h2 {
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+        
+        .vs-divider {
+            font-size: 48px;
+            color: #ff6688;
+            font-weight: bold;
+        }
+        
+        /* SHACKER Selector */
+        .shacker-selector {
+            margin: 20px 0;
+        }
+        
+        select {
+            width: 100%;
+            padding: 15px;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            color: white;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        
+        /* Selected SHACKER Display */
+        .selected-shacker {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            min-height: 150px;
+        }
+        
+        .shacker-info {
+            text-align: left;
+        }
+        
+        .shacker-info h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+        
+        .stats-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .stat-mini {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        /* Fight Button */
+        .fight-controls {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .btn-fight {
+            background: #ff6688;
+            color: white;
+            padding: 20px 60px;
+            border: none;
+            border-radius: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .btn-fight:hover:not(:disabled) {
+            background: #ff4466;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255,68,102,0.3);
+        }
+        
+        .btn-fight:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            margin: 50px auto;
+            max-width: 600px;
+        }
+        
+        .empty-state p {
+            font-size: 20px;
+            color: #cccccc;
+            margin-bottom: 20px;
+        }
+        
+        .btn-create {
+            background: #00ff88;
+            color: black;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-create:hover {
+            background: #00cc70;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html">Home</a>
+                <a href="/create-shacker.html">Create SHACKER</a>
+                <a href="/my-shackers.html">My SHACKERS</a>
+                <a href="/arena.html" class="active">Arena</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1>⚔️ ARENA ⚔️</h1>
+        
+        <div id="arenaContent">
+            <div class="empty-state">
+                <p>Loading arena...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        const token = localStorage.getItem('labrute_token');
+        let myShackers = [];
+        let selectedA = null;
+        let selectedB = null;
+        
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        async function loadArena() {
+            // Get selected shackers from localStorage
+            const selectedShackerId = localStorage.getItem('selectedShacker');
+            const opponentShackerId = localStorage.getItem('opponentShacker');
+            
+            if (!selectedShackerId || !opponentShackerId) {
+                // No shackers selected, redirect to selection page
+                window.location.href = '/select-opponent.html';
+                return;
+            }
+            
+            try {
+                // Fetch both shackers details using the public details endpoint
+                const [shackerARes, shackerBRes] = await Promise.all([
+                    fetch(`${API_BASE}/shackers/${selectedShackerId}/details`),
+                    fetch(`${API_BASE}/shackers/${opponentShackerId}/details`)
+                ]);
+                
+                if (!shackerARes.ok || !shackerBRes.ok) {
+                    throw new Error('Failed to load SHACKERS');
+                }
+                
+                selectedA = await shackerARes.json();
+                selectedB = await shackerBRes.json();
+                
+                renderArenaConfirmation();
+                
+            } catch (error) {
+                console.error('Error loading arena:', error);
+                
+                // Try loading from all shackers as fallback
+                try {
+                    const response = await fetch(`${API_BASE}/shackers/all`);
+                    
+                    if (response.ok) {
+                        const shackers = await response.json();
+                        selectedA = shackers.find(s => s.id === selectedShackerId);
+                        selectedB = shackers.find(s => s.id === opponentShackerId);
+                        
+                        if (selectedA && selectedB) {
+                            renderArenaConfirmation();
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Fallback also failed:', e);
+                }
+                
+                document.getElementById('arenaContent').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading SHACKERS. Please try again.</p>
+                        <br>
+                        <a href="/my-shackers.html" class="btn-create">Back to My SHACKERS</a>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderArenaConfirmation() {
+            document.getElementById('arenaContent').innerHTML = `
+                <div class="fight-setup">
+                    <div class="fighter-select">
+                        <h2>YOUR SHACKER</h2>
+                        <div class="selected-shacker">
+                            ${renderShackerInfo(selectedA)}
+                        </div>
+                    </div>
+                    
+                    <div class="vs-divider">VS</div>
+                    
+                    <div class="fighter-select">
+                        <h2>OPPONENT</h2>
+                        <div class="selected-shacker">
+                            ${renderShackerInfo(selectedB)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="fight-controls">
+                    <button class="btn-fight" onclick="startFight()">
+                        FIGHT!
+                    </button>
+                    <br><br>
+                    <button class="btn-cancel" onclick="changeSelection()" style="background: #666; color: white; padding: 15px 40px; border: none; border-radius: 10px; font-size: 20px; cursor: pointer;">
+                        Change Selection
+                    </button>
+                </div>
+            `;
+        }
+        
+        function renderShackerInfo(shacker) {
+            const genderIcon = shacker.gender === 'female' ? '♀️' : '♂️';
+            return `
+                <div class="shacker-info">
+                    <h3>${shacker.name} ${genderIcon}</h3>
+                    <div class="stats-mini">
+                        <div class="stat-mini">
+                            <span>Level:</span>
+                            <span style="color:#00ff88">${shacker.level}</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span>HP:</span>
+                            <span style="color:#00ff88">${shacker.hp}</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span>STR:</span>
+                            <span style="color:#00ff88">${shacker.strength}</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span>AGI:</span>
+                            <span style="color:#00ff88">${shacker.agility}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function changeSelection() {
+            // Clear selections and go back to selection page
+            localStorage.removeItem('selectedShacker');
+            localStorage.removeItem('opponentShacker');
+            window.location.href = '/select-opponent.html';
+        }
+        
+        async function startFight() {
+            if (!selectedA || !selectedB) return;
+            
+            // Store fight data
+            localStorage.setItem('fightData', JSON.stringify({
+                shackerA: selectedA,
+                shackerB: selectedB
+            }));
+            
+            // Save fight to API
+            try {
+                await fetch(`${API_BASE}/fights`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        shackerAId: selectedA.id,
+                        shackerBId: selectedB.id
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving fight:', error);
+            }
+            
+            // Go to game page for combat
+            window.location.href = '/game.html';
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/login.html';
+        }
+        
+        // Load arena on page load
+        loadArena();
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://bug6c8gcgyplt"]
+
+[sub_resource type="SpineSkeletonDataResource" id="SpineSkeletonDataResource_xmdsq"]
+
+[node name="HalloweenCreature" type="Node2D"]
+
+[node name="SpineSprite" type="SpineSprite" parent="."]
+unique_name_in_owner = true
+skeleton_data_res = SubResource("SpineSkeletonDataResource_xmdsq")

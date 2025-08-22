@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Rapide - Mes Shackers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            background: #ffe0e0;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            padding: 10px;
+            background: #e0ffe0;
+            border-radius: 5px;
+        }
+        .shacker {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Test Rapide - Vos Shackers</h1>
+
+    <div class="card">
+        <h2>1. Vérification du Token</h2>
+        <div id="tokenStatus"></div>
+        <button onclick="checkToken()">Vérifier Token</button>
+        <button onclick="clearToken()">Effacer Token</button>
+    </div>
+
+    <div class="card">
+        <h2>2. Connexion Rapide</h2>
+        <input type="email" id="email" placeholder="Email" value="test@test.com">
+        <input type="password" id="password" placeholder="Mot de passe" value="test123">
+        <br>
+        <button onclick="quickLogin()">Se Connecter</button>
+        <button onclick="quickRegister()">Créer Compte</button>
+    </div>
+
+    <div class="card">
+        <h2>3. Vos Shackers</h2>
+        <button onclick="loadShackers()">Charger Shackers</button>
+        <div id="shackersList"></div>
+    </div>
+
+    <div class="card">
+        <h2>4. Créer un Shacker</h2>
+        <input type="text" id="shackerName" placeholder="Nom du Shacker" value="MonGuerrier">
+        <select id="shackerGender">
+            <option value="male">Homme</option>
+            <option value="female">Femme</option>
+        </select>
+        <button onclick="createShacker()">Créer Shacker</button>
+    </div>
+
+    <div id="logs"></div>
+
+    <script>
+        const API_URL = 'http://localhost:4000/api';
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(div);
+        }
+
+        function checkToken() {
+            const token = localStorage.getItem('labrute_token');
+            const status = document.getElementById('tokenStatus');
+            if (token) {
+                status.innerHTML = '<div class="success">✓ Token trouvé: ' + token.substring(0, 20) + '...</div>';
+                log('Token présent dans localStorage', 'success');
+            } else {
+                status.innerHTML = '<div class="error">✗ Aucun token trouvé</div>';
+                log('Aucun token - connectez-vous d\'abord', 'error');
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('labrute_token');
+            log('Token effacé', 'success');
+            checkToken();
+        }
+
+        async function quickLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                if (data.token) {
+                    localStorage.setItem('labrute_token', data.token);
+                    log('Connexion réussie !', 'success');
+                    checkToken();
+                    loadShackers();
+                } else {
+                    log('Erreur de connexion: ' + JSON.stringify(data), 'error');
+                }
+            } catch (error) {
+                log('Erreur: ' + error.message, 'error');
+            }
+        }
+
+        async function quickRegister() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email, 
+                        password,
+                        name: email.split('@')[0]
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.token) {
+                    localStorage.setItem('labrute_token', data.token);
+                    log('Compte créé avec succès !', 'success');
+                    checkToken();
+                } else {
+                    log('Erreur: ' + JSON.stringify(data), 'error');
+                }
+            } catch (error) {
+                log('Erreur: ' + error.message, 'error');
+            }
+        }
+
+        async function loadShackers() {
+          const token = localStorage.getItem('labrute_token');
+          if (!token) {
+            log('Connectez-vous d\'abord !', 'error');
+            return;
+          }
+
+          try {
+            const response = await fetch(`${API_URL}/shackers`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            const data = await response.json();
+            const list = document.getElementById('shackersList');
+            const shackers = Array.isArray(data) ? data : (data.shackers || []);
+            
+            if (shackers.length > 0) {
+                list.innerHTML = '<h3>Vos combattants :</h3>';
+                shackers.forEach(s => {
+                    list.innerHTML += `
+                        <div class="shacker">
+                            <strong>${s.name}</strong> - Level ${s.level} (${s.gender})<br>
+                            HP: ${s.hp} | Force: ${s.strength} | Agilité: ${s.agility} | Vitesse: ${s.speed}
+                        </div>
+                    `;
+                });
+                log(`${shackers.length} shacker(s) trouvé(s)`, 'success');
+            } else {
+                list.innerHTML = '<div class="error">Aucun shacker trouvé - Créez-en un !</div>';
+                log('Aucun shacker dans la base', 'error');
+            }
+          } catch (error) {
+            log('Erreur: ' + error.message, 'error');
+          }
+        }
+
+        async function createShacker() {
+          const token = localStorage.getItem('labrute_token');
+          if (!token) {
+            log('Connectez-vous d\'abord !', 'error');
+            return;
+          }
+
+          const name = document.getElementById('shackerName').value;
+          const gender = document.getElementById('shackerGender').value;
+
+          try {
+            const response = await fetch(`${API_URL}/shackers`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ name, gender })
+            });
+            
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 409) {
+                log(`Nom déjà pris: ${data?.error || 'Name already taken'}`, 'error');
+                return;
+            }
+            if (response.ok) {
+                const created = data && (data.shacker || data);
+                log(`Shacker "${created.name}" créé avec succès !`, 'success');
+                loadShackers();
+            } else {
+                log('Erreur: ' + JSON.stringify(data), 'error');
+            }
+          } catch (error) {
+            log('Erreur: ' + error.message, 'error');
+          }
+        }
+
+        // Vérifier au chargement
+        window.onload = () => {
+            checkToken();
+            loadShackers();
+        };
+    </script>
+</body>
+</html>

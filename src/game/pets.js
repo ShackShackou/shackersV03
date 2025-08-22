@@ -120,7 +120,7 @@ export const pets = [
 ];
 
 export class Pet {
-  constructor(petData, owner) {
+  constructor(petData, owner, rng) {
     this.name = petData.displayName;
     this.type = petData.name;
     this.owner = owner;
@@ -145,6 +145,8 @@ export class Pet {
     this.counter = petData.counter;
     this.block = petData.block;
     this.disarm = petData.disarm;
+    // Optional seedable RNG (falls back to Math.random if not provided)
+    this.rng = rng || null;
   }
 
   takeDamage(damage) {
@@ -156,12 +158,13 @@ export class Pet {
   }
 
   canAssist() {
-    return this.isAlive && Math.random() < this.assistChance;
+    const roll = this.rng ? this.rng.float() : Math.random();
+    return this.isAlive && roll < this.assistChance;
   }
 
   calculateDamage() {
     const baseDamage = this.stats.damage + this.stats.strength * 0.5;
-    const variation = 0.8 + Math.random() * 0.4;
+    const variation = 0.8 + (this.rng ? this.rng.float() : Math.random()) * 0.4;
     return Math.floor(baseDamage * variation);
   }
 
@@ -179,7 +182,7 @@ export class Pet {
         effect.damage = Math.floor(damage * 1.5);
         effect.message = `${this.name} mauls the target for ${effect.damage} damage!`;
         effect.specialEffect = 'bleed';
-        if (Math.random() < 0.3) {
+        if ((this.rng ? this.rng.float() : Math.random()) < 0.3) {
           effect.statusEffect = { type: 'bleed', duration: 2, damage: 3 };
         }
         break;
@@ -187,7 +190,7 @@ export class Pet {
       case 'pounce':
         effect.damage = damage;
         effect.message = `${this.name} pounces for ${damage} damage!`;
-        if (Math.random() < 0.4) {
+        if ((this.rng ? this.rng.float() : Math.random()) < 0.4) {
           effect.statusEffect = { type: 'stun', duration: 1 };
           effect.message += ' Target is stunned!';
         }
@@ -196,13 +199,13 @@ export class Pet {
       case 'bite':
         effect.damage = damage;
         effect.message = `${this.name} bites for ${damage} damage!`;
-        if (Math.random() < 0.2) {
+        if ((this.rng ? this.rng.float() : Math.random()) < 0.2) {
           effect.statusEffect = { type: 'weaken', duration: 2, modifier: 0.8 };
         }
         break;
 
       case 'guard':
-        if (Math.random() < 0.5) {
+        if ((this.rng ? this.rng.float() : Math.random()) < 0.5) {
           this.owner.stats.defense += 5;
           effect.damage = 0;
           effect.message = `${this.name} guards ${this.owner.stats.name}, increasing defense!`;
@@ -221,16 +224,16 @@ export class Pet {
   }
 }
 
-export function createPet(petType, owner) {
+export function createPet(petType, owner, rng) {
   const petData = pets.find(p => p.name === petType);
   if (!petData) {
     console.error(`Pet type ${petType} not found`);
     return null;
   }
-  return new Pet(petData, owner);
+  return new Pet(petData, owner, rng);
 }
 
-export function getRandomPet() {
+export function getRandomPet(rng) {
   const weights = [
     { pet: PetName.bear, weight: 10 },
     { pet: PetName.panther, weight: 15 },
@@ -240,7 +243,7 @@ export function getRandomPet() {
   ];
   
   const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
-  let random = Math.random() * totalWeight;
+  let random = (rng ? rng.float() : Math.random()) * totalWeight;
   
   for (const item of weights) {
     random -= item.weight;

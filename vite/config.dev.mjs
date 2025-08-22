@@ -4,6 +4,16 @@ export default defineConfig({
     base: './',
     build: {
         rollupOptions: {
+            input: {
+                main: './index.html',
+                login: './public/login.html',
+                home: './home.html',
+                game: './game.html',
+                myShackers: './my-shackers.html',
+                createShacker: './create-shacker.html',
+                selectOpponent: './select-opponent.html',
+                arena: './arena.html'
+            },
             output: {
                 manualChunks: {
                     phaser: ['phaser']
@@ -12,7 +22,7 @@ export default defineConfig({
         },
     },
     server: {
-        port: 5173,
-        strictPort: true
+        port: 5174,
+        strictPort: false
     }
 });

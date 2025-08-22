@@ -1,0 +1,904 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../../prisma"
+  previewFeatures = ["nativeDistinct", "relationJoins"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Lang {
+  en
+  fr
+  de
+  es
+  ru
+  pt
+}
+
+model User {
+  id                     String           @id @unique @db.Uuid
+  lang                   Lang             @default(en)
+  name                   String           @db.VarChar(255)
+  admin                  Boolean          @default(false)
+  moderator              Boolean          @default(false)
+  connexionToken         String           @db.Uuid
+  bruteLimit             Int              @default(3)
+  gold                   Int              @default(0)
+  fightSpeed             Int              @default(2)
+  backgroundMusic        Boolean          @default(true)
+  dinorpgDone            DateTime?        @db.Date
+  ips                    String[]         @default([])
+  bannedAt               DateTime?        @db.Date
+  banReason              String?
+  displayVersusPage      Boolean          @default(true)
+  displayOpponentDetails Boolean          @default(false)
+  lastSeen               DateTime         @default(now()) @db.Date
+  brutes                 Brute[]
+  achievements           Achievement[]
+  reports                BruteReport[]
+  tournamentGolds        TournamentGold[]
+  inventory              InventoryItem[]
+  favoriteFights         Fight[]          @relation("FavoriteFights")
+  following              Brute[]          @relation("Followers")
+  notifications          Notification[]
+  reportsHandled         BruteReport[]    @relation("BruteReportHandler")
+  logs                   UserLog[]
+}
+
+enum UserLogType {
+  CONNECT
+  DISCONNECT
+  GOLD_WIN
+  CREATE_BRUTE
+  RENAME_BRUTE
+  SACRIFICE_BRUTE
+  BANNED
+}
+
+model UserLog {
+  id      String      @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date    DateTime    @default(now()) @db.Timestamp()
+  user    User        @relation(fields: [userId], references: [id])
+  userId  String      @db.Uuid
+  type    UserLogType
+  brute   Brute?      @relation(fields: [bruteId], references: [id])
+  bruteId String?     @db.Uuid
+  gold    Int?
+  oldName String?
+
+  @@index([userId, date])
+  @@index([bruteId])
+}
+
+enum DestinyChoiceSide {
+  LEFT  @map("0")
+  RIGHT @map("1")
+}
+
+enum Gender {
+  male
+  female
+}
+
+enum WeaponName {
+  fan
+  keyboard
+  knife
+  leek
+  mug
+  sai
+  racquet
+  // TODO: Rename to hammer on release
+  axe
+  bumps
+  flail
+  fryingPan
+  hatchet
+  mammothBone
+  morningStar
+  trombone
+  baton
+  halbard
+  lance
+  trident
+  whip
+  noodleBowl
+  piopio
+  shuriken
+  broadsword
+  scimitar
+  sword
+}
+
+enum SkillName {
+  herculeanStrength
+  felineAgility
+  lightningBolt
+  vitality
+  immortality
+  reconnaissance
+  weaponsMaster
+  martialArts
+  sixthSense
+  hostility
+  fistsOfFury
+  shield
+  armor
+  toughenedSkin
+  untouchable
+  sabotage
+  shock
+  bodybuilder
+  relentless
+  survival
+  leadSkeleton
+  balletShoes
+  determination
+  firstStrike
+  resistant
+  counterAttack
+  ironHead
+  thief
+  fierceBrute
+  tragicPotion
+  net
+  bomb
+  // TODO: Rename to pileDriver on release
+  hammer
+  cryOfTheDamned
+  hypnosis
+  flashFlood
+  tamer
+  regeneration
+  chef
+  spy
+  saboteur
+  backup
+  hideaway
+  monk
+  vampirism
+  chaining
+  haste
+  treat
+  repulse
+  fastMetabolism
+}
+
+enum PetName {
+  dog1
+  dog2
+  dog3
+  panther
+  bear
+}
+
+model Brute {
+  id                           String                  @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                         String                  @db.VarChar(255)
+  deletedAt                    DateTime?               @db.Timestamptz()
+  createdAt                    DateTime                @default(now()) @db.Timestamptz()
+  willBeDeletedAt              DateTime?               @db.Date
+  deletionReason               String?
+  destinyPath                  DestinyChoiceSide[]     @default([])
+  previousDestinyPath          DestinyChoiceSide[]     @default([])
+  level                        Int                     @default(1)
+  xp                           Int                     @default(0)
+  hp                           Int                     @default(0)
+  enduranceStat                Int                     @default(0)
+  enduranceModifier            Float                   @default(1)
+  enduranceValue               Int                     @default(0)
+  strengthStat                 Int                     @default(0)
+  strengthModifier             Float                   @default(1)
+  strengthValue                Int                     @default(0)
+  agilityStat                  Int                     @default(0)
+  agilityModifier              Float                   @default(1)
+  agilityValue                 Int                     @default(0)
+  speedStat                    Int                     @default(0)
+  speedModifier                Float                   @default(1)
+  speedValue                   Int                     @default(0)
+  ranking                      Int                     @default(11)
+  gender                       Gender
+  user                         User?                   @relation(fields: [userId], references: [id])
+  userId                       String?                 @db.Uuid
+  // body: Hex string [p1 p1a p1b p2 p3 p4 p5 p6 p7 p7b p8]
+  // p1: Armor variation [0-1]
+  // p1a: [0-1] 0=belt, 1=nothing
+  // p1b: [0-1] 0=roman belt, 1=nothing
+  // p2: Body size (small = 0, big = 7) (male only, 0 for females)
+  // p3: Hair [0-11] 12 = no head
+  // p4: (male) Beard [0-4] 5 = nothing / (female) Front hair [0-2] 3 = nothing
+  // p5: 0=Nothing, 1=Shirt.
+  // p6: (male) 0=shorts, 1=trousers / (female) 0=shorts, 1=nothing
+  // p7: Main clothing [0-6] 7 = naked
+  // p7b: Shoes underside (2 = visible, others = hidden)
+  // p8: [0-4] Supposed to be shoes but doesn't change anything ??
+  body                         String                  @default("00000000000") @db.VarChar(11)
+  // colors: Hex string [col0 col0a col0c col1 col1a col1b col1c col1d col2 col2a col2b col3 col3b col4 col4a col4b]
+  // col0: Skin
+  // col0a: Face
+  // col0c: Ear
+  // col1: Hair
+  // col1a: Hair back
+  // col1b: Hair back 2
+  // col1c: Hair front
+  // col1d: Eyebrows
+  // col2: Secondary
+  // col2a: Accent 3
+  // col2b: Accent 1
+  // col3: Primary (includes eyes)
+  // col3b: Accent 2
+  // col4: Shirt
+  // col4a: Shoes accent ?
+  // col4b: ??
+  colors                       String                  @default("00000000000000000000000000000000") @db.VarChar(32)
+  weapons                      WeaponName[]            @default([])
+  skills                       SkillName[]             @default([])
+  pets                         PetName[]               @default([])
+  ascensions                   Int                     @default(0)
+  ascendedWeapons              WeaponName[]            @default([])
+  ascendedSkills               SkillName[]             @default([])
+  ascendedPets                 PetName[]               @default([])
+  master                       Brute?                  @relation("Master", fields: [masterId], references: [id])
+  masterId                     String?                 @db.Uuid
+  pupils                       Brute[]                 @relation("Master")
+  pupilsCount                  Int                     @default(0)
+  clan                         Clan?                   @relation(fields: [clanId], references: [id])
+  clanId                       String?                 @db.Uuid
+  registeredForTournament      Boolean                 @default(false)
+  nextTournamentDate           DateTime?               @db.Date
+  currentTournamentDate        DateTime?               @db.Date
+  currentTournamentStepWatched Int?                    @default(0)
+  globalTournamentWatchedDate  DateTime?               @db.Date
+  globalTournamentRoundWatched Int?
+  eventTournamentWatchedDate   DateTime?               @db.Date
+  eventTournamentRoundWatched  Int?
+  lastFight                    DateTime?               @db.Date
+  fightsLeft                   Int                     @default(6)
+  victories                    Int                     @default(0)
+  losses                       Int                     @default(0)
+  fights                       Fight[]
+  fightsAsAdversary            Fight[]                 @relation("Adversary")
+  logs                         Log[]
+  destinyChoices               DestinyChoice[]
+  tournaments                  Tournament[]
+  opponents                    Brute[]                 @relation("Opponents")
+  opponentOf                   Brute[]                 @relation("Opponents")
+  opponentsGeneratedAt         DateTime?               @db.Date
+  canRankUpSince               DateTime?               @db.Date
+  achievements                 Achievement[]
+  reports                      BruteReport[]
+  favorite                     Boolean                 @default(false)
+  masterOfClan                 Clan?                   @relation("MasterOfClan")
+  clanPosts                    ClanPost[]
+  wantToJoinClan               Clan?                   @relation("JoinRequests", fields: [wantToJoinClanId], references: [id])
+  wantToJoinClanId             String?                 @db.Uuid
+  threads                      ClanThread[]
+  inventory                    InventoryItem[]
+  tournamentAchievements       TournamentAchievement[]
+  tournamentXps                TournamentXp[]
+  tournamentWins               Int                     @default(0)
+  startingStats                BruteStartingStats?
+  damageOnBosses               BossDamage[]
+  followers                    User[]                  @relation("Followers")
+  inClanWarAttackerFighters    ClanWarFighters[]       @relation("ClanWarAttackerFighters")
+  inClanWarDefenderFighters    ClanWarFighters[]       @relation("ClanWarDefenderFighters")
+  event                        Event?                  @relation(fields: [eventId], references: [id])
+  eventId                      String?                 @db.Uuid
+  wonEvents                    Event[]                 @relation("EventBruteWinner")
+  resets                       Int                     @default(0)
+  userlogs                     UserLog[]
+
+  @@index([deletedAt, eventId, ranking])
+  @@index([ascensions, level, xp])
+  @@index([deletedAt])
+  @@index([masterId])
+  @@index([userId])
+  @@index([clanId])
+  @@index([wantToJoinClanId])
+  @@index([eventId])
+}
+
+model BruteStartingStats {
+  id        String @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  endurance Int    @default(2)
+  strength  Int    @default(3)
+  agility   Int    @default(3)
+  speed     Int    @default(3)
+  brute     Brute  @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  bruteId   String @unique @db.Uuid
+
+  @@index([bruteId])
+}
+
+// FIGHTS
+enum FighterType {
+  brute
+  pet
+}
+
+enum FightModifier {
+  noThrows
+  focusOpponent
+  alwaysUseSupers
+  drawEveryWeapon
+  doubleAgility
+  randomSkill
+  randomWeapon
+  bareHandsFirstHit
+  startWithWeapon
+}
+
+model Fight {
+  id             String          @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date           DateTime        @default(now()) @db.Date
+  brute1         Brute?          @relation(fields: [brute1Id], references: [id])
+  brute1Id       String?         @db.Uuid
+  brute2         Brute?          @relation("Adversary", fields: [brute2Id], references: [id])
+  brute2Id       String?         @db.Uuid
+  winner         String          @db.VarChar(255)
+  loser          String          @db.VarChar(255)
+  steps          String          @db.Text
+  fighters       String          @db.Text
+  logs           Log[]
+  tournament     Tournament?     @relation(fields: [tournamentId], references: [id])
+  tournamentId   String?         @db.Uuid
+  tournamentStep Int             @default(0)
+  modifiers      FightModifier[] @default([])
+  background     String          @default("1.jpg") @db.VarChar(255)
+  favoritedBy    User[]          @relation("FavoriteFights")
+  clanWar        ClanWar?        @relation(fields: [clanWarId], references: [id], onDelete: Cascade)
+  clanWarId      String?         @db.Uuid
+  favoriteCount  Int             @default(0)
+
+  @@index([tournamentId, winner, brute1Id, brute2Id])
+  @@index([date, tournamentId, id])
+  @@index([clanWarId])
+  @@index([clanWarId, tournamentId, favoriteCount, date])
+  @@index([brute1Id])
+  @@index([brute2Id])
+}
+
+// LOGS
+enum LogType {
+  win
+  lose
+  child
+  childup
+  up
+  lvl
+  ascend
+  tournament
+  tournamentXp
+  bossFight
+  bossDefeat
+}
+
+model Log {
+  id              String         @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date            DateTime       @default(now()) @db.Timestamp()
+  currentBrute    Brute          @relation(fields: [currentBruteId], references: [id], onDelete: Cascade)
+  currentBruteId  String         @db.Uuid
+  type            LogType
+  level           Int?
+  brute           String?        @db.VarChar(255)
+  fight           Fight?         @relation(fields: [fightId], references: [id])
+  fightId         String?        @db.Uuid
+  xp              Int?
+  gold            Int?
+  // Template used for lose/win logs
+  template        String?        @db.VarChar(255)
+  // Level up logs
+  destinyChoice   DestinyChoice? @relation(fields: [destinyChoiceId], references: [id])
+  destinyChoiceId String?        @db.Uuid
+
+  @@index([currentBruteId, date])
+  @@index([date])
+  @@index([fightId])
+  @@index([destinyChoiceId])
+}
+
+// LEVEL UP
+enum DestinyChoiceType {
+  skill
+  weapon
+  pet
+  stats
+}
+
+enum BruteStat {
+  endurance
+  strength
+  agility
+  speed
+}
+
+model DestinyChoice {
+  id             String              @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brute          Brute               @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  bruteId        String              @db.Uuid
+  path           DestinyChoiceSide[]
+  type           DestinyChoiceType
+  skill          SkillName?
+  weapon         WeaponName?
+  pet            PetName?
+  originalSkill  SkillName?
+  originalWeapon WeaponName?
+  originalPet    PetName?
+  stat1          BruteStat?
+  stat1Value     Int?
+  stat2          BruteStat?
+  stat2Value     Int?
+  logs           Log[]
+
+  @@index([bruteId, path])
+}
+
+// TOURNAMENTS
+enum TournamentType {
+  DAILY
+  GLOBAL
+  UNLIMITED_GLOBAL
+  CUSTOM
+  BATTLE_ROYALE
+}
+
+model Tournament {
+  id           String         @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date         DateTime       @db.Date
+  type         TournamentType @default(DAILY)
+  participants Brute[]
+  rounds       Int
+  fights       Fight[]
+  event        Event?         @relation(fields: [eventId], references: [id])
+  eventId      String?        @unique @db.Uuid
+
+  @@index([type, date])
+  @@index([eventId])
+}
+
+model TournamentAchievement {
+  id               String          @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brute            Brute           @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  bruteId          String          @db.Uuid
+  date             DateTime        @db.Date
+  achievement      AchievementName
+  achievementCount Int
+
+  @@unique([achievement, bruteId])
+  @@index([bruteId])
+}
+
+model TournamentGold {
+  id     String   @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date   DateTime @db.Date
+  user   User     @relation(fields: [userId], references: [id])
+  userId String   @db.Uuid
+  gold   Int
+
+  @@index([userId])
+}
+
+model TournamentXp {
+  id      String   @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date    DateTime @db.Date
+  brute   Brute    @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  bruteId String   @db.Uuid
+  xp      Int
+
+  @@index([bruteId])
+}
+
+// ACHIEVEMENTS
+enum AchievementName {
+  // Fights
+  wins
+  defeats
+  flawless
+  winWith1HP
+  steal2Weapons
+  singleHitWin
+  combo3
+  combo4
+  combo5
+  counter5
+  evade10
+  block25
+  counter4b2b
+  reversal4b2b
+  block4b2b
+  evade4b2b
+  throw10b2b
+  disarm4
+  disarm8
+  damage50once
+  damage100once
+  hit20times
+  use10skills
+  kill3pets
+  maxDamage
+  hpHealed
+  // Skills use
+  saboteur
+  // Perks unlock
+  dog
+  panther
+  bear
+  panther_bear
+  felAg_fistsOfF
+  felAg_fistsOfF_untouch_relentless
+  vita_armor_toughened
+  // TODO: Rename to herculStr_piledriver_fierceBrute on release
+  herculStr_hammer_fierceBrute
+  shock
+  balletShoes_survival
+  cryOfTheDamned_hypnosis
+  shield_counterAttack
+  reconnaissance_monk
+  immortality
+  doubleBoost
+  tripleBoost
+  quadrupleBoost
+  regeneration_potion
+  bear_tamer
+  tripleDogs
+  fiveWeapons
+  tenWeapons
+  fifteenWeapons
+  twentyWeapons
+  twentyThreeWeapons
+  monk_sixthSense_whip
+  weaponsMaster_sharp_bodybuilder_heavy
+  hostility_counterWeapon
+  flashFlood_twelveWeapons
+  lightningBolt_firstStrike
+  herculeanStrength
+  felineAgility
+  lightningBolt
+  vitality
+  potion_chef
+  tamer_net
+  untouchable_balletShoes
+  survival_resistant
+  hideaway_spy
+  weaponsFast3
+  weaponsSharp3
+  weaponsHeavy3
+  weaponsLong3
+  weaponsThrown3
+  weaponsBlunt3
+  thor
+  deflector
+  allFastWeapons
+  allSharpWeapons
+  allHeavyWeapons
+  allLongWeapons
+  allThrownWeapons
+  allBluntWeapons
+  // Stats
+  agility50
+  agility100
+  speed50
+  speed100
+  strength50
+  strength100
+  hp300
+  hp600
+  maxLevel
+  allAchievements
+  // Tournament
+  winTournamentAs20
+  winTournamentAs15
+  looseAgainst2
+  looseAgainst3
+  looseAgainst4
+  winAgainst2
+  winAgainst3
+  winAgainst4
+  winAsLower
+  win
+  battleRoyaleWin
+  // Ranks
+  rankUp10
+  rankUp9
+  rankUp8
+  rankUp7
+  rankUp6
+  rankUp5
+  rankUp4
+  rankUp3
+  rankUp2
+  rankUp1
+  rankUp0
+  // Ascend
+  ascend
+  // User
+  sacrifice
+  beta
+  bug
+}
+
+model Achievement {
+  id      String          @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name    AchievementName
+  count   Int             @default(0)
+  brute   Brute?          @relation(fields: [bruteId], references: [id])
+  bruteId String?         @db.Uuid
+  user    User?           @relation(fields: [userId], references: [id])
+  userId  String?         @db.Uuid
+
+  @@unique([name, bruteId])
+  @@index([bruteId])
+  @@index([userId])
+}
+
+// REPORTS
+enum BruteReportStatus {
+  pending
+  accepted
+  rejected
+}
+
+enum BruteReportReason {
+  name
+}
+
+model BruteReport {
+  id        String            @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brute     Brute?            @relation(fields: [bruteId], references: [id])
+  bruteId   String?           @db.Uuid
+  bruteName String            @default("") @db.VarChar(255)
+  users     User[]
+  reason    BruteReportReason @default(name)
+  count     Int               @default(1)
+  date      DateTime          @default(now()) @db.Date
+  status    BruteReportStatus @default(pending)
+  handler   User?             @relation(name: "BruteReportHandler", fields: [handlerId], references: [id])
+  handlerId String?           @db.Uuid
+  handledAt DateTime?         @db.Timestamptz()
+
+  @@index([status, count])
+  @@index([status, handledAt])
+  @@index([bruteId])
+  @@index([handlerId])
+}
+
+// SERVER STATE
+model ServerState {
+  id                    String          @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  globalTournamentValid Boolean         @default(true)
+  activeModifiers       FightModifier[] @default([])
+  modifiersEndAt        DateTime?       @db.Date
+  nextModifiers         FightModifier[] @default([])
+}
+
+model BannedWord {
+  id   String @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  word String @db.VarChar(255)
+
+  @@index([word])
+}
+
+model BannedIp {
+  id String @id @db.VarChar(255)
+}
+
+enum BossName {
+  GoldClaw
+  EmberFang
+  Cerberus
+}
+
+model Clan {
+  id                   String       @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String       @db.VarChar(255)
+  deletedAt            DateTime?    @db.Timestamptz()
+  limit                Int          @default(10)
+  points               Int          @default(0)
+  elo                  Int          @default(1000)
+  boss                 BossName     @default(GoldClaw)
+  damageOnBoss         Int          @default(0)
+  master               Brute?       @relation("MasterOfClan", fields: [masterId], references: [id])
+  masterId             String?      @unique @db.Uuid
+  participateInClanWar Boolean      @default(false)
+  brutes               Brute[]
+  joinRequests         Brute[]      @relation("JoinRequests")
+  threads              ClanThread[]
+  bossDamages          BossDamage[]
+  attacks              ClanWar[]    @relation("ClanWarAttacker")
+  defenses             ClanWar[]    @relation("ClanWarDefender")
+  wins                 ClanWar[]    @relation("ClanWarWinner")
+
+  @@unique([name, deletedAt])
+  @@index([deletedAt, name, points])
+  @@index([deletedAt, name, elo])
+  @@index([masterId])
+}
+
+model ClanThread {
+  id        String     @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  clan      Clan       @relation(fields: [clanId], references: [id])
+  clanId    String     @db.Uuid
+  creator   Brute?     @relation(fields: [creatorId], references: [id])
+  creatorId String?    @db.Uuid
+  title     String     @db.VarChar(255)
+  locked    Boolean    @default(false)
+  pinned    Boolean    @default(false)
+  postCount Int        @default(1)
+  posts     ClanPost[]
+  createdAt DateTime   @default(now()) @db.Timestamp()
+  updatedAt DateTime   @default(now()) @db.Timestamp()
+
+  @@index([clanId])
+  @@index([creatorId])
+}
+
+model ClanPost {
+  id       String     @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  thread   ClanThread @relation(fields: [threadId], references: [id])
+  threadId String     @db.Uuid
+  author   Brute?     @relation(fields: [authorId], references: [id])
+  authorId String?    @db.Uuid
+  date     DateTime   @default(now()) @db.Timestamp()
+  message  String     @db.Text
+
+  @@index([threadId])
+  @@index([authorId])
+}
+
+model BossDamage {
+  id      String  @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brute   Brute?  @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  bruteId String? @db.Uuid
+  clan    Clan    @relation(fields: [clanId], references: [id])
+  clanId  String  @db.Uuid
+  damage  Int
+
+  @@unique([bruteId, clanId])
+  @@index([bruteId])
+  @@index([clanId])
+}
+
+enum ClanWarStatus {
+  pending
+  ongoing
+  waitingForRewards
+  finished
+}
+
+enum ClanWarType {
+  friendly
+  official
+}
+
+model ClanWar {
+  id                String            @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  duration          Int               @default(7)
+  type              ClanWarType       @default(official)
+  date              DateTime          @default(now()) @db.Date
+  status            ClanWarStatus     @default(ongoing)
+  attacker          Clan              @relation("ClanWarAttacker", fields: [attackerId], references: [id])
+  attackerId        String            @db.Uuid
+  attackerEloChange Int               @default(0)
+  attackerWins      Int               @default(0)
+  defender          Clan              @relation("ClanWarDefender", fields: [defenderId], references: [id])
+  defenderId        String            @db.Uuid
+  defenderEloChange Int               @default(0)
+  defenderWins      Int               @default(0)
+  winner            Clan?             @relation("ClanWarWinner", fields: [winnerId], references: [id])
+  winnerId          String?           @db.Uuid
+  fights            Fight[]
+  fighters          ClanWarFighters[]
+
+  @@index([status])
+  @@index([attackerId])
+  @@index([defenderId])
+  @@index([winnerId])
+}
+
+model ClanWarFighters {
+  id        String  @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  clanWar   ClanWar @relation(fields: [clanWarId], references: [id], onDelete: Cascade)
+  clanWarId String  @db.Uuid
+  day       Int
+  attackers Brute[] @relation("ClanWarAttackerFighters")
+  defenders Brute[] @relation("ClanWarDefenderFighters")
+
+  @@unique([clanWarId, day])
+  @@index([clanWarId])
+}
+
+// Inventory
+enum InventoryItemType {
+  visualReset
+  bossTicket
+  nameChange
+  favoriteFight
+}
+
+model InventoryItem {
+  id      String            @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  type    InventoryItemType
+  count   Int               @default(1)
+  bruteId String?           @db.Uuid
+  brute   Brute?            @relation(fields: [bruteId], references: [id], onDelete: Cascade)
+  userId  String?           @db.Uuid
+  user    User?             @relation(fields: [userId], references: [id])
+
+  @@unique([type, bruteId])
+  @@unique([type, userId])
+  @@index([bruteId])
+  @@index([userId])
+}
+
+// Releases
+model Release {
+  version String   @id @unique @db.VarChar(255)
+  date    DateTime @default(now()) @db.Timestamp()
+
+  @@index([date])
+}
+
+// Events
+enum EventType {
+  battleRoyale
+}
+
+enum EventStatus {
+  starting
+  ongoing
+  finished
+}
+
+model Event {
+  id           String      @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  date         DateTime    @default(now()) @db.Date
+  type         EventType   @default(battleRoyale)
+  maxLevel     Int
+  maxRound     Int         @default(999)
+  status       EventStatus @default(starting)
+  brutes       Brute[]
+  tournament   Tournament?
+  winner       Brute?      @relation("EventBruteWinner", fields: [winnerId], references: [id])
+  winnerId     String?     @db.Uuid
+  finishedAt   DateTime?   @db.Date
+  sortedBrutes String[]    @default([])
+
+  @@index([date, type, status])
+  @@index([winnerId])
+}
+
+// Notifications
+enum NotificationSeverity {
+  info
+  success
+  warning
+  error
+}
+
+model Notification {
+  id       String               @id @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user     User                 @relation(fields: [userId], references: [id])
+  userId   String               @db.Uuid
+  message  String               @db.Text
+  severity NotificationSeverity @default(info)
+  link     String?              @db.Text
+  read     Boolean              @default(false)
+  date     DateTime             @default(now()) @db.Timestamp()
+
+  @@index([userId, read])
+  @@index([date])
+}
+
+// Config
+model Config {
+  key       String   @id @unique @db.VarChar(255)
+  value     String   @db.Text
+  updatedAt DateTime @default(now()) @db.Timestamp()
+}

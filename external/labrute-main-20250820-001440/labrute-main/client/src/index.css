@@ -1,0 +1,29 @@
+@font-face {
+  font-family: LaBrute;
+  src: url(./assets/fonts/labrute.ttf) format("ttf"),
+    url(./assets/fonts/labrute.woff) format("woff");
+}
+
+@font-face {
+  font-family: Pixelized;
+  src: url(./assets/fonts/BarcadeBrawlRegular.ttf) format("ttf"),
+    url(./assets/fonts/BarcadeBrawlRegular.woff) format("woff");
+}
+
+@font-face {
+  font-family: GameFont;
+  src: url(./assets/fonts/Movavi_Grotesque_Black.ttf) format("ttf"),
+    url(./assets/fonts/Movavi_Grotesque_Black.woff) format("woff");
+}
+
+@font-face {
+  font-family: Handwritten;
+  src: url(./assets/fonts/acmesa.ttf) format("ttf"),
+    url(./assets/fonts/acmesa.woff) format("woff");
+}
+
+@font-face {
+  font-family: "Blocky";
+  src: url(./assets/fonts/Blocky.ttf) format("ttf"),
+    url(./assets/fonts/Blocky.woff) format("woff");
+}

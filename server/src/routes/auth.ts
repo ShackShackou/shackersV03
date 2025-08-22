@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -53,6 +54,26 @@ router.post('/login', async (req, res) => {
   const token = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: '7d' });
   const { password: _p, ...safeUser } = user as any;
   return res.json({ token, user: safeUser });
+});
+
+// Get current user info
+router.get('/me', requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true
+    }
+  });
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  return res.json(user);
 });
 
 export default router;

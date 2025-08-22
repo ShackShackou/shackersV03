@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String
+  createdAt DateTime  @default(now())
+  shackers  Shacker[]
+}
+
+model Shacker {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  gender    String
+  level     Int      @default(1)
+  hp        Int      @default(10)
+  strength  Int      @default(3)
+  agility   Int      @default(3)
+  speed     Int      @default(3)
+  createdAt DateTime @default(now())
+  userId    String
+  fightsA   Fight[]  @relation("ShackerA")
+  fightsB   Fight[]  @relation("ShackerB")
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Fight {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  shackerAId String
+  shackerBId String
+  winnerId   String
+  log        String
+  shackerA   Shacker  @relation("ShackerA", fields: [shackerAId], references: [id])
+  shackerB   Shacker  @relation("ShackerB", fields: [shackerBId], references: [id])
+}

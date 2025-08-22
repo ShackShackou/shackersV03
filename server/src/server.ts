@@ -4,7 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRouter from './routes/auth';
-import brutesRouter from './routes/brutes';
+import shackersRouter from './routes/brutes';
 import fightsRouter from './routes/fights';
 
 const app = express();
@@ -34,7 +34,7 @@ app.get('/api', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api/brutes', brutesRouter);
+app.use('/api/shackers', shackersRouter);
 app.use('/api/fights', fightsRouter);
 
 // Serve static public/ from project root

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 
 const API_BASE = 'http://localhost:4000/api';
 
-type Brute = {
+type Shacker = {
   id: string;
   name: string;
   gender: 'male'|'female';
@@ -13,27 +13,27 @@ type Brute = {
   speed: number;
 };
 
-export default class MyBrutesScene extends Phaser.Scene {
-  private brutes: Brute[] = [];
-  private bruteAId: string | null = null;
-  private bruteBId: string | null = null;
+export default class MyShackersScene extends Phaser.Scene {
+  private shackers: Shacker[] = [];
+  private shackerAId: string | null = null;
+  private shackerBId: string | null = null;
   private listText?: Phaser.GameObjects.Text;
   private resultText?: Phaser.GameObjects.Text;
 
   constructor() {
-    super('MyBrutesScene');
+    super('MyShackersScene');
   }
 
   create() {
     const { width } = this.scale;
-    this.add.text(width/2, 80, 'Mes brutes', { fontSize: '36px', color: '#ffffff' }).setOrigin(0.5);
+    this.add.text(width/2, 80, 'Mes shackers', { fontSize: '36px', color: '#ffffff' }).setOrigin(0.5);
 
     this.add.text(width/2, 120, '[ Rafraîchir la liste ]', { fontSize: '18px', color: '#00ccff' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
-      .on('pointerup', () => this.fetchBrutes());
+      .on('pointerup', () => this.fetchShackers());
 
-    this.add.text(width/2, 160, '[ Créer une brute ]', { fontSize: '18px', color: '#00ff88' })
+    this.add.text(width/2, 160, '[ Créer un shacker ]', { fontSize: '18px', color: '#00ff88' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerup', () => this.scene.start('CharacterCreateScene'));
@@ -47,10 +47,10 @@ export default class MyBrutesScene extends Phaser.Scene {
 
     this.resultText = this.add.text(width/2, 560, '', { fontSize: '18px', color: '#ffffff' }).setOrigin(0.5);
 
-    this.fetchBrutes();
+    this.fetchShackers();
   }
 
-  private async fetchBrutes() {
+  private async fetchShackers() {
     const token = localStorage.getItem('labrute_token');
     if (!token) {
       alert('Tu dois te connecter.');
@@ -58,10 +58,10 @@ export default class MyBrutesScene extends Phaser.Scene {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/brutes`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE}/shackers`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Erreur de récupération');
-      this.brutes = data as Brute[];
+      this.shackers = data as Shacker[];
       this.renderList();
     } catch (e: any) {
       alert(e.message || String(e));
@@ -70,11 +70,11 @@ export default class MyBrutesScene extends Phaser.Scene {
 
   private renderList() {
     if (!this.listText) return;
-    if (this.brutes.length === 0) {
-      this.listText.setText('Aucune brute. Crée-en une.');
+    if (this.shackers.length === 0) {
+      this.listText.setText('Aucun shacker. Crée-en un.');
       return;
     }
-    const lines = this.brutes.map((b, i) => `${i+1}. ${b.name} [${b.id.slice(0,8)}] lvl ${b.level}`);
+    const lines = this.shackers.map((b, i) => `${i+1}. ${b.name} [${b.id.slice(0,8)}] lvl ${b.level}`);
     this.listText.setText(lines.join('\n'));
 
     this.input.removeAllListeners();
@@ -82,21 +82,21 @@ export default class MyBrutesScene extends Phaser.Scene {
       const y = pointer.y - this.listText!.y;
       const lineHeight = (this.listText!.style.metrics.fontSize as number) || 18;
       const index = Math.floor(y / lineHeight);
-      if (index >= 0 && index < this.brutes.length) {
-        const selected = this.brutes[index];
-        if (!this.bruteAId || (this.bruteAId && this.bruteBId)) {
-          this.bruteAId = selected.id;
-          this.bruteBId = null;
-        } else if (!this.bruteBId) {
-          this.bruteBId = selected.id;
+      if (index >= 0 && index < this.shackers.length) {
+        const selected = this.shackers[index];
+        if (!this.shackerAId || (this.shackerAId && this.shackerBId)) {
+          this.shackerAId = selected.id;
+          this.shackerBId = null;
+        } else if (!this.shackerBId) {
+          this.shackerBId = selected.id;
         }
         const mark = (id: string | null) => id ? id.slice(0,4) : '--';
-        this.resultText?.setText(`Sélection: A=${mark(this.bruteAId)} B=${mark(this.bruteBId)}`);
+        this.resultText?.setText(`Sélection: A=${mark(this.shackerAId)} B=${mark(this.shackerBId)}`);
       }
     });
   }
 
-  private mapToEngineStats(b: Brute) {
+  private mapToEngineStats(b: Shacker) {
     // Scale values for visible HP bar changes and impactful hits
     const maxHealth = 80 + (b.hp ?? 10) * 6; // ~140 base if hp=10
     const strength = 6 + (b.strength ?? 3) * 4; // stronger hits
@@ -121,24 +121,24 @@ export default class MyBrutesScene extends Phaser.Scene {
   private async startFight() {
     const token = localStorage.getItem('labrute_token');
     if (!token) { alert('Connecte-toi.'); return; }
-    if (!this.bruteAId || !this.bruteBId || this.bruteAId === this.bruteBId) {
-      alert('Choisis deux brutes distinctes (clique deux lignes).');
+    if (!this.shackerAId || !this.shackerBId || this.shackerAId === this.shackerBId) {
+      alert('Choisis deux shackers distincts (clique deux lignes).');
       return;
     }
-    const bruteA = this.brutes.find(b => b.id === this.bruteAId)!;
-    const bruteB = this.brutes.find(b => b.id === this.bruteBId)!;
+    const shackerA = this.shackers.find(b => b.id === this.shackerAId)!;
+    const shackerB = this.shackers.find(b => b.id === this.shackerBId)!;
 
     try {
       await fetch(`${API_BASE}/fights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ bruteAId: this.bruteAId, bruteBId: this.bruteBId }),
+        body: JSON.stringify({ shackerAId: this.shackerAId, shackerBId: this.shackerBId }),
       });
     } catch {}
 
     this.scene.start('FightSpine', {
-      a: this.mapToEngineStats(bruteA),
-      b: this.mapToEngineStats(bruteB),
+      a: this.mapToEngineStats(shackerA),
+      b: this.mapToEngineStats(shackerB),
     });
   }
 }

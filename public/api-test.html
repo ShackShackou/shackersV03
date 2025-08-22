@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LaBrute API Test</title>
+  <title>Shackers API Test</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 900px; }
     fieldset { margin-bottom: 16px; }
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h1>LaBrute API Test</h1>
+  <h1>Shackers API Test</h1>
   <p>Backend attendu sur <code>http://localhost:4000</code></p>
 
   <fieldset>
@@ -51,21 +51,21 @@
   </fieldset>
 
   <fieldset>
-    <legend>Brutes</legend>
+    <legend>Shackers</legend>
     <div class="row">
       <div>
         <label>Nom</label>
-        <input id="bruteName" type="text" value="MaBrute" />
+        <input id="shackerName" type="text" value="MonShacker" />
       </div>
       <div>
         <label>Genre</label>
-        <select id="bruteGender">
+        <select id="shackerGender">
           <option value="male">male</option>
           <option value="female">female</option>
         </select>
       </div>
-      <button id="btnCreateBrute">POST /api/brutes</button>
-      <button id="btnListBrutes">GET /api/brutes</button>
+      <button id="btnCreateShacker">POST /api/shackers</button>
+      <button id="btnListShackers">GET /api/shackers</button>
     </div>
   </fieldset>
 
@@ -73,12 +73,12 @@
     <legend>Fight</legend>
     <div class="row">
       <div>
-        <label>Brute A ID</label>
-        <input id="fightA" type="text" placeholder="bruteAId" />
+        <label>Shacker A ID</label>
+        <input id="fightA" type="text" placeholder="shackerAId" />
       </div>
       <div>
-        <label>Brute B ID</label>
-        <input id="fightB" type="text" placeholder="bruteBId" />
+        <label>Shacker B ID</label>
+        <input id="fightB" type="text" placeholder="shackerBId" />
       </div>
       <button id="btnFight">POST /api/fights</button>
     </div>
@@ -108,13 +108,12 @@
 
   function setToken(token) {
     tokenEl.value = token || '';
-    if (token) localStorage.setItem('labrute_token', token);
-    else localStorage.removeItem('labrute_token');
+    if (token) localStorage.setItem('shackers_token', token);
+    else localStorage.removeItem('shackers_token');
   }
 
-  // On load, restore token
   (function init() {
-    const saved = localStorage.getItem('labrute_token');
+    const saved = localStorage.getItem('shackers_token');
     if (saved) tokenEl.value = saved;
   })();
 
@@ -145,17 +144,17 @@
     log('Déconnecté.');
   };
 
-  document.getElementById('btnCreateBrute').onclick = async () => {
-    const name = document.getElementById('bruteName').value + Math.floor(Math.random()*100000);
-    const gender = document.getElementById('bruteGender').value;
+  document.getElementById('btnCreateShacker').onclick = async () => {
+    const name = document.getElementById('shackerName').value + Math.floor(Math.random()*100000);
+    const gender = document.getElementById('shackerGender').value;
     const token = tokenEl.value;
-    const r = await jsonFetch('/brutes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ name, gender }) });
+    const r = await jsonFetch('/shackers', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ name, gender }) });
     log(r, r.status === 201);
   };
 
-  document.getElementById('btnListBrutes').onclick = async () => {
+  document.getElementById('btnListShackers').onclick = async () => {
     const token = tokenEl.value;
-    const r = await jsonFetch('/brutes', { headers: { Authorization: `Bearer ${token}` } });
+    const r = await jsonFetch('/shackers', { headers: { Authorization: `Bearer ${token}` } });
     log(r, r.status === 200);
     if (Array.isArray(r.body)) {
       const [a,b] = r.body;
@@ -166,9 +165,9 @@
 
   document.getElementById('btnFight').onclick = async () => {
     const token = tokenEl.value;
-    const bruteAId = document.getElementById('fightA').value.trim();
-    const bruteBId = document.getElementById('fightB').value.trim();
-    const r = await jsonFetch('/fights', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ bruteAId, bruteBId }) });
+    const shackerAId = document.getElementById('fightA').value.trim();
+    const shackerBId = document.getElementById('fightB').value.trim();
+    const r = await jsonFetch('/fights', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ shackerAId, shackerBId }) });
     log(r, r.status === 201);
   };
   </script>

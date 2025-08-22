@@ -1,0 +1,89 @@
+HalloweenCreature.png
+size:716,269
+filter:Linear,Linear
+scale:0.25
+Chlunk big
+bounds:285,12,29,21
+offsets:0,0,29,22
+rotate:90
+Chlunk small
+bounds:165,138,52,12
+offsets:1,0,53,12
+fire_seq/flames0001
+bounds:225,43,84,107
+offsets:21,3,125,125
+fire_seq/flames0002
+bounds:408,68,80,105
+offsets:22,6,125,125
+rotate:90
+fire_seq/flames0003
+bounds:143,21,80,110
+offsets:23,3,125,125
+fire_seq/flames0004
+bounds:566,70,74,106
+offsets:21,4,125,125
+rotate:90
+frank/eyes
+bounds:515,68,80,49
+offsets:0,0,80,53
+rotate:90
+frank/frown
+bounds:681,5,41,31
+rotate:90
+frank/head
+bounds:440,150,124,117
+frank/mouth
+bounds:674,70,40,31
+offsets:0,0,42,31
+frank/smirk
+bounds:674,70,40,31
+offsets:0,0,42,31
+frank/screw
+bounds:674,103,41,40
+offsets:0,2,41,42
+rotate:90
+frank/tail
+bounds:513,14,90,52
+pumpkin/eyes
+bounds:605,27,74,41
+pumpkin/frown
+bounds:225,2,58,39
+pumpkin/head
+bounds:302,154,136,113
+offsets:55,36,251,251
+pumpkin/mouth
+bounds:311,17,69,38
+shadow
+bounds:143,8,73,11
+skull/head
+bounds:566,146,124,121
+skull/tooth 1
+bounds:382,21,24,34
+skull/tooth 2
+bounds:692,198,21,37
+skull/tooth 3
+bounds:681,48,20,33
+rotate:90
+skull/tooth 4
+bounds:605,2,23,32
+rotate:90
+witch/eyes
+bounds:408,3,103,63
+offsets:0,15,113,78
+witch/frown
+bounds:692,237,30,22
+rotate:90
+witch/hair
+bounds:2,133,161,134
+witch/hat point
+bounds:311,57,95,95
+offsets:19,0,114,95
+witch/hat rim
+bounds:165,152,135,115
+offsets:0,0,135,118
+witch/head
+bounds:2,5,126,139
+offsets:0,0,126,140
+rotate:90
+witch/mouth
+bounds:513,3,34,9

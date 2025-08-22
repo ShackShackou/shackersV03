@@ -4,6 +4,14 @@ import { BootScene } from './scenes/BootScene.js';
 import { FightScene } from './scenes/FightScene.js';
 import { SpineTestScene } from './scenes/SpineTestScene.js';
 import { FightSceneSpine } from './scenes/FightSceneSpine.js';
+import { HubScene } from './scenes/HubScene.js';
+import { TrainingScene } from './scenes/TrainingScene.js';
+import { TrainingInteractiveScene } from './scenes/TrainingInteractiveScene.js';
+import { HubEnhancedScene } from './scenes/HubEnhancedScene.js';
+import { HubSimpleScene } from './scenes/HubSimpleScene.js';
+import { HubUltraScene } from './scenes/HubUltraScene.js';
+import { TrainingSelectionScene } from './scenes/TrainingSelectionScene.js';
+import { MeleeTrainingScene } from './scenes/MeleeTrainingScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -31,7 +39,7 @@ const config = {
       }
     ]
   },
-  scene: [BootScene, SpineTestScene, FightSceneSpine, FightScene]
+  scene: [BootScene, SpineTestScene, FightSceneSpine, FightScene, HubScene, HubEnhancedScene, HubSimpleScene, HubUltraScene, TrainingScene, TrainingInteractiveScene, TrainingSelectionScene, MeleeTrainingScene]
 };
 
 new Phaser.Game(config);

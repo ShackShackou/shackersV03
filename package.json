@@ -2,30 +2,38 @@
     "name": "phaser-editor-template-vite-ts",
     "description": "A Phaser 3 TypeScript template using Vite.",
     "version": "1.2.1",
+    "type": "module",
     "repository": {
-        "type": "git",
-        "url": "git+https://github.com/phaserjs/template-vite-ts.git"
+      "type": "git",
+      "url": "git+https://github.com/phaserjs/template-vite-ts.git"
     },
     "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
     "license": "MIT",
     "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
     "bugs": {
-        "url": "https://github.com/phaserjs/template-vite-ts/issues"
+      "url": "https://github.com/phaserjs/template-vite-ts/issues"
     },
     "homepage": "https://github.com/phaserjs/template-vite-ts#readme",
     "scripts": {
-        "start": "vite --config vite/config.dev.mjs",
-        "build": "vite build --config vite/config.prod.mjs && phaser-asset-pack-hashing -j -r dist"
+      "start": "vite --config vite/config.dev.mjs",
+      "dev": "vite --config vite/config.dev.mjs",
+      "build": "vite build --config vite/config.prod.mjs && phaser-asset-pack-hashing -j -r dist",
+      "test:combat": "node scripts/runCombatTest.mjs",
+      "test:combat:snap": "node scripts/runCombatTest.mjs --snapshot --seed=42",
+      "test:combat:debug": "node scripts/runCombatTest.mjs --debug --seed=42",
+      "test:combat:debug:pets": "node scripts/runCombatTest.mjs --debug --pets --petA=panther --petB=dog1 --seed=42 --snapshot --output=.snapshots/fights/seed-42-debug-pets.json",
+      "test:combat:exact": "node scripts/runCombatTest.mjs --formulas=exact",
+      "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42"
     },
     "devDependencies": {
-        "phaser-asset-pack-hashing": "^1.0.6",
-        "terser": "^5.28.1",
-        "typescript": "^5.3.3",
-        "vite": "^5.1.4"
+      "phaser-asset-pack-hashing": "^1.0.6",
+      "terser": "^5.28.1",
+      "typescript": "^5.3.3",
+      "vite": "^5.1.4"
     },
     "dependencies": {
-        "@esotericsoftware/spine-phaser": "^4.1.55",
-        "@phaserjs/editor-scripts-base": "^1.0.0",
-        "phaser": "3.80.1"
+      "@esotericsoftware/spine-phaser": "^4.1.55",
+      "@phaserjs/editor-scripts-base": "^1.0.0",
+      "phaser": "3.80.1"
     }
-}
+  }

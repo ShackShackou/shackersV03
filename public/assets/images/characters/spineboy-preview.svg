@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Spineboy Silhouette -->
+  <g id="spineboy">
+    <!-- Corps -->
+    <ellipse cx="100" cy="130" rx="30" ry="40" fill="#4A90E2"/>
+    <!-- Tête -->
+    <circle cx="100" cy="70" r="25" fill="#FFB6C1"/>
+    <!-- Bras gauche -->
+    <rect x="60" y="100" width="15" height="40" rx="7" fill="#4A90E2" transform="rotate(-20 67 120)"/>
+    <!-- Bras droit -->
+    <rect x="125" y="100" width="15" height="40" rx="7" fill="#4A90E2" transform="rotate(20 133 120)"/>
+    <!-- Jambe gauche -->
+    <rect x="85" y="150" width="12" height="35" rx="6" fill="#333"/>
+    <!-- Jambe droite -->
+    <rect x="103" y="150" width="12" height="35" rx="6" fill="#333"/>
+    <!-- Yeux -->
+    <circle cx="92" cy="68" r="3" fill="#000"/>
+    <circle cx="108" cy="68" r="3" fill="#000"/>
+    <!-- Sourire -->
+    <path d="M 90 78 Q 100 85 110 78" stroke="#000" stroke-width="2" fill="none"/>
+  </g>
+</svg>
