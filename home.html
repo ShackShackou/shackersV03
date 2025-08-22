@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHACKERS - Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        /* Navigation Bar */
+        nav {
+            background: #2a2a2a;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #00ff88;
+        }
+        
+        .btn-logout {
+            background: #ff4444;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .welcome {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .welcome h1 {
+            font-size: 48px;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+        
+        .welcome p {
+            font-size: 20px;
+            color: #cccccc;
+        }
+        
+        /* Menu Cards */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .menu-card {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            display: block;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .menu-card-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .menu-card h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+        
+        .menu-card p {
+            font-size: 16px;
+            color: #cccccc;
+        }
+        
+        .card-create { border-top: 4px solid #00ff88; }
+        .card-my { border-top: 4px solid #00ccff; }
+        .card-arena { border-top: 4px solid #ff6688; }
+        .card-random { 
+            border-top: 4px solid #ffaa00;
+            background: linear-gradient(135deg, #2a2a2a 0%, #3a2a2a 100%);
+        }
+        
+        .random-button {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* User Info */
+        .user-info {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-details {
+            font-size: 18px;
+        }
+        
+        .user-details span {
+            color: #00ff88;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/home.html" class="nav-logo">SHACKERS</a>
+            <div class="nav-links">
+                <a href="/home.html" class="active">Home</a>
+                <a href="/create-shacker.html">Create SHACKER</a>
+                <a href="/my-shackers.html">My SHACKERS</a>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="welcome">
+            <h1>Welcome to SHACKERS</h1>
+            <p>Choose your action below</p>
+        </div>
+        
+        <div class="user-info">
+            <div class="user-details">
+                Logged in as: <span id="userEmail">Loading...</span>
+            </div>
+            <div>
+                Total SHACKERS: <span id="shackerCount">0</span>
+            </div>
+        </div>
+        
+        <div class="menu-grid">
+            <a href="/create-shacker.html" class="menu-card card-create">
+                <div class="menu-card-icon">➕</div>
+                <h2>Create SHACKER</h2>
+                <p>Create a new SHACKER and customize their attributes</p>
+            </a>
+            
+            <a href="/my-shackers.html" class="menu-card card-my">
+                <div class="menu-card-icon">👥</div>
+                <h2>My SHACKERS</h2>
+                <p>View and manage all your SHACKERS</p>
+            </a>
+            
+            <a href="/select-opponent.html" class="menu-card card-arena">
+                <div class="menu-card-icon">⚔️</div>
+                <h2>Arena</h2>
+                <p>Battle with your SHACKERS against others</p>
+            </a>
+            
+            <div class="menu-card card-random random-button" onclick="launchRandomFight()">
+                <div class="menu-card-icon">🎲</div>
+                <h2>Combat Aléatoire</h2>
+                <p>Test rapide avec combattants et décor aléatoires</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('labrute_token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                // Try to get email from localStorage first
+                let email = localStorage.getItem('userEmail');
+                
+                // If no email in localStorage, fetch from API
+                if (!email) {
+                    const userResponse = await fetch('http://localhost:4000/api/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        email = userData.email;
+                        localStorage.setItem('userEmail', email);
+                    }
+                }
+                
+                if (email) {
+                    document.getElementById('userEmail').textContent = email;
+                }
+                
+                // Fetch shacker count
+                const response = await fetch('http://localhost:4000/api/shackers', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const shackers = await response.json();
+                    document.getElementById('shackerCount').textContent = shackers.length;
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('labrute_token');
+            localStorage.removeItem('userEmail');
+            window.location.href = '/login.html';
+        }
+        
+        // Fonction pour lancer un combat aléatoire
+        function launchRandomFight() {
+            // Noms aléatoires
+            const names = [
+                'Brutus', 'Maximus', 'Thor', 'Ragnar', 'Conan',
+                'Spartacus', 'Hercules', 'Atlas', 'Zeus', 'Odin',
+                'Kratos', 'Leonidas', 'Achilles', 'Ajax', 'Hector'
+            ];
+            
+            // Types de personnages
+            const characterTypes = ['spineboy', 'raptor'];
+            
+            // Armes disponibles
+            const weapons = [
+                null, null, null, // 30% sans arme
+                'knife', 'broadsword', 'lance', 'fan', 'sai', 'shuriken',
+                'axe', 'bumps', 'flail', 'mammothBone', 'halbard', 'whip',
+                'piopio', 'noodleBowl', 'sword', 'trident'
+            ];
+            
+            // Décors (peuvent être des GIFs)
+            const backgrounds = [
+                'background1', 'background2', 'background3', 'background4',
+                'background5', 'background6', 'background7', 'background8',
+                'gif1', 'gif2', 'gif3'
+            ];
+            
+            // Générer un combattant aléatoire
+            function generateRandomFighter(name) {
+                const level = Math.floor(Math.random() * 10) + 1;
+                const endurance = Math.floor(Math.random() * 20) + 5;
+                const strength = Math.floor(Math.random() * 20) + 10;
+                const agility = Math.floor(Math.random() * 15) + 3;
+                const speed = Math.floor(Math.random() * 15) + 3;
+                const hp = Math.floor(50 + (endurance + level * 0.25) * 6);
+                
+                return {
+                    name: name,
+                    health: hp,
+                    maxHealth: hp,
+                    stamina: 100,
+                    maxStamina: 100,
+                    strength: strength,
+                    defense: Math.floor(Math.random() * 8) + 2,
+                    agility: agility,
+                    speed: speed,
+                    endurance: endurance,
+                    level: level,
+                    characterType: Math.random() < 0.5 ? 'spineboy' : 'raptor',
+                    weapon: weapons[Math.floor(Math.random() * weapons.length)],
+                    weapons: [],
+                    skills: [],
+                    initiative: 0,
+                    baseInitiative: 1,
+                    counter: Math.floor(Math.random() * 5),
+                    combo: Math.floor(Math.random() * 3)
+                };
+            }
+            
+            // Choisir 2 noms différents
+            const name1 = names[Math.floor(Math.random() * names.length)];
+            let name2 = names[Math.floor(Math.random() * names.length)];
+            while (name2 === name1) {
+                name2 = names[Math.floor(Math.random() * names.length)];
+            }
+            
+            // Générer les combattants
+            const fighter1 = generateRandomFighter(name1);
+            const fighter2 = generateRandomFighter(name2);
+            
+            // Log pour vérifier la distribution
+            console.log(`Combat: ${fighter1.name} (${fighter1.characterType}) vs ${fighter2.name} (${fighter2.characterType})`);
+            
+            // Ajouter les armes dans le tableau weapons
+            if (fighter1.weapon) fighter1.weapons = [fighter1.weapon];
+            if (fighter2.weapon) fighter2.weapons = [fighter2.weapon];
+            
+            // Choisir un décor aléatoire
+            const background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+            
+            console.log('Combat aléatoire:', { fighter1, fighter2, background });
+            
+            // Sauvegarder les données
+            sessionStorage.setItem('randomFightData', JSON.stringify({
+                fighter1: fighter1,
+                fighter2: fighter2,
+                background: background
+            }));
+            
+            // Rediriger vers la page de combat
+            window.location.href = '/random-fight.html';
+        }
+        
+        loadUserInfo();
+    </script>
+</body>
+</html>

@@ -1,8 +1,24 @@
 import { createPet } from '../game/pets.js';
-import { weaponStats, getWeaponDamageModifier } from '../game/weapons.js';
+import { RNG } from './rng.js';
+import formulas from './formulas.js';
+
+// Import du système LaBrute complet
+import { 
+  LaBruteCombatEngine, 
+  LaBruteCombatFormulas,
+  LABRUTE_WEAPONS,
+  LABRUTE_SKILLS,
+  LABRUTE_PETS,
+  LABRUTE_CONFIG
+} from './labrute-complete.js';
 
 export class CombatEngine {
-  constructor(fighter1, fighter2) {
+  constructor(fighter1, fighter2, options = {}) {
+    // Utiliser le moteur LaBrute si spécifié
+    if (options.useLaBrute !== false) {
+      console.log('[CombatEngine] Utilisation du système LaBrute complet');
+      return new LaBruteCombatEngine(fighter1, fighter2, options);
+    }
     this.fighter1 = fighter1;
     this.fighter2 = fighter2;
     this.currentTurn = 0;
@@ -20,6 +36,43 @@ export class CombatEngine {
     };
     this.combatSteps = []; // Detailed combat steps for replay
     
+    // Injectables: seedable RNG and formulas adapter (parity by default)
+    const { rng, formulasAdapter } = options || {};
+    this.rng = rng || new RNG();
+    this.formulas = formulasAdapter || formulas;
+    // Debug instrumentation
+    this.debug = Boolean(options && options.debug);
+    this.debugLogs = [];
+    // Optionally instrument formulas to log inputs/outputs
+    if (this.debug || (options && options.instrumentFormulas)) {
+      const original = this.formulas;
+      const fmtArg = (a) => {
+        if (a && typeof a === 'object' && 'strength' in a && 'agility' in a) {
+          return {
+            name: a.name,
+            strength: a.strength,
+            defense: a.defense,
+            agility: a.agility,
+            speed: a.speed,
+            baseInitiative: a.baseInitiative,
+            combo: a.combo,
+            counter: a.counter,
+          };
+        }
+        return a;
+      };
+      const wrap = (key, fn) => (...args) => {
+        const result = fn(...args);
+        this.logDebug(`formula.${key}`, { args: args.map(fmtArg), result });
+        return result;
+      };
+      const instrumented = {};
+      for (const [k, v] of Object.entries(original)) {
+        instrumented[k] = typeof v === 'function' ? wrap(k, v) : v;
+      }
+      this.formulas = instrumented;
+    }
+    
     // Initialize pets if fighters have them
     this.initializePets();
     
@@ -31,7 +84,7 @@ export class CombatEngine {
     // Initialize pets for both fighters if they have them
     [this.fighter1, this.fighter2].forEach(fighter => {
       if (fighter.petType) {
-        fighter.pet = createPet(fighter.petType, fighter);
+        fighter.pet = createPet(fighter.petType, fighter, this.rng);
       }
     });
   }
@@ -101,6 +154,16 @@ export class CombatEngine {
       timestamp: Date.now(),
       ...data
     });
+  }
+
+  // Debug logging (instrumentation)
+  logDebug(event, data = {}) {
+    if (!this.debug) return;
+    try {
+      this.debugLogs.push({ turn: this.currentTurn, event, ...data });
+    } catch (_) {
+      // no-op
+    }
   }
   
   // Track consecutive actions for achievements
@@ -173,11 +236,9 @@ export class CombatEngine {
     // Initiative = baseInitiative + (speed * 0.01) + random(0, 0.1)
     // Plus l'initiative est BASSE, plus on joue TÔT (comme LaBrute officiel)
     
-    this.fighter1.stats.initiative = 
-      this.fighter1.stats.baseInitiative - (this.fighter1.stats.speed * 0.01) + Math.random() * 0.1;
+    this.fighter1.stats.initiative = this.formulas.computeInitiative(this.fighter1.stats, this.rng);
     
-    this.fighter2.stats.initiative = 
-      this.fighter2.stats.baseInitiative - (this.fighter2.stats.speed * 0.01) + Math.random() * 0.1;
+    this.fighter2.stats.initiative = this.formulas.computeInitiative(this.fighter2.stats, this.rng);
     
     // Déterminer l'ordre de jeu (le plus petit joue en premier)
     if (this.fighter1.stats.initiative <= this.fighter2.stats.initiative) {
@@ -190,18 +251,32 @@ export class CombatEngine {
     this.currentInitiativeIndex = 0;
     this.activePlayer = this.initiativeOrder[0];
     this.roundComplete = false;
+    this.logDebug('initiative', {
+      f1: { name: this.fighter1.stats.name, base: this.fighter1.stats.baseInitiative, speed: this.fighter1.stats.speed, value: this.fighter1.stats.initiative },
+      f2: { name: this.fighter2.stats.name, base: this.fighter2.stats.baseInitiative, speed: this.fighter2.stats.speed, value: this.fighter2.stats.initiative },
+      order: this.initiativeOrder.map(f => f.stats.name)
+    });
   }
   
   executeTurn() {
     // Prevent multiple simultaneous turn executions
     if (this.turnInProgress) {
-      // Silently skip
+      // Guard: avoid re-entrancy
+      this.logDebug('turn_busy', { currentTurn: this.currentTurn, active: this.activePlayer ? this.activePlayer.stats.name : null });
       return null;
     }
     
     // Safety check for valid fighters
     if (!this.activePlayer || this.activePlayer.stats.health <= 0) {
-      // Invalid state, reset
+      this.logDebug('invalid_active', {
+        currentTurn: this.currentTurn,
+        active: this.activePlayer && this.activePlayer.stats ? { name: this.activePlayer.stats.name, hp: this.activePlayer.stats.health } : null,
+        f1: { name: this.fighter1.stats.name, hp: this.fighter1.stats.health },
+        f2: { name: this.fighter2.stats.name, hp: this.fighter2.stats.health },
+      });
+      // Minimal recovery: recompute initiative to restore a valid active player next call
+      try { this.calculateInitiative(); } catch (_) { /* no-op */ }
+      // Reset lock and return null for this tick
       this.turnInProgress = false;
       return null;
     }
@@ -213,16 +288,17 @@ export class CombatEngine {
       const attacker = this.activePlayer;
       const defender = attacker === this.fighter1 ? this.fighter2 : this.fighter1;
       
-      // Ensure defender is valid
-      if (!defender || defender.stats.health <= 0) {
+      // Ensure defender is valid - remove the health check here
+      // Death should only happen from actual damage, not from pre-turn checks
+      if (!defender) {
         this.turnInProgress = false;
         return {
-          type: 'victory',
+          type: 'error',
           attacker: attacker,
           target: defender,
-          message: `${attacker.stats.name} wins!`,
-          gameOver: true,
-          winner: attacker
+          message: `No valid defender!`,
+          gameOver: false,
+          winner: null
         };
       }
       
@@ -267,10 +343,28 @@ export class CombatEngine {
       }
       
       // Decide between normal attack, special move, or weapon throw
-      const useSpecialMove = attacker.specialMoves.unlocked.length > 0 && Math.random() < 0.3;
+      const useSpecialMove = attacker.specialMoves.unlocked.length > 0 && this.rng.chance(0.3);
+      
+      // Calculate weapon throw chance using official LaBrute formula
+      let throwChance = 0;
+      if (attacker.hasWeapon) {
+        const weaponData = this.getWeaponData(attacker.weaponType);
+        if (weaponData) {
+          // Check if it's a thrown-type weapon (shuriken, piopio, noodleBowl)
+          const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
+          if (thrownWeapons.includes(attacker.weaponType)) {
+            throwChance = 0.5; // 50% for thrown-type weapons
+          } else {
+            // Formula: 1/(33 - tempo*5) for normal weapons
+            const tempo = weaponData.tempo || 1.2;
+            throwChance = 1 / Math.max(10, 33 - tempo * 5);
+          }
+        }
+      }
+      
       // Prevent throwing if a weapon was thrown in the last 2 turns to avoid simultaneous throws
       const canThrowWeapon = attacker.hasWeapon && (this.currentTurn - this.lastWeaponThrowTurn) > 2;
-      const throwWeapon = canThrowWeapon && Math.random() < 0.15; // 15% chance to throw weapon
+      const throwWeapon = canThrowWeapon && this.rng.chance(throwChance);
       
       let result;
       if (throwWeapon && attacker.stats.stamina >= 35) {
@@ -339,7 +433,7 @@ export class CombatEngine {
     //   multiAttackChance += this.specialMoves.lightningReflexes.multiplier;
     // }
     // Ensure we have a chance and enough stamina
-    if (multiAttackChance > 0 && Math.random() < multiAttackChance && attacker.stats.stamina >= 15) {
+    if (multiAttackChance > 0 && this.rng.chance(multiAttackChance) && attacker.stats.stamina >= 15) {
       // Stamina cost for extra attack
       attacker.stats.stamina -= 15;
       
@@ -431,15 +525,15 @@ export class CombatEngine {
     attacker.stats.stamina -= 20;
     
     // Check for counter-attack chance BEFORE the attack
-    const counterChance = (defender.stats.counter || 0) * 0.01; // Base 1% per counter point
-    const counterRoll = Math.random();
-    const willCounter = counterRoll < counterChance && defender.stats.stamina >= 25;
+    const counterChance = this.formulas.computeCounterChance(defender.stats);
+    const willCounter = defender.stats.stamina >= 25 && this.rng.chance(counterChance);
+    this.logDebug('counter_check', { attacker: attacker.stats.name, defender: defender.stats.name, counterChance, willCounter, defenderStamina: defender.stats.stamina });
     
     if (willCounter) {
       defender.stats.stamina -= 25;
       
-      // Calculate counter damage (50% of defender's strength)
-      const counterDamage = Math.floor(defender.stats.strength * 0.5 * (0.8 + Math.random() * 0.4));
+      // Calculate counter damage
+      const counterDamage = this.formulas.computeCounterDamage(defender.stats, this.rng);
       attacker.stats.health = Math.max(0, attacker.stats.health - counterDamage);
       
       // Track consecutive counter
@@ -458,10 +552,10 @@ export class CombatEngine {
     }
     
     // Block check based on defender's defense stat
-    const blockChance = defender.stats.defense * 0.01; // 1% chance to block per defense point
+    const blockChance = this.formulas.computeBlockChance(defender.stats);
     const hasStaminaForBlock = defender.stats.stamina >= 15;
-    const blockRoll = Math.random();
-    const blockSuccess = hasStaminaForBlock && blockRoll < blockChance;
+    const blockSuccess = hasStaminaForBlock && this.rng.float() < blockChance;
+    this.logDebug('block_check', { attacker: attacker.stats.name, defender: defender.stats.name, blockChance, hasStaminaForBlock, blockSuccess });
     
     // Show debug indicator for block calculation (guarded)
     if (defender.scene && typeof defender.scene.showBlockChanceIndicator === 'function') {
@@ -472,11 +566,9 @@ export class CombatEngine {
       defender.stats.stamina -= 15; // Stamina cost for blocking
       const damageReduction = 0.75; // 75% damage reduction
       
-      // Calculate original potential damage to show how much was blocked
-      let potentialDamage = Math.floor(attacker.stats.strength * (0.75 + (Math.random() * 0.5)));
-      let blockedDamage = Math.floor(potentialDamage * damageReduction);
-      let finalDamage = potentialDamage - blockedDamage;
-      defender.stats.health = Math.max(0, defender.stats.health - finalDamage);
+      // Compute blocked damage via formulas adapter
+      const finalBlockedDamage = this.formulas.computeBlockDamage(attacker.stats, this.rng, damageReduction);
+      defender.stats.health = Math.max(0, defender.stats.health - finalBlockedDamage);
       
       // Track consecutive block
       this.updateConsecutiveStats(defender, 'block');
@@ -486,16 +578,16 @@ export class CombatEngine {
         attacker: attacker,
         target: defender,
         hit: true,
-        damage: finalDamage,
-        message: `🛡️ ${defender.stats.name} blocks the attack, taking only ${finalDamage} damage!`
+        damage: finalBlockedDamage,
+        message: `🛡️ ${defender.stats.name} blocks the attack, taking only ${finalBlockedDamage} damage!`
       };
     }
     
     // Dodge check based on defender's agility
     // AGI provides a 0.8% chance to dodge per point.
-    const dodgeChance = defender.stats.agility * 0.008;
-    const dodgeRoll = Math.random();
-    const dodgeSuccess = dodgeRoll < dodgeChance;
+    const dodgeChance = this.formulas.computeDodgeChance(defender.stats);
+    const dodgeSuccess = this.rng.float() < dodgeChance;
+    this.logDebug('dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
     
     // Show debug indicator for dodge calculation (guarded)
     if (defender.scene && typeof defender.scene.showDodgeChanceIndicator === 'function') {
@@ -517,56 +609,12 @@ export class CombatEngine {
       };
     }
     
-    // Base accuracy
-    let accuracy = 0.75;
-    
-    // Adrenaline rush DISABLED for faster combat
-    // if (attacker.specialMoves.active.adrenalineRush) {
-    //   accuracy *= this.specialMoves.adrenalineRush.multiplier;
-    // }
-    
-    // Weapon accuracy modifiers
-    switch (attacker.weaponType) {
-      case 'hammer':
-        accuracy -= 0.15; // Hammers are slower but hit harder
-        break;
-      case 'axe':
-        accuracy -= 0.10; // Axes are heavy and unwieldy
-        break;
-      case 'dagger':
-        accuracy += 0.10; // Daggers are fast and precise
-        break;
-      case 'spear':
-        accuracy += 0.05; // Spears have good reach and balance
-        break;
-      case 'staff':
-        accuracy -= 0.05; // Staves are more defensive weapons
-        break;
-      case 'sword':
-        // Swords have no accuracy modifier (balanced weapon)
-        break;
-      case 'bow':
-        accuracy += 0.15; // Bows are ranged and precise
-        break;
-      case 'mace':
-        accuracy -= 0.12; // Maces are heavy and cumbersome
-        break;
-      case 'whip':
-        accuracy += 0.08; // Whips have good reach but require skill
-        break;
-      case 'trident':
-        accuracy += 0.07; // Tridents have excellent reach and control
-        break;
-      case 'katana':
-        accuracy += 0.12; // Katanas are expertly crafted for precision
-        break;
-      case 'flail':
-        accuracy -= 0.18; // Flails are unpredictable and hard to control
-        break;
-    }
+    // Base accuracy + weapon modifiers via formulas adapter
+    let accuracy = this.formulas.computeAccuracy(attacker.stats, attacker.weaponType);
     
     // RNG hit check
-    const hit = Math.random() < accuracy;
+    const hit = this.rng.float() < accuracy;
+    this.logDebug('hit_check', { attacker: attacker.stats.name, defender: defender.stats.name, accuracy, hit, weaponType: attacker.weaponType });
     
     if (!hit) {
       return {
@@ -579,17 +627,8 @@ export class CombatEngine {
       };
     }
     
-    // Calculate damage
-    let baseDamage = attacker.stats.strength;
-    
-    // Apply weapon damage modifier
-    if (attacker.hasWeapon && attacker.weaponType) {
-      const weaponModifier = getWeaponDamageModifier(attacker.weaponType, attacker.stats);
-      baseDamage *= weaponModifier;
-    } else {
-      // No weapon - small boost for fists
-      baseDamage *= 1.05;
-    }
+    // Calculate base damage via formulas adapter
+    let baseDamage = this.formulas.computeBaseDamage(attacker.stats, attacker.hasWeapon, attacker.weaponType);
     
     // Berserker rage DISABLED for faster combat
     // if (attacker.specialMoves.active.berserkerRage) {
@@ -597,7 +636,7 @@ export class CombatEngine {
     // }
     
     // RNG damage variation (±25%)
-    const damageVariation = 0.75 + (Math.random() * 0.5);
+    const damageVariation = this.formulas.computeDamageVariation(this.rng);
     let finalDamage = Math.floor(baseDamage * damageVariation * damageModifier);
     
     // Apply defense
@@ -608,24 +647,32 @@ export class CombatEngine {
     //   finalDamage *= this.specialMoves.defensiveShield.multiplier;
     // }
     
-    finalDamage = Math.max(1, finalDamage - effectiveDefense);
+    // La défense réduit les dégâts mais ne peut pas les annuler complètement
+    // Minimum 1 dégât si l'attaque touche
+    finalDamage = Math.max(1, finalDamage - Math.floor(effectiveDefense * 0.5));
     
-    // Weapon-specific critical hit chances
-    let criticalChance = 0.10; // Base 10% chance
-    
-    if (attacker.hasWeapon && attacker.weaponType && weaponStats[attacker.weaponType]) {
-      criticalChance = weaponStats[attacker.weaponType].critChance || 0.10;
-    }
-    
-    const critical = Math.random() < criticalChance;
+    // Weapon-specific critical hit chances via formulas adapter
+    const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
+    const critical = this.rng.float() < criticalChance;
     if (critical) {
       finalDamage *= 2;
     }
+    this.logDebug('damage_calc', {
+      attacker: attacker.stats.name,
+      defender: defender.stats.name,
+      baseDamage,
+      damageVariation,
+      effectiveDefense,
+      criticalChance,
+      critical,
+      finalDamage,
+      damageModifier
+    });
     
     // Vampiric healing DISABLED for faster combat
     // if (attacker.specialMoves.active.vampiricStrike) {
     //   const healing = Math.floor(finalDamage * this.specialMoves.vampiricStrike.multiplier);
-    //   attacker.stats.health = Math.min(attacker.stats.maxHealth, attacker.stats.health + healing);
+    //   attacker.stats.health = Math.min(attacker.stats.health + healing, attacker.stats.maxHealth);
     // }
     
     // Apply damage (special handling for backups)
@@ -653,12 +700,12 @@ export class CombatEngine {
     let comboMessage = '';
     if (this.lastAttacker === attacker && hit) {
       // Base combo chance from stats
-      const comboChance = (attacker.stats.combo || 0) * 0.15; // 15% per combo point
+      const comboChance = this.formulas.computeComboChance(attacker.stats);
       
-      if (Math.random() < comboChance) {
+      if (this.rng.chance(comboChance)) {
         // Determine combo length (3-5 hits)
-        const maxCombo = Math.min(5, 3 + Math.floor((attacker.stats.combo || 0) / 2));
-        comboHits = Math.floor(Math.random() * (maxCombo - 2)) + 3; // 3 to maxCombo hits
+        const maxCombo = this.formulas.computeMaxCombo(attacker.stats);
+        comboHits = this.rng.int(3, maxCombo); // 3 to maxCombo hits
         
         // Execute combo hits
         let totalComboDamage = 0;
@@ -671,6 +718,7 @@ export class CombatEngine {
         
         comboMessage = ` COMBO x${comboHits}! (+${totalComboDamage} damage)`;
         this.comboCounter[attacker.stats.name] = comboHits;
+        this.logDebug('combo', { attacker: attacker.stats.name, comboChance, comboHits, maxCombo, totalDamage: totalComboDamage });
       }
     }
     
@@ -706,7 +754,7 @@ export class CombatEngine {
     const skills = fighter.stats.skills || [];
     
     // Haste - chance for extra attack
-    if (skills.includes('haste') && Math.random() < 0.15) {
+    if (skills.includes('haste') && this.rng.chance(0.15)) {
       console.log(`${fighter.stats.name} moves with incredible speed! (Haste)`);
       this.addCombatStep('skill_activate', { 
         fighter: fighter.stats.name, 
@@ -717,7 +765,7 @@ export class CombatEngine {
     }
     
     // Treat - healing ability
-    if (skills.includes('treat') && fighter.stats.health < fighter.stats.maxHealth * 0.5 && Math.random() < 0.2) {
+    if (skills.includes('treat') && fighter.stats.health < fighter.stats.maxHealth * 0.5 && this.rng.chance(0.2)) {
       const healAmount = Math.floor(fighter.stats.maxHealth * 0.15);
       fighter.stats.health = Math.min(fighter.stats.health + healAmount, fighter.stats.maxHealth);
       console.log(`${fighter.stats.name} heals for ${healAmount} HP! (Treat)`);
@@ -731,7 +779,7 @@ export class CombatEngine {
     }
     
     // Fast Metabolism - passive regen
-    if (skills.includes('fastMetabolism') && Math.random() < 0.3) {
+    if (skills.includes('fastMetabolism') && this.rng.chance(0.3)) {
       const regenAmount = Math.floor(fighter.stats.maxHealth * 0.05);
       fighter.stats.health = Math.min(fighter.stats.health + regenAmount, fighter.stats.maxHealth);
       console.log(`${fighter.stats.name} regenerates ${regenAmount} HP! (Fast Metabolism)`);
@@ -744,7 +792,7 @@ export class CombatEngine {
     }
     
     // Hideaway - temporary evasion boost
-    if (skills.includes('hideaway') && fighter.stats.health < fighter.stats.maxHealth * 0.3 && Math.random() < 0.25) {
+    if (skills.includes('hideaway') && fighter.stats.health < fighter.stats.maxHealth * 0.3 && this.rng.chance(0.25)) {
       fighter.temporaryEvasion = (fighter.temporaryEvasion || 0) + 0.5;
       console.log(`${fighter.stats.name} hides in the shadows! (Hideaway)`);
       this.addCombatStep('skill_activate', { 
@@ -765,7 +813,7 @@ export class CombatEngine {
     attacker.stats.stamina -= 40;
     
     // Select random unlocked special move
-    const randomMove = attacker.specialMoves.unlocked[Math.floor(Math.random() * attacker.specialMoves.unlocked.length)];
+    const randomMove = attacker.specialMoves.unlocked[this.rng.int(0, attacker.specialMoves.unlocked.length - 1)];
     const moveData = this.specialMoves[randomMove];
     
     // Activate the special move
@@ -796,7 +844,7 @@ export class CombatEngine {
     // Check each available move for unlock
     for (const moveKey of availableMoves) {
       const move = this.specialMoves[moveKey];
-      if (Math.random() < move.unlockChance) {
+      if (this.rng.chance(move.unlockChance)) {
         fighter.specialMoves.unlocked.push(moveKey);
         return move;
       }
@@ -832,8 +880,8 @@ export class CombatEngine {
     
     // Defender can try to dodge the throw
     const dodgeChance = defender.stats.agility * 0.006; // Lower dodge chance vs throws
-    const dodgeRoll = Math.random();
-    const dodgeSuccess = dodgeRoll < dodgeChance;
+    const dodgeSuccess = this.rng.float() < dodgeChance;
+    this.logDebug('throw_dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
     
     // Show debug indicator for weapon throw dodge calculation (guarded)
     if (defender.scene && typeof defender.scene.showDodgeChanceIndicator === 'function') {
@@ -841,7 +889,11 @@ export class CombatEngine {
     }
     
     if (dodgeSuccess) {
-      attacker.hasWeapon = false; // Weapon is still lost
+      // Check if weapon is kept (thrown-type weapons)
+      const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
+      if (!thrownWeapons.includes(attacker.weaponType)) {
+        attacker.hasWeapon = false; // Normal weapon is lost
+      }
       
       // Track consecutive dodge
       this.updateConsecutiveStats(defender, 'evade');
@@ -853,7 +905,7 @@ export class CombatEngine {
         hit: false,
         damage: 0,
         weaponLost: true,
-        message: `💨 ${defender.stats.name} dodges the ${attacker.weaponType}!`,
+        message: ` ${defender.stats.name} dodges the ${attacker.weaponType}!`,
         dodgedAction: 'throw'
       };
     }
@@ -875,11 +927,16 @@ export class CombatEngine {
     }
     
     // RNG hit check
-    const hit = Math.random() < accuracy;
+    const hit = this.rng.chance(accuracy);
+    this.logDebug('throw_hit_check', { attacker: attacker.stats.name, defender: defender.stats.name, accuracy, hit, weaponType: attacker.weaponType });
     
     if (!hit) {
       // Weapon is still thrown and lost even on miss
-      attacker.hasWeapon = false;
+      // Check if weapon is kept (thrown-type weapons)
+      const thrownWeapons2 = ['shuriken', 'piopio', 'noodleBowl'];
+      if (!thrownWeapons2.includes(attacker.weaponType)) {
+        attacker.hasWeapon = false; // Normal weapon is lost
+      }
       
       return {
         type: 'throw',
@@ -920,7 +977,7 @@ export class CombatEngine {
     // }
     
     // RNG damage variation
-    const damageVariation = 0.8 + (Math.random() * 0.4); // Less variation for throws
+    const damageVariation = 0.8 + (this.rng.float() * 0.4); // Less variation for throws
     let finalDamage = Math.floor(baseDamage * damageVariation);
     
     // Apply defense (reduced effectiveness against thrown weapons)
@@ -934,10 +991,19 @@ export class CombatEngine {
     finalDamage = Math.max(2, finalDamage - effectiveDefense); // Minimum 2 damage for throws
     
     // Higher critical hit chance for throws (15%)
-    const critical = Math.random() < 0.15;
+    const critical = this.rng.chance(0.15);
     if (critical) {
       finalDamage *= 2.2; // Slightly higher crit multiplier
     }
+    this.logDebug('throw_damage_calc', {
+      attacker: attacker.stats.name,
+      defender: defender.stats.name,
+      baseDamage,
+      damageVariation,
+      effectiveDefense,
+      critical,
+      finalDamage
+    });
     
     // Vampiric healing (if active)
     if (attacker.specialMoves.active.vampiricStrike) {
@@ -948,8 +1014,13 @@ export class CombatEngine {
     // Apply damage
     defender.stats.health = Math.max(0, defender.stats.health - finalDamage);
     
-    // Weapon is lost after throwing
-    attacker.hasWeapon = false;
+    // Check if weapon is kept after throwing (thrown-type weapons)
+    const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
+    if (!thrownWeapons.includes(attacker.weaponType)) {
+      // Normal weapon is lost after throwing
+      attacker.hasWeapon = false;
+    }
+    // Thrown-type weapons are kept
     
     // Track consecutive throws
     this.updateConsecutiveStats(attacker, 'throw');
@@ -970,49 +1041,52 @@ export class CombatEngine {
       weaponLost: true,
       message: `${attacker.stats.name} hurls their ${attacker.weaponType} for ${finalDamage} damage!${critText}${rageText}${shieldText}${lifeStealText} Weapon is lost!`
     };
-    
-    // SAFETY CHECK: Validate hit detection consistency
-    return this.validateCombatResult(result);
+    return result;
   }
-  
+
   switchTurns() {
-    // Passer au prochain joueur dans l'ordre d'initiative
+    // Passer au joueur suivant dans l'ordre d'initiative, sans toucher à currentTurn
+    const prevPlayer = this.activePlayer;
+    const prevName = prevPlayer && prevPlayer.stats ? prevPlayer.stats.name : null;
+    const prevIndex = this.currentInitiativeIndex;
+
     this.currentInitiativeIndex++;
-    
-    // Si on a fini un round complet (les 2 ont joué)
+
     if (this.currentInitiativeIndex >= this.initiativeOrder.length) {
+      // Fin de round: on recalcule l'initiative (définit activePlayer au premier)
       this.currentInitiativeIndex = 0;
       this.roundComplete = true;
-      // Recalculer l'initiative pour le prochain round
       this.calculateInitiative();
     } else {
-      // Passer au prochain dans l'ordre
       this.activePlayer = this.initiativeOrder[this.currentInitiativeIndex];
     }
-    
-    // SAFETY CHECK - ensure active player is valid
-    if (!this.activePlayer || this.activePlayer.stats.health <= 0) {
-      // Find a valid player
-      if (this.fighter1.stats.health > 0) {
-        this.activePlayer = this.fighter1;
-      } else if (this.fighter2.stats.health > 0) {
-        this.activePlayer = this.fighter2;
+
+    // Filet de sécurité: s'assurer que le joueur actif est valide et vivant
+    if (!this.activePlayer || !this.activePlayer.stats || this.activePlayer.stats.health <= 0) {
+      if (this.fighter1.stats.health > 0 && this.fighter2.stats.health > 0) {
+        this.activePlayer = prevPlayer === this.fighter1 ? this.fighter2 : this.fighter1;
+      } else {
+        this.activePlayer = this.fighter1.stats.health > 0 ? this.fighter1 : this.fighter2;
       }
     }
-    
-    // Reset combo if switching to different attacker
-    const previousPlayer = this.activePlayer === this.fighter1 ? this.fighter2 : this.fighter1;
-    if (this.lastAttacker !== this.activePlayer) {
-      this.comboCounter[previousPlayer.stats.name] = 0;
+
+    // Reset du combo du joueur précédent si le joueur actif a changé
+    if (prevPlayer && this.activePlayer && prevPlayer !== this.activePlayer) {
+      const key = prevPlayer.stats && prevPlayer.stats.name;
+      if (key && this.comboCounter && Object.prototype.hasOwnProperty.call(this.comboCounter, key)) {
+        this.comboCounter[key] = 0;
+      }
     }
-    
-    // Incrémenter le tour
-    this.currentTurn++;
-  }
-  
-  // Validate that the given fighter is the active player
-  isActivePlayer(fighter) {
-    return this.activePlayer === fighter && !this.turnInProgress;
+
+    // Log de debug pour tracer les changements de tour
+    this.logDebug('turn_switch', {
+      prev: prevName,
+      next: this.activePlayer && this.activePlayer.stats ? this.activePlayer.stats.name : null,
+      prevIndex,
+      nextIndex: this.currentInitiativeIndex,
+      order: Array.isArray(this.initiativeOrder) ? this.initiativeOrder.map(f => f.stats.name) : [],
+      roundComplete: this.roundComplete === true
+    });
   }
   
   // Combat result validation system
@@ -1191,7 +1265,7 @@ export class CombatEngine {
       },
       master: master,
       isBackup: true,
-      arrivesAtTurn: Math.floor(Math.random() * 5) + 3, // Arrives turn 3-7
+      arrivesAtTurn: this.rng.int(3, 7), // Arrives turn 3-7
       leavesAtTurn: null, // Will be set when arrives
       remainingTime: 2.8, // Stays for 2.8 "seconds" worth of turns
       side: master.side,
@@ -1236,7 +1310,7 @@ export class CombatEngine {
       master: backup.master.stats.name 
     });
     
-    console.log(`💫 ${backup.stats.name} arrives to help!`);
+    console.log(` ${backup.stats.name} arrives to help!`);
   }
   
   deactivateBackup(backup) {
@@ -1247,7 +1321,7 @@ export class CombatEngine {
       backup: backup.stats.name 
     });
     
-    console.log(`👋 ${backup.stats.name} leaves the battlefield!`);
+    console.log(` ${backup.stats.name} leaves the battlefield!`);
   }
   
   handleBackupDamage(backup, damage) {
@@ -1255,7 +1329,7 @@ export class CombatEngine {
     const timeReduction = damage * 0.05; // 5% per damage point
     backup.remainingTime = Math.max(0, backup.remainingTime - timeReduction);
     
-    console.log(`⏱️ ${backup.stats.name} time reduced by ${timeReduction.toFixed(2)} (${damage} damage)`);
+    console.log(` ${backup.stats.name} time reduced by ${timeReduction.toFixed(2)} (${damage} damage)`);
   }
   
   getRandomTarget(attacker) {
@@ -1278,17 +1352,17 @@ export class CombatEngine {
     });
     
     // Return random target or null if none available
-    return targets.length > 0 ? targets[Math.floor(Math.random() * targets.length)] : null;
+    return targets.length > 0 ? targets[this.rng.int(0, targets.length - 1)] : null;
   }
   
   executeBackupActions() {
     // Give each active backup a chance to act (25% per turn)
     for (const backup of this.activeBackups) {
-      if (Math.random() < 0.25) {
+      if (this.rng.chance(0.25)) {
         const target = this.getRandomTarget(backup);
         if (target) {
           // Backup performs a simple attack
-          const damage = Math.floor(backup.stats.strength * 0.8 + Math.random() * 10);
+          const damage = Math.floor(backup.stats.strength * 0.8 + this.rng.float() * 10);
           
           if (target.isBackup) {
             this.handleBackupDamage(target, damage);
