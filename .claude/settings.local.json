@@ -22,7 +22,10 @@
       "Bash(cp:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(del serverprismanul)"
+      "Bash(del serverprismanul)",
+      "Bash(cmd /c:*)",
+      "Bash(start http://localhost:5174/hub-ultra.html)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []

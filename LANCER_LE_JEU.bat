@@ -1,3 +1,0 @@
-@echo off
-echo Lancement de LaBrute V04...
-start index_auto.html
