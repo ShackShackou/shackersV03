@@ -25,7 +25,20 @@
       "Bash(del serverprismanul)",
       "Bash(cmd /c:*)",
       "Bash(start http://localhost:5174/hub-ultra.html)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(start http://localhost:5175/)",
+      "Bash(start http://localhost:4000/mmo-test.html)",
+      "Bash(start http://localhost:5174/)",
+      "Bash(start http://localhost:5174/test-combat-debug.html)",
+      "Bash(start http://localhost:4000/mmo-test-fixed.html)",
+      "Bash(start http://localhost:5174/test-hp-bars.html)",
+      "Bash(start http://localhost:5174/test-combat-placeholders.html)",
+      "Bash(start http://localhost:5174/test-spine-anims-list.html)",
+      "Bash(start http://localhost:5174/test-combat-mechanics.html)",
+      "Bash(start http://localhost:5174/placeholder-game.html)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

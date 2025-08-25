@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LaBrute - Placeholder Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 3px;
+            display: block;
+            width: 100%;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        select {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+        }
+        .info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="phaser-game"></div>
+        
+        <div class="controls">
+            <h3 style="color: #0f0; margin: 0 0 10px 0;">Combat Test</h3>
+            
+            <label style="color: #0f0;">Fighter 1:</label>
+            <select id="fighter1">
+                <option value="tank">Tank (150 HP)</option>
+                <option value="agile">Balanced (130 HP)</option>
+                <option value="berserker">Berserker (140 HP)</option>
+                <option value="assassin">Speed (120 HP)</option>
+            </select>
+            
+            <label style="color: #0f0;">Fighter 2:</label>
+            <select id="fighter2">
+                <option value="agile">Balanced (130 HP)</option>
+                <option value="tank">Tank (150 HP)</option>
+                <option value="berserker">Berserker (140 HP)</option>
+                <option value="assassin">Speed (120 HP)</option>
+            </select>
+            
+            <button onclick="startFight()">⚔️ Start Fight</button>
+            <button onclick="location.reload()">🔄 Reset</button>
+        </div>
+        
+        <div class="info" id="info">
+            Ready to fight...
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script type="module">
+        import { FightScenePlaceholder } from '/src/scenes/FightScenePlaceholder.js';
+        
+        let game = null;
+        let currentScene = null;
+        
+        // Initialize Phaser
+        const config = {
+            type: Phaser.AUTO,
+            width: 1024,
+            height: 768,
+            parent: 'phaser-game',
+            backgroundColor: '#1a1a1a',
+            scene: []
+        };
+        
+        game = new Phaser.Game(config);
+        
+        // Start fight function
+        window.startFight = async function() {
+            const profile1 = document.getElementById('fighter1').value;
+            const profile2 = document.getElementById('fighter2').value;
+            
+            document.getElementById('info').textContent = 'Requesting fight from server...';
+            
+            try {
+                // Request fight from server
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile1, profile2 })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Server request failed');
+                }
+                
+                const fightData = await response.json();
+                console.log('Fight data received:', fightData);
+                
+                // Prepare scene data
+                const sceneData = {
+                    a: fightData.fight.fighters[0],
+                    b: fightData.fight.fighters[1],
+                    steps: fightData.steps,
+                    background: 'bg-06_36_37'
+                };
+                
+                // Stop current scene if exists
+                if (currentScene) {
+                    game.scene.stop('FightPlaceholder');
+                    game.scene.remove('FightPlaceholder');
+                }
+                
+                // Add and start new scene
+                game.scene.add('FightPlaceholder', FightScenePlaceholder, true, sceneData);
+                currentScene = game.scene.getScene('FightPlaceholder');
+                
+                document.getElementById('info').textContent = `Fight started: ${fightData.fight.fighters[0].name} vs ${fightData.fight.fighters[1].name}`;
+                
+            } catch (error) {
+                console.error('Error starting fight:', error);
+                document.getElementById('info').textContent = `Error: ${error.message}`;
+            }
+        };
+        
+        // Auto-start with default fighters on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('info').textContent = 'Click "Start Fight" to begin';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

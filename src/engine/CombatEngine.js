@@ -17,7 +17,12 @@ export class CombatEngine {
     // Utiliser le moteur LaBrute si spécifié
     if (options.useLaBrute !== false) {
       console.log('[CombatEngine] Utilisation du système LaBrute complet');
-      return new LaBruteCombatEngine(fighter1, fighter2, options);
+      // LaBruteCombatEngine attend un RNG, pas un objet options
+      const rng = options.rng || new RNG();
+      const labEngine = new LaBruteCombatEngine(fighter1, fighter2, rng.random ? rng.random.bind(rng) : rng);
+      // Copier la propriété turnInProgress pour la compatibilité
+      labEngine.turnInProgress = false;
+      return labEngine;
     }
     this.fighter1 = fighter1;
     this.fighter2 = fighter2;

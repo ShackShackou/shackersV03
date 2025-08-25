@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaBrute MMO Test - FIXED</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background: #2a2a2a;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .fighter-card {
+            background: #333;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            display: inline-block;
+            width: 45%;
+            margin-right: 2%;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: #222;
+            border: 1px solid #00ff00;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s ease;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .combat-log {
+            background: #000;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.success { background: #003300; border: 1px solid #00ff00; }
+        .status.error { background: #330000; border: 1px solid #ff0000; }
+        .status.info { background: #003333; border: 1px solid #00ffff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ LaBrute MMO Combat Test - FIXED VERSION ⚔️</h1>
+
+        <div class="section">
+            <h2>⚔️ Combat Engine Test</h2>
+            <div id="combatStatus" class="status info">Ready to test combat</div>
+            
+            <div class="fighter-card">
+                <h3>🛡️ <span id="fighter1-name">Fighter 1</span></h3>
+                <div>HP: <span id="fighter1-hp">-</span>/<span id="fighter1-maxhp">-</span></div>
+                <div class="hp-bar"><div id="fighter1-hp-bar" class="hp-fill" style="width: 100%"></div></div>
+                <div id="fighter1-stats">Loading...</div>
+            </div>
+            
+            <div class="fighter-card">
+                <h3>⚡ <span id="fighter2-name">Fighter 2</span></h3>
+                <div>HP: <span id="fighter2-hp">-</span>/<span id="fighter2-maxhp">-</span></div>
+                <div class="hp-bar"><div id="fighter2-hp-bar" class="hp-fill" style="width: 100%"></div></div>
+                <div id="fighter2-stats">Loading...</div>
+            </div>
+            
+            <br>
+            <button onclick="testServerCombat()" id="combatBtn">🔥 Start Server Combat</button>
+            <button onclick="clearLog()">Clear Log</button>
+            
+            <div class="step-counter">
+                Combat Steps: <span id="stepCount">0</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📜 Combat Log</h2>
+            <div id="combatLog" class="combat-log">
+                === LaBrute MMO Combat Test ===<br>
+                Waiting for combat to start...<br>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:4000';
+        let currentFightData = null;
+        let stepCount = 0;
+        let fighterHP = [0, 0]; // Track actual HP
+
+        // Utility functions
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function logMessage(message) {
+            const log = document.getElementById('combatLog');
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
+            log.innerHTML += `[${timestamp}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('combatLog').innerHTML = '=== LaBrute MMO Combat Test ===<br>Waiting for combat to start...<br>';
+            stepCount = 0;
+            document.getElementById('stepCount').textContent = '0';
+        }
+
+        // Test server-side combat
+        async function testServerCombat() {
+            const status = document.getElementById('combatStatus');
+            const btn = document.getElementById('combatBtn');
+            
+            btn.disabled = true;
+            btn.textContent = '⚡ Requesting Combat...';
+            status.className = 'status info';
+            status.textContent = '📡 Requesting fight from server...';
+            
+            stepCount = 0;
+            document.getElementById('stepCount').textContent = stepCount;
+            
+            try {
+                logMessage('🔥 Testing server-side combat generation...');
+
+                // Request REAL combat from server
+                const response = await fetch(`${SERVER_URL}/api/fights/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile1: 'tank',
+                        profile2: 'agile'
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Fight generation failed');
+                
+                const fightData = await response.json();
+                currentFightData = fightData;
+                
+                // Get fighters from the correct structure
+                const fighters = fightData.fight.fighters;
+                const fighter1 = fighters[0];
+                const fighter2 = fighters[1];
+                
+                logMessage(`Fighter 1: ${fighter1.name} (${fighter1.maxHp} HP)`);
+                logMessage(`Fighter 2: ${fighter2.name} (${fighter2.maxHp} HP)`);
+                
+                // Initialize HP tracking with MAX HP
+                fighterHP[0] = fighter1.maxHp;
+                fighterHP[1] = fighter2.maxHp;
+                
+                console.log('=== COMBAT START ===');
+                console.log(`Fighter 0 (${fighter1.name}): ${fighterHP[0]} HP`);
+                console.log(`Fighter 1 (${fighter2.name}): ${fighterHP[1]} HP`);
+                
+                // Update HTML with fighter data
+                document.getElementById('fighter1-name').textContent = fighter1.name;
+                document.getElementById('fighter1-hp').textContent = fighter1.maxHp;
+                document.getElementById('fighter1-maxhp').textContent = fighter1.maxHp;
+                document.getElementById('fighter1-stats').textContent = 
+                    `STR: ${fighter1.strength} | AGI: ${fighter1.agility} | SPD: ${fighter1.speed}`;
+                document.getElementById('fighter1-hp-bar').style.width = '100%';
+                    
+                document.getElementById('fighter2-name').textContent = fighter2.name;
+                document.getElementById('fighter2-hp').textContent = fighter2.maxHp;
+                document.getElementById('fighter2-maxhp').textContent = fighter2.maxHp;
+                document.getElementById('fighter2-stats').textContent = 
+                    `STR: ${fighter2.strength} | AGI: ${fighter2.agility} | SPD: ${fighter2.speed}`;
+                document.getElementById('fighter2-hp-bar').style.width = '100%';
+                
+                // Process fight steps
+                await processFightSteps(fightData.steps, fighters);
+                
+                status.className = 'status success';
+                status.textContent = `✅ Combat completed! Winner: ${fightData.fight.winner}`;
+                
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Combat test failed: ${error.message}`;
+                console.error('Combat test error:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔥 Start Server Combat';
+            }
+        }
+
+        // Process fight steps for animation
+        async function processFightSteps(steps, fighters) {
+            logMessage(`🎬 Processing ${steps.length} combat steps...`);
+            
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                stepCount++;
+                document.getElementById('stepCount').textContent = stepCount;
+                
+                await animateStep(step, i, fighters);
+                
+                // Reduced delay for faster combat
+                await delay(200); // Much faster than 600ms
+            }
+        }
+
+        // Animate individual step
+        async function animateStep(step, index, fighters) {
+            // Step types from server (numeric)
+            const StepType = {
+                Arrive: 2,
+                Hit: 9,
+                Move: 15,
+                AttemptHit: 19,
+                Block: 20,
+                Evade: 21,
+                Death: 24,
+                End: 26
+            };
+            
+            switch (step.a) {
+                case StepType.Arrive: // 2
+                    if (fighters[step.f]) {
+                        logMessage(`👋 ${fighters[step.f].name} arrives`);
+                    }
+                    break;
+                    
+                case StepType.Hit: // 9 - CRITICAL: This is where damage happens!
+                    const attacker = fighters[step.f];
+                    const defender = fighters[step.t];
+                    if (attacker && defender && step.d !== undefined) {
+                        const critical = step.c === 1 ? ' (CRITICAL!)' : '';
+                        logMessage(`👊 ${attacker.name} hits ${defender.name} for ${step.d} damage${critical}`);
+                        
+                        // Update HP tracking
+                        fighterHP[step.t] -= step.d;
+                        if (fighterHP[step.t] < 0) fighterHP[step.t] = 0;
+                        
+                        // Update display
+                        updateFighterHP(step.t);
+                    }
+                    break;
+                    
+                case StepType.Evade: // 21
+                    if (fighters[step.f]) {
+                        logMessage(`🤸 ${fighters[step.f].name} evades the attack!`);
+                    }
+                    break;
+                    
+                case StepType.Block: // 20
+                    if (fighters[step.f]) {
+                        logMessage(`🛡️ ${fighters[step.f].name} blocks the attack!`);
+                    }
+                    break;
+                    
+                case StepType.Death: // 24
+                    if (fighters[step.f]) {
+                        logMessage(`💀 ${fighters[step.f].name} is defeated!`);
+                    }
+                    break;
+                    
+                case StepType.End: // 26
+                    if (fighters[step.w] && fighters[step.l]) {
+                        logMessage(`🏆 Combat ends! Winner: ${fighters[step.w].name}`);
+                    }
+                    break;
+                    
+                case StepType.AttemptHit: // 19
+                    // Silent - just an attempt
+                    break;
+                    
+                default:
+                    // Ignore other steps
+                    break;
+            }
+        }
+
+        // Update fighter HP display - FIXED VERSION
+        function updateFighterHP(fighterIndex) {
+            const displayIndex = fighterIndex + 1; // Convert 0-based to 1-based for HTML IDs
+            const hpElement = document.getElementById(`fighter${displayIndex}-hp`);
+            const hpBarElement = document.getElementById(`fighter${displayIndex}-hp-bar`);
+            const maxHpElement = document.getElementById(`fighter${displayIndex}-maxhp`);
+            
+            if (!hpElement || !maxHpElement || !hpBarElement) {
+                console.error(`Fighter elements not found for index ${fighterIndex}`);
+                return;
+            }
+            
+            const maxHP = parseInt(maxHpElement.textContent);
+            const newHP = fighterHP[fighterIndex];
+            
+            // Update text
+            hpElement.textContent = newHP;
+            
+            // Update bar
+            const percentage = (newHP / maxHP) * 100;
+            hpBarElement.style.width = percentage + '%';
+            
+            console.log(`Fighter ${fighterIndex} HP: ${newHP}/${maxHP} (${percentage.toFixed(1)}%)`);
+        }
+
+        // Initialize
+        logMessage('🚀 LaBrute MMO Test System Initialized');
+        logMessage('📋 Architecture: Server-side Combat + Client-side Animation');
+        logMessage('🛡️ Anti-cheat: All combat logic runs on server');
+    </script>
+</body>
+</html>

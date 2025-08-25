@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test HP Bars - Debug</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .fighter {
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #0f0;
+            display: inline-block;
+            width: 300px;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 30px;
+            background: #333;
+            border: 2px solid #0f0;
+            margin: 10px 0;
+            position: relative;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #000;
+            border: 1px solid #0f0;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test HP Bars - Debug Visual</h1>
+    
+    <div class="fighter">
+        <h2>Fighter 1: Tank</h2>
+        <div>HP: <span id="hp1">150</span>/150</div>
+        <div class="hp-bar">
+            <div id="bar1" class="hp-fill" style="width: 100%"></div>
+        </div>
+    </div>
+    
+    <div class="fighter">
+        <h2>Fighter 2: Balanced</h2>
+        <div>HP: <span id="hp2">130</span>/130</div>
+        <div class="hp-bar">
+            <div id="bar2" class="hp-fill" style="width: 100%"></div>
+        </div>
+    </div>
+    
+    <div style="clear: both;"></div>
+    
+    <button onclick="hit1(20)">Hit Fighter 1 (-20)</button>
+    <button onclick="hit2(25)">Hit Fighter 2 (-25)</button>
+    <button onclick="simulateCombat()">Simulate Real Combat</button>
+    <button onclick="reset()">Reset</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let hp1 = 150, maxHp1 = 150;
+        let hp2 = 130, maxHp2 = 130;
+        
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            logEl.innerHTML += msg + '<br>';
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+        
+        function hit1(damage) {
+            hp1 = Math.max(0, hp1 - damage);
+            updateHP(1, hp1, maxHp1);
+            log(`Fighter 1 takes ${damage} damage. HP: ${hp1}/${maxHp1}`);
+        }
+        
+        function hit2(damage) {
+            hp2 = Math.max(0, hp2 - damage);
+            updateHP(2, hp2, maxHp2);
+            log(`Fighter 2 takes ${damage} damage. HP: ${hp2}/${maxHp2}`);
+        }
+        
+        function updateHP(fighterNum, currentHP, maxHP) {
+            const hpEl = document.getElementById(`hp${fighterNum}`);
+            const barEl = document.getElementById(`bar${fighterNum}`);
+            
+            hpEl.textContent = currentHP;
+            const percentage = (currentHP / maxHP) * 100;
+            barEl.style.width = percentage + '%';
+            
+            // Change color based on HP percentage
+            if (percentage > 60) {
+                barEl.style.background = 'linear-gradient(90deg, #00ff00, #00ff00)';
+            } else if (percentage > 30) {
+                barEl.style.background = 'linear-gradient(90deg, #ffff00, #ffff00)';
+            } else {
+                barEl.style.background = 'linear-gradient(90deg, #ff0000, #ff0000)';
+            }
+        }
+        
+        async function simulateCombat() {
+            reset();
+            log('=== Starting Combat Simulation ===');
+            
+            // Simulate real combat steps
+            const steps = [
+                { type: 'hit', target: 1, damage: 25 },
+                { type: 'hit', target: 2, damage: 30 },
+                { type: 'hit', target: 1, damage: 20 },
+                { type: 'hit', target: 2, damage: 35 },
+                { type: 'hit', target: 1, damage: 30 },
+                { type: 'hit', target: 2, damage: 40 },
+                { type: 'hit', target: 1, damage: 25 },
+                { type: 'hit', target: 2, damage: 25 }
+            ];
+            
+            for (const step of steps) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                if (step.target === 1) {
+                    hit1(step.damage);
+                } else {
+                    hit2(step.damage);
+                }
+                
+                if (hp1 <= 0) {
+                    log('Fighter 1 is defeated!');
+                    break;
+                }
+                if (hp2 <= 0) {
+                    log('Fighter 2 is defeated!');
+                    break;
+                }
+            }
+        }
+        
+        function reset() {
+            hp1 = maxHp1;
+            hp2 = maxHp2;
+            updateHP(1, hp1, maxHp1);
+            updateHP(2, hp2, maxHp2);
+            document.getElementById('log').innerHTML = '';
+            log('HP Reset to full');
+        }
+        
+        // Test on load
+        log('Test page loaded. Click buttons to test HP bars.');
+    </script>
+</body>
+</html>

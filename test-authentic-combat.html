@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Combat Authentique LaBrute</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .combat-arena {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .fighters {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .fighter-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            width: 45%;
+        }
+        .fighter-card h3 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+        .health-bars {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            align-items: center;
+        }
+        .health-bar-container {
+            width: 45%;
+            background: #333;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .health-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        .health-bar.left {
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+        }
+        .health-bar.right {
+            background: linear-gradient(90deg, #f44336, #ff9800);
+            float: right;
+        }
+        .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .vs {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .combat-log {
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid #667eea;
+            border-radius: 3px;
+        }
+        .log-entry.damage {
+            border-left-color: #f44336;
+        }
+        .log-entry.critical {
+            border-left-color: #ffd700;
+            background: rgba(255,215,0,0.1);
+        }
+        .log-entry.death {
+            border-left-color: #9c27b0;
+            background: rgba(156,39,176,0.1);
+        }
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .stat-card h4 {
+            margin: 5px 0;
+            color: #ffd700;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Test Combat Authentique LaBrute 🏛️</h1>
+        
+        <div class="combat-arena">
+            <div class="fighters">
+                <div class="fighter-card">
+                    <h3>⚔️ Combattant 1</h3>
+                    <div class="stat">
+                        <span>Force:</span>
+                        <span id="f1-strength">20</span>
+                    </div>
+                    <div class="stat">
+                        <span>Agilité:</span>
+                        <span id="f1-agility">15</span>
+                    </div>
+                    <div class="stat">
+                        <span>Vitesse:</span>
+                        <span id="f1-speed">10</span>
+                    </div>
+                    <div class="stat">
+                        <span>Endurance:</span>
+                        <span id="f1-endurance">15</span>
+                    </div>
+                </div>
+                
+                <div class="fighter-card">
+                    <h3>🛡️ Combattant 2</h3>
+                    <div class="stat">
+                        <span>Force:</span>
+                        <span id="f2-strength">15</span>
+                    </div>
+                    <div class="stat">
+                        <span>Agilité:</span>
+                        <span id="f2-agility">20</span>
+                    </div>
+                    <div class="stat">
+                        <span>Vitesse:</span>
+                        <span id="f2-speed">15</span>
+                    </div>
+                    <div class="stat">
+                        <span>Endurance:</span>
+                        <span id="f2-endurance">12</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="health-bars">
+                <div class="health-bar-container">
+                    <div class="health-bar left" id="health1" style="width: 100%">
+                        <span class="health-text" id="health1-text">140/140</span>
+                    </div>
+                </div>
+                <div class="vs">VS</div>
+                <div class="health-bar-container">
+                    <div class="health-bar right" id="health2" style="width: 100%">
+                        <span class="health-text" id="health2-text">122/122</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="startBtn">⚔️ Commencer le Combat</button>
+                <button id="stepBtn" disabled>➡️ Tour Suivant</button>
+                <button id="autoBtn" disabled>🎮 Mode Auto</button>
+                <button id="resetBtn">🔄 Réinitialiser</button>
+            </div>
+            
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <h4>Tours</h4>
+                    <div class="value" id="turnCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Dégâts Total F1</h4>
+                    <div class="value" id="totalDamage1">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Dégâts Total F2</h4>
+                    <div class="value" id="totalDamage2">0</div>
+                </div>
+            </div>
+            
+            <div class="combat-log" id="combatLog">
+                <div class="log-entry">En attente du début du combat...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import du moteur authentique
+        import { LaBruteAuthenticEngine } from './src/engine/LaBruteAuthenticEngine.js';
+        
+        let engine = null;
+        let currentStepIndex = 0;
+        let combatSteps = [];
+        let autoMode = false;
+        let stats = {
+            turns: 0,
+            damage1: 0,
+            damage2: 0
+        };
+        
+        // Éléments DOM
+        const startBtn = document.getElementById('startBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const autoBtn = document.getElementById('autoBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const combatLog = document.getElementById('combatLog');
+        
+        // Initialisation du combat
+        function initCombat() {
+            engine = new LaBruteAuthenticEngine();
+            engine.initialize(42); // Seed fixe pour reproductibilité
+            
+            // Configuration des combattants
+            const fighter1 = {
+                name: 'Brutus',
+                strength: 20,
+                agility: 15,
+                speed: 10,
+                endurance: 15,
+                skills: [],
+                weapons: [],
+                pets: []
+            };
+            
+            const fighter2 = {
+                name: 'Maximus',
+                strength: 15,
+                agility: 20,
+                speed: 15,
+                endurance: 12,
+                skills: [],
+                weapons: [],
+                pets: []
+            };
+            
+            engine.setFighters(fighter1, fighter2);
+            
+            // Générer le combat
+            const result = engine.generateFight();
+            combatSteps = result.steps;
+            currentStepIndex = 0;
+            
+            // Réinitialiser les stats
+            stats = { turns: 0, damage1: 0, damage2: 0 };
+            updateStats();
+            
+            // Log
+            addLog('Combat initialisé avec seed: ' + result.seed, 'info');
+            addLog(`${fighter1.name} (140 HP) VS ${fighter2.name} (122 HP)`, 'info');
+            
+            // Activer les boutons
+            stepBtn.disabled = false;
+            autoBtn.disabled = false;
+            startBtn.disabled = true;
+        }
+        
+        // Traiter un step
+        function processStep() {
+            if (currentStepIndex >= combatSteps.length) {
+                addLog('Combat terminé!', 'info');
+                stepBtn.disabled = true;
+                autoBtn.disabled = true;
+                return;
+            }
+            
+            const step = combatSteps[currentStepIndex];
+            const fighters = engine.getFightersState();
+            
+            switch(step.a) {
+                case 'init':
+                    addLog('⚔️ Le combat commence!', 'info');
+                    break;
+                    
+                case 'hit':
+                    const attacker = fighters[step.f];
+                    const defender = fighters[step.t];
+                    const isCritical = step.c === 1;
+                    
+                    if (isCritical) {
+                        addLog(`💥 COUP CRITIQUE! ${attacker.name} inflige ${step.d} dégâts à ${defender.name}!`, 'critical');
+                    } else {
+                        addLog(`⚔️ ${attacker.name} frappe ${defender.name} pour ${step.d} dégâts`, 'damage');
+                    }
+                    
+                    // Mettre à jour les stats
+                    if (step.f === 0) {
+                        stats.damage1 += step.d;
+                    } else {
+                        stats.damage2 += step.d;
+                    }
+                    stats.turns++;
+                    
+                    // Mettre à jour les barres de vie
+                    updateHealthBars(fighters);
+                    break;
+                    
+                case 'death':
+                    const dead = fighters[step.f];
+                    addLog(`💀 ${dead.name} est vaincu!`, 'death');
+                    break;
+                    
+                case 'end':
+                    addLog(`🏆 ${step.winner} remporte la victoire!`, 'info');
+                    stepBtn.disabled = true;
+                    autoBtn.disabled = true;
+                    break;
+            }
+            
+            updateStats();
+            currentStepIndex++;
+            
+            // Mode auto
+            if (autoMode && currentStepIndex < combatSteps.length) {
+                setTimeout(processStep, 500);
+            }
+        }
+        
+        // Mettre à jour les barres de vie
+        function updateHealthBars(fighters) {
+            const f1 = fighters[0];
+            const f2 = fighters[1];
+            
+            // Fighter 1 (gauche)
+            const health1 = document.getElementById('health1');
+            const health1Text = document.getElementById('health1-text');
+            const percent1 = Math.max(0, f1.hp / f1.maxHp * 100);
+            health1.style.width = percent1 + '%';
+            health1Text.textContent = `${Math.max(0, f1.hp)}/${f1.maxHp}`;
+            
+            // Fighter 2 (droite)
+            const health2 = document.getElementById('health2');
+            const health2Text = document.getElementById('health2-text');
+            const percent2 = Math.max(0, f2.hp / f2.maxHp * 100);
+            health2.style.width = percent2 + '%';
+            health2Text.textContent = `${Math.max(0, f2.hp)}/${f2.maxHp}`;
+        }
+        
+        // Mettre à jour les statistiques
+        function updateStats() {
+            document.getElementById('turnCount').textContent = stats.turns;
+            document.getElementById('totalDamage1').textContent = stats.damage1;
+            document.getElementById('totalDamage2').textContent = stats.damage2;
+        }
+        
+        // Ajouter une entrée au log
+        function addLog(message, type = 'normal') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = message;
+            combatLog.insertBefore(entry, combatLog.firstChild);
+            
+            // Limiter le nombre d'entrées
+            while (combatLog.children.length > 50) {
+                combatLog.removeChild(combatLog.lastChild);
+            }
+        }
+        
+        // Réinitialiser
+        function reset() {
+            currentStepIndex = 0;
+            combatSteps = [];
+            autoMode = false;
+            stats = { turns: 0, damage1: 0, damage2: 0 };
+            
+            // Réinitialiser l'UI
+            document.getElementById('health1').style.width = '100%';
+            document.getElementById('health1-text').textContent = '140/140';
+            document.getElementById('health2').style.width = '100%';
+            document.getElementById('health2-text').textContent = '122/122';
+            
+            updateStats();
+            combatLog.innerHTML = '<div class="log-entry">En attente du début du combat...</div>';
+            
+            // Réinitialiser les boutons
+            startBtn.disabled = false;
+            stepBtn.disabled = true;
+            autoBtn.disabled = true;
+            autoBtn.textContent = '🎮 Mode Auto';
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', initCombat);
+        stepBtn.addEventListener('click', processStep);
+        autoBtn.addEventListener('click', () => {
+            autoMode = !autoMode;
+            autoBtn.textContent = autoMode ? '⏸️ Pause' : '🎮 Mode Auto';
+            if (autoMode) {
+                processStep();
+            }
+        });
+        resetBtn.addEventListener('click', reset);
+    </script>
+</body>
+</html>

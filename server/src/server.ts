@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 import authRouter from './routes/auth';
 import shackersRouter from './routes/brutes';
 import fightsRouter from './routes/fights';
+import fightsTestRouter from './routes/fights-test';
+import fightsOfficialRouter from './routes/fights-official';
+import matchmakingRouter from './routes/matchmaking';
 
 const app = express();
 app.use(cors());
@@ -35,7 +38,10 @@ app.get('/api', (_req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/shackers', shackersRouter);
-app.use('/api/fights', fightsRouter);
+app.use('/api/fights', fightsTestRouter); // Use test router for now
+app.use('/api/fights', fightsOfficialRouter); // OFFICIAL LABRUTE ENGINE
+// app.use('/api/fights', fightsRouter); // Original with DB
+app.use('/api/matchmaking', matchmakingRouter);
 
 // Serve static public/ from project root
 const rootDir = path.resolve(__dirname, '..', '..');

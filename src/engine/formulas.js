@@ -161,32 +161,33 @@ export function computeAccuracy(attackerStats, weaponType) {
  */
 export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
   const adjusted = getAdjustedStats(attackerStats);
-  let baseDamage = adjusted.strength;
+  
+  // VRAIE FORMULE OFFICIELLE LABRUTE (vérifiée dans getDamage.ts)
+  // damage = (base + strength * (0.2 + base * 0.05)) * variation * skillMultiplier
+  
+  let base = 5; // Dégâts de base mains nues
   
   if (hasWeapon && weaponType) {
-    // Try to get LaBrute weapon stats first
     const labruteWeapon = LABRUTE_WEAPONS[weaponType];
     if (labruteWeapon && labruteWeapon.damage) {
-      // FORMULE OFFICIELLE LABRUTE: weapon_damage/10 + strength
-      // Les dégâts dans labrute-complete.js sont les valeurs brutes
-      baseDamage = (labruteWeapon.damage / 10) + adjusted.strength;
-    } else {
-      // Fallback to old system for custom weapons
-      baseDamage *= getWeaponDamageModifier(weaponType, attackerStats);
+      // NE PAS diviser par 10 ! Les valeurs sont déjà correctes
+      base = labruteWeapon.damage;
     }
-  } else {
-    // FORMULE OFFICIELLE: Poings nus = strength seulement
-    baseDamage = adjusted.strength;
   }
+  
+  // FORMULE OFFICIELLE: base + strength * (0.2 + base * 0.05)
+  // Cette partie calcule les dégâts de base AVANT variation et skills
+  const baseDamage = base + adjusted.strength * (0.2 + base * 0.05);
   
   return Math.floor(baseDamage);
 }
 
 /**
- * Damage variation multiplier: ±25% (0.75..1.25)
+ * FORMULE OFFICIELLE de variation: 0.8 + Math.random() * 0.4
+ * Donne une variation entre 0.8 et 1.2 (±20%)
  */
 export function computeDamageVariation(rng) {
-  return 0.75 + (rng.float() * 0.5);
+  return 0.8 + (rng.float() * 0.4);
 }
 
 /**

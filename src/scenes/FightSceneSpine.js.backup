@@ -13,19 +13,10 @@ export class FightSceneSpine extends Phaser.Scene {
     this.combatOver = false;
     this.animationInProgress = false;
     this.stopCombat = false;
-    this._recoveryActive = false;
-    this._cancelAnims = false;
-    this._cancelUntilTs = 0; // short quarantine window after recovery to force bail-outs
-    this.debugAnims = false; // enable for very verbose step/guard logging
-    this._debug = { pending: new Map(), nextId: 1 };
-    this._currentStepIndex = -1;
     this.clientEngine = null; // Nouveau client engine (MMO)
     this.fighter1 = null;
     this.fighter2 = null;
     this.currentFightData = null; // Données reçues du serveur
-    this.fighterHP = [100, 100]; // HP actuel des combattants
-    this.maxHP = [100, 100]; // HP maximum
-    this.hpBars = []; // Barres de vie visuelles
     
     console.log('=== SCENE INITIALIZED - Combat variables reset ===' );
     
@@ -79,12 +70,6 @@ export class FightSceneSpine extends Phaser.Scene {
     // Show combat controls
     if (window.showCombatControls) {
       window.showCombatControls();
-    }
-
-    // Debug toggles (optional)
-    if (typeof window !== 'undefined') {
-      window.enableFightAnimDebug = (on = true) => { this.debugAnims = !!on; console.warn(`[AnimDebug] ${on ? 'ENABLED' : 'DISABLED'}`); };
-      window.dumpPendingAnimHelpers = () => { try { console.log('Pending anim helpers:', Array.from(this._debug?.pending?.values() || [])); } catch (_) {} };
     }
 
     // Camera baseline uses full game size
@@ -277,10 +262,7 @@ export class FightSceneSpine extends Phaser.Scene {
       baseX: leftBaseX, 
       baseY: leftBaseY, 
       baseScale,
-      characterType: 'spineboy',
-      hp: this.initialA?.hp || 100,
-      maxHp: this.initialA?.hp || 100,
-      index: 0
+      characterType: 'spineboy'
     };
     this.fighter2 = { 
       sprite: right, 
@@ -290,17 +272,8 @@ export class FightSceneSpine extends Phaser.Scene {
       baseX: rightBaseX, 
       baseY: rightBaseY, 
       baseScale,
-      characterType: 'spineboy',
-      hp: this.initialB?.hp || 100,
-      maxHp: this.initialB?.hp || 100,
-      index: 1
+      characterType: 'spineboy'
     };
-    
-    // Initialiser les HP
-    this.fighterHP[0] = this.fighter1.hp;
-    this.fighterHP[1] = this.fighter2.hp;
-    this.maxHP[0] = this.fighter1.maxHp;
-    this.maxHP[1] = this.fighter2.maxHp;
 
     // Stats - Create copies to avoid modifying originals
     // Valeurs par défaut équilibrées selon LaBrute officiel
@@ -387,15 +360,14 @@ export class FightSceneSpine extends Phaser.Scene {
     this.fighter1.stats.pet = this.fighter1.pet;
     this.fighter2.stats.pet = this.fighter2.pet;
     
-    // Sprites d'armes supprimés - utilisation des animations Spine uniquement
+    // Créer les sprites d'armes (simplifiés pour l'instant)
+    this.createWeaponSprites();
     
     // Ajouter les propriétés d'armes nécessaires pour le CombatEngine
     this.fighter1.hasWeapon = !!this.fighter1.weapon;
     this.fighter1.weaponType = this.fighter1.weapon || null;
     this.fighter2.hasWeapon = !!this.fighter2.weapon;
     this.fighter2.weaponType = this.fighter2.weapon || null;
-    
-    // NE PAS créer de nouvelles barres vertes - les barres existent déjà en haut !
     
     // Initialize BOTH engines for transition
     // TODO: Remove clientEngine once officialAdapter is fully tested
@@ -417,48 +389,14 @@ export class FightSceneSpine extends Phaser.Scene {
     this.stopCombat = false;
     this.animationInProgress = false;
     
-    // Initialize UI with initial fighter stats - s'assurer que les HP sont bien définis
-    console.log(`🔥 Initial HP - ${this.fighter1.stats.name}: ${this.fighter1.stats.health}/${this.fighter1.stats.maxHealth}`);
-    console.log(`🔥 Initial HP - ${this.fighter2.stats.name}: ${this.fighter2.stats.health}/${this.fighter2.stats.maxHealth}`);
+    // Initialize UI with initial fighter stats
     this.updateUI();
     this.combatOver = false;
     
     // Start the server-side combat request
     this.time.delayedCall(500, () => {
-      console.log('╔═══════════════════════════════════════════════════════╗');
-      console.log('║        🔥 STARTING SERVER-SIDE COMBAT REQUEST 🔥        ║');
-      console.log('╠═══════════════════════════════════════════════════════╣');
-      console.log(`║ Fighter 1: ${this.fighter1.stats.name}`);
-      console.log(`║   HP: ${this.fighter1.stats.health}/${this.fighter1.stats.maxHealth}`);
-      console.log(`║   Position: (${Math.round(this.fighter1.sprite.x)}, ${Math.round(this.fighter1.sprite.y)})`);
-      console.log(`║ Fighter 2: ${this.fighter2.stats.name}`);
-      console.log(`║   HP: ${this.fighter2.stats.health}/${this.fighter2.stats.maxHealth}`);
-      console.log(`║   Position: (${Math.round(this.fighter2.sprite.x)}, ${Math.round(this.fighter2.sprite.y)})`);
-      console.log('╚═══════════════════════════════════════════════════════╝');
+      console.log('🔥 Starting server-side combat request...');
       this.startServerFight();
-    });
-  }
-
-  // SUPPRIMÉ - on n'a pas besoin de barres vertes supplémentaires
-  
-  // SUPPRIMÉ - on utilise les barres existantes en haut
-  
-  showDamageText(target, damage, isBlocked = false) {
-    const color = isBlocked ? '#ffff00' : '#ff0000';
-    const text = isBlocked ? `-${damage} (BLOCKED)` : `-${damage}`;
-    const damageText = this.add.text(
-      target.sprite.x,
-      target.sprite.y - 80,
-      text,
-      { fontSize: '20px', color: color, fontStyle: 'bold' }
-    ).setOrigin(0.5);
-    
-    this.tweens.add({
-      targets: damageText,
-      y: damageText.y - 30,
-      alpha: 0,
-      duration: 1000,
-      onComplete: () => damageText.destroy()
     });
   }
 
@@ -560,50 +498,51 @@ export class FightSceneSpine extends Phaser.Scene {
       }
     }
   }
-  
-  _trackStart(name, detail) {
-    try {
-      if (!this._debug) this._debug = { pending: new Map(), nextId: 1 };
-      const id = this._debug.nextId++;
-      const rec = { id, name, detail, step: this._currentStepIndex, t: Date.now() };
-      this._debug.pending.set(id, rec);
-      if (this.debugAnims) console.log(`[Start:${name}] #${id} step=${rec.step} detail=`, detail);
-      return id;
-    } catch (_) { return 0; }
-  }
-  _trackEnd(id, outcome = 'ok') {
-    try {
-      const rec = this._debug?.pending?.get(id);
-      if (rec) {
-        this._debug.pending.delete(id);
-        if (this.debugAnims) console.log(`[End:${rec.name}] #${id} step=${rec.step} outcome=${outcome} dt=${Date.now() - rec.t}ms`);
-      }
-    } catch (_) {}
-  }
 
   // Anim helpers
-  playIdle(f) {
+  playIdle(f) { 
     if (!f.isDead) { // Ne pas jouer idle si le personnage est mort
-      this.setSpineAnim(f.sprite, 'idle', true);
+      this.setSpineAnim(f.sprite, 'idle', true); 
     }
   }
-  playWalk(f) {
+  playRun(f) { 
     if (!f.isDead) {
-      this.setSpineAnim(f.sprite, 'walk', true);
+      this.setSpineAnim(f.sprite, 'run', true); 
     }
   }
-  playAttack(f) {
+  playAttack(f) { 
     if (!f.isDead) {
-      // Utiliser idle pour l'attaque
+      // Pas d'animation spéciale pour l'attaque (reste en position d'attaque)
       this.setSpineAnim(f.sprite, 'idle', false);
     }
+    // L'animation de l'arme est faite dans executeTurn selon le contexte
   }
   playDeath(f) { 
     // Marquer qu'on a déjà joué l'animation de mort
     f.deathAnimPlayed = true;
     f.isDead = true; // Empêcher toute autre animation
     
-    // Armes supprimées - pas d'animation de chute d'arme
+    // Faire tomber l'arme au sol
+    if (f.weaponSprite && !f.weaponThrown) {
+      this.tweens.add({
+        targets: f.weaponSprite,
+        y: f.sprite.y + 30, // Tomber au sol
+        rotation: 0, // À l'horizontale
+        alpha: 0.7, // Légèrement transparent
+        duration: 300,
+        ease: 'Power2'
+      });
+      
+      // Faire tomber aussi le texte de l'arme
+      if (f.weaponText) {
+        this.tweens.add({
+          targets: f.weaponText,
+          y: f.sprite.y + 50,
+          alpha: 0,
+          duration: 300
+        });
+      }
+    }
     
     // Adapter l'ombre pour un personnage allongé
     if (f.shadow) {
@@ -630,7 +569,7 @@ export class FightSceneSpine extends Phaser.Scene {
     }
     
     // Pour Spineboy, juste l'animation death (pas de rotation)
-    if (f.true) {
+    if (f.characterType !== 'raptor') {
       console.log('Playing death animation for Spineboy');
       this.setSpineAnim(f.sprite, 'death', false);
       // S'assurer que l'animation reste sur death
@@ -669,64 +608,30 @@ export class FightSceneSpine extends Phaser.Scene {
     }
   }
   playDodge(f) {
-    // Return a promise so callers can await exact completion
-    if (!f || !f.sprite) return Promise.resolve();
-    const __id = this._trackStart('dodge', `${f?.stats?.name || f.side || 'fighter'}`);
-    if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { this._trackEnd(__id, 'bail'); return Promise.resolve(); }
-    const dodgeDistance = f.side === 'left' ? -80 : 80;
-    this.setSpineAnim(f.sprite, 'idle', true);
-    
-    const duration = 150;
-    const ease = 'Back.easeOut';
-    
-    const p1 = new Promise(res => {
-      let done = false; let fb; let winFb;
-      const onDone = () => { if (done) return; done = true; if (fb && fb.remove) fb.remove(false); if (winFb && typeof window!== 'undefined' && window.clearTimeout) window.clearTimeout(winFb); this.playIdle(f); this._trackEnd(__id, 'ok'); res(); };
-      this.tweens.add({ targets: f.sprite, x: f.sprite.x + dodgeDistance, duration, ease, yoyo: true, onComplete: onDone, onStop: onDone });
-      const ms = Math.max(60, duration * 2 + 120); // yoyo twice plus buffer
-      fb = this.time.delayedCall(ms, onDone);
-      if (typeof window !== 'undefined' && window.setTimeout) winFb = window.setTimeout(onDone, Math.ceil(ms * 1.5));
-    });
-    
-    const p2 = f.shadow ? new Promise(res => {
-      let done = false; let fb; let winFb;
-      const onDone = () => { if (done) return; done = true; if (fb && fb.remove) fb.remove(false); if (winFb && typeof window!== 'undefined' && window.clearTimeout) window.clearTimeout(winFb); res(); };
-      this.tweens.add({ targets: f.shadow, x: f.shadow.x + dodgeDistance, duration, ease, yoyo: true, onComplete: onDone, onStop: onDone });
-      const ms = Math.max(60, duration * 2 + 120);
-      fb = this.time.delayedCall(ms, onDone);
-      if (typeof window !== 'undefined' && window.setTimeout) winFb = window.setTimeout(onDone, Math.ceil(ms * 1.5));
-    }) : Promise.resolve();
-    
-    // Visual effect (non-blocking)
-    this.tweens.add({ targets: f.sprite, alpha: 0.6, duration: 100, yoyo: true });
-    
-    return Promise.all([p1, p2]);
+    const dir = f.side === 'left' ? -140 : 140;
+    this.playRun(f);
+    this.tweens.add({ targets: f.sprite, x: f.sprite.x + dir, yoyo: true, duration: 150, ease: 'Power2', onComplete:()=>this.playIdle(f)});
+    this.tweens.add({ targets: f.shadow, x: f.shadow.x + dir, yoyo: true, duration: 150, ease: 'Power2' });
+    // Faire suivre l'arme pendant l'esquive
+    if (f.weaponSprite && !f.weaponThrown) {
+      const weaponDir = f.side === 'left' ? -140 : 140;
+      this.tweens.add({ targets: f.weaponSprite, x: f.weaponSprite.x + weaponDir, yoyo: true, duration: 150, ease: 'Power2' });
+      if (f.weaponText) {
+        this.tweens.add({ targets: f.weaponText, x: f.weaponText.x + weaponDir, yoyo: true, duration: 150, ease: 'Power2' });
+      }
+    }
   }
   playBlock(f) { 
-    // Blocage avec animation Phaser : se protéger avec les bras
+    // Animation de blocage plus visible : le personnage se protège
+    const originalScaleY = Math.abs(f.sprite.scaleY);
     
-    // Garder en idle/aim mais avec mouvement de protection
-    this.setSpineAnim(f.sprite, 'aim', false);
-    
-    // Petit recul de blocage
-    const blockRecoil = f.side === 'left' ? -20 : 20;
-    
+    // Le personnage se baisse et se protège
     this.tweens.add({ 
       targets: f.sprite, 
-      x: f.sprite.x + blockRecoil,
-      scaleY: Math.abs(f.sprite.scaleY) * 0.9, // Se baisser légèrement
+      scaleY: originalScaleY * 0.85, // Se baisser un peu
       duration: 100, 
       yoyo: true, 
-      ease: 'Power2.Out',
-      onComplete: () => this.playIdle(f)
-    });
-    
-    // L'ombre suit
-    this.tweens.add({ 
-      targets: f.shadow, 
-      x: f.shadow.x + blockRecoil,
-      duration: 100, 
-      yoyo: true
+      ease: 'Power2' 
     });
     
     // Effet de bouclier lumineux pour montrer le blocage
@@ -762,22 +667,12 @@ export class FightSceneSpine extends Phaser.Scene {
     catch(_) { const g=this.add.graphics(); g.fillStyle(0xffffff,0.25); g.fillRect(spineObj.x-60, spineObj.y-140, 120, 160); this.tweens.add({ targets:g, alpha:0, duration, onComplete:()=>g.destroy() }); }
   }
   async hitStop(slow=0.35, ms=80) {
-    if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { if (this.debugAnims) console.log('[Bail] hitStop'); return; }
-    const __id = this._trackStart('hitStop', `${slow},${ms}`);
     const prevTime = this.time.timeScale; const prevTween = this.tweens.timeScale;
     this.time.timeScale = slow; this.tweens.timeScale = slow;
     const fighters = [this.fighter1, this.fighter2].filter(Boolean);
     const prevAnim = fighters.map(f => f.sprite?.animationState?.timeScale ?? 1);
     fighters.forEach(f => { if (f.sprite?.animationState) f.sprite.animationState.timeScale = slow; });
-    await new Promise(res => {
-      let done = false;
-      let evt; let winId;
-      const finish = () => { if (done) return; done = true; if (evt && evt.remove) evt.remove(false); if (winId && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(winId); this._trackEnd(__id, 'ok'); res(); };
-      evt = this.time.delayedCall(ms, finish);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winId = window.setTimeout(finish, Math.ceil(ms * 1.5));
-      }
-    });
+    await new Promise(res => this.time.delayedCall(ms, res));
     this.time.timeScale = prevTime; this.tweens.timeScale = prevTween;
     fighters.forEach((f,i) => { if (f.sprite?.animationState) f.sprite.animationState.timeScale = prevAnim[i] ?? 1; });
   }
@@ -789,97 +684,275 @@ export class FightSceneSpine extends Phaser.Scene {
   createDodgeIndicator(target) { this.showTextIndicator(target, 'DODGE', '#4ec3ff'); }
   showBlockIndicator(target) { this.showTextIndicator(target, 'BLOCK', '#ffd54a'); this.shakeLight(); }
 
-  // Fonction petAttack supprimée - pets supprimés
-  
-  // Fonction animateWeaponAttack supprimée - utilisation des animations Spine uniquement
-  
-  // Fonction createWeaponShape supprimée - utilisation des animations Spine uniquement
-  
-  // Fonction createWeaponSprites supprimée - utilisation des animations Spine uniquement
-  
-  sleep(ms) {
-    if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { if (this.debugAnims) console.log('[Bail] sleep'); return Promise.resolve(); }
-    const phaserMs = Math.max(30, ms * 0.3);
-    const __id = this._trackStart('sleep', `${ms}ms`);
-    return new Promise(res => {
-      let done = false;
-      let evt; let winId;
-      const finish = () => { if (done) return; done = true; if (evt && evt.remove) evt.remove(false); if (winId && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(winId); this._trackEnd(__id, 'ok'); res(); };
-      evt = this.time.delayedCall(phaserMs, finish);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winId = window.setTimeout(finish, Math.ceil(phaserMs * 1.5));
-      }
+  // MÉCANIQUE OFFICIELLE : Attaque de pet (le pet bouge SEULEMENT pour attaquer)
+  async petAttack(owner, target) {
+    if (!owner.petSprite) return;
+    
+    const pet = owner.petSprite;
+    const originalX = pet.x;
+    const originalY = pet.y;
+    
+    // Le pet court vers la cible
+    const targetX = target.sprite.x + (owner.side === 'left' ? -30 : 30);
+    const targetY = target.sprite.y;
+    
+    await new Promise(res => this.tweens.add({
+      targets: [pet, owner.petText],
+      x: targetX,
+      y: targetY,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: res
+    }));
+    
+    // Animation d'attaque (morsure/griffe)
+    this.tweens.add({
+      targets: pet,
+      scale: 1.3,
+      duration: 100,
+      yoyo: true,
+      ease: 'Power2'
     });
-  } // Réduire encore plus les délais
+    
+    // Flash sur la cible
+    this.flashSpine(target.sprite);
+    this.shakeLight();
+    
+    await this.sleep(200);
+    
+    // Le pet retourne à sa position
+    await new Promise(res => this.tweens.add({
+      targets: [pet, owner.petText],
+      x: originalX,
+      y: originalY,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: res
+    }));
+  }
+  
+  createWeaponSprites() {
+    // Couleurs par type d'arme LaBrute
+    const weaponColors = {
+      'knife': 0xc0c0c0,        // Argent
+      'broadsword': 0x4169e1,   // Bleu royal
+      'lance': 0xdaa520,        // Or
+      'sai': 0x708090,          // Gris ardoise
+      'fan': 0xff69b4,          // Rose
+      'shuriken': 0x2f4f4f,     // Gris foncé
+      'axe': 0x8b4513,          // Brun
+      'bumps': 0x696969,        // Gris
+      'flail': 0x2f4f4f,        // Gris ardoise foncé
+      'fryingPan': 0x696969,    // Gris
+      'hatchet': 0x8b4513,      // Brun
+      'mammothBone': 0xfff8dc,  // Cornsilk (os)
+      'morningStar': 0x2f4f4f,  // Gris foncé
+      'trombone': 0xffd700,     // Or
+      'baton': 0x8b7355,        // Bois
+      'halberd': 0x4169e1,      // Bleu
+      'trident': 0xdaa520,      // Or
+      'whip': 0x654321,         // Brun foncé
+      'noodleBowl': 0xffffff,   // Blanc
+      'piopio': 0xff69b4,       // Rose
+      'scimitar': 0xc0c0c0,     // Argent
+      'sword': 0x4169e1         // Bleu royal
+    };
+    
+    // Créer les armes DANS LES MAINS (position main droite)
+    if (this.fighter1.weapon) {
+      const color = weaponColors[this.fighter1.weapon] || 0x888888;
+      // Position de la main (environ au niveau du torse)
+      const handX = this.fighter1.sprite.x + 25;
+      const handY = this.fighter1.sprite.y - 80; // Plus haut, au niveau de la main
+      
+      const weapon1 = this.add.rectangle(
+        handX, 
+        handY,
+        100, 20, color  // Beaucoup plus gros pour être bien visible
+      );
+      weapon1.setOrigin(0.1, 0.5); // Pivot près de la garde
+      weapon1.rotation = -0.785; // 45 degrés vers le haut
+      weapon1.setStrokeStyle(2, 0x000000);
+      weapon1.setDepth(this.fighter1.sprite.depth + 1); // Devant le personnage
+      this.fighter1.weaponSprite = weapon1;
+      
+      // Créer un container pour grouper l'arme avec le fighter
+      this.fighter1.weaponOffsetX = 25; // Offset par rapport au sprite
+      this.fighter1.weaponOffsetY = -80;
+      
+      // Label de l'arme
+      const label1 = this.add.text(
+        handX,
+        handY - 20,
+        this.fighter1.weapon.toUpperCase(),
+        { fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter1.sprite.depth + 1);
+      this.fighter1.weaponText = label1;
+    }
+    
+    if (this.fighter2.weapon) {
+      const color = weaponColors[this.fighter2.weapon] || 0x888888;
+      // Position de la main (environ au niveau du torse)
+      const handX = this.fighter2.sprite.x - 25;
+      const handY = this.fighter2.sprite.y - 80; // Plus haut, au niveau de la main
+      
+      const weapon2 = this.add.rectangle(
+        handX,
+        handY,
+        100, 20, color  // Beaucoup plus gros pour être bien visible
+      );
+      weapon2.setOrigin(0.9, 0.5); // Pivot près de la garde
+      weapon2.rotation = 0.785; // 45 degrés vers le haut
+      weapon2.setStrokeStyle(2, 0x000000);
+      weapon2.setDepth(this.fighter2.sprite.depth + 1); // Devant le personnage
+      this.fighter2.weaponSprite = weapon2;
+      
+      // Créer un container pour grouper l'arme avec le fighter
+      this.fighter2.weaponOffsetX = -25; // Offset par rapport au sprite
+      this.fighter2.weaponOffsetY = -80;
+      
+      // Label de l'arme
+      const label2 = this.add.text(
+        handX,
+        handY - 20,
+        this.fighter2.weapon.toUpperCase(),
+        { fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter2.sprite.depth + 1);
+      this.fighter2.weaponText = label2;
+    }
+    
+    // Créer les pets avec des formes et animations différentes selon le type
+    const petColors = {
+      'dog': 0x8B4513,    // Marron
+      'dog1': 0x8B4513,   // Chien niveau 1
+      'dog2': 0x964B00,   // Chien niveau 2
+      'dog3': 0x654321,   // Chien niveau 3
+      'bear': 0x4B3621,   // Brun foncé pour ours
+      'panther': 0x1a1a1a // Noir pour panthère
+    };
+    
+    if (this.fighter1.pet) {
+      const petColor = petColors[this.fighter1.pet] || 0x666666;
+      // GROSSI : Tailles augmentées pour meilleure visibilité
+      const petSize = this.fighter1.pet.includes('bear') ? 45 : (this.fighter1.pet.includes('panther') ? 35 : 30);
+      const pet1 = this.add.circle(
+        this.fighter1.sprite.x - 80,
+        this.fighter1.sprite.y + 30,
+        petSize, petColor
+      );
+      pet1.setStrokeStyle(3, 0xffffff);
+      pet1.setDepth(this.fighter1.sprite.depth + 10); // Au-dessus du personnage et de son ombre
+      this.fighter1.petSprite = pet1;
+      
+      // Animation d'idle pour le pet (respiration/mouvement)
+      this.tweens.add({
+        targets: pet1,
+        scaleX: 1.1,
+        scaleY: 0.9,
+        duration: 1000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+      
+      // Label du pet
+      const petLabel1 = this.add.text(
+        this.fighter1.sprite.x - 80,
+        this.fighter1.sprite.y + 65,
+        this.fighter1.pet.toUpperCase(),
+        { fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter1.sprite.depth + 11);
+      this.fighter1.petText = petLabel1;
+    }
+    
+    if (this.fighter2.pet) {
+      const petColor = petColors[this.fighter2.pet] || 0x666666;
+      // GROSSI : Tailles augmentées pour meilleure visibilité
+      const petSize = this.fighter2.pet.includes('bear') ? 45 : (this.fighter2.pet.includes('panther') ? 35 : 30);
+      const pet2 = this.add.circle(
+        this.fighter2.sprite.x + 80,
+        this.fighter2.sprite.y + 30,
+        petSize, petColor
+      );
+      pet2.setStrokeStyle(3, 0xffffff);
+      pet2.setDepth(this.fighter2.sprite.depth + 10); // Au-dessus du personnage et de son ombre
+      this.fighter2.petSprite = pet2;
+      
+      // Animation d'idle pour le pet (respiration/mouvement)
+      this.tweens.add({
+        targets: pet2,
+        scaleX: 1.1,
+        scaleY: 0.9,
+        duration: 1000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+      
+      // Label du pet
+      const petLabel2 = this.add.text(
+        this.fighter2.sprite.x + 80,
+        this.fighter2.sprite.y + 65,
+        this.fighter2.pet.toUpperCase(),
+        { fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 2 }
+      ).setOrigin(0.5).setDepth(this.fighter2.sprite.depth + 11);
+      this.fighter2.petText = petLabel2;
+    }
+  }
+  
+  sleep(ms) { return new Promise(res => this.time.delayedCall(Math.max(50, ms * 0.5), res)); } // Réduire les délais de moitié
   killFighterTweens(f) { this.tweens.killTweensOf(f.sprite); if (f.shadow) this.tweens.killTweensOf(f.shadow); }
   moveFighterTo(f, x, y, duration, ease='Linear') {
-    if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { if (this.debugAnims) console.log('[Bail] moveFighterTo'); return Promise.resolve(); }
     this.killFighterTweens(f);
     // Utiliser l'échelle de base stockée pour ce personnage spécifique
     const fighterBaseScale = f.sprite.baseScale || Math.abs(f.sprite.scaleX / this.getFighterScale(f.sprite.y));
     const scaleSign = f.sprite.scaleX < 0 ? -1 : 1;
-    const __id1 = this._trackStart('moveTo.sprite', `${f?.stats?.name || 'fighter'} -> (${x},${y}) dur=${duration}`);
     
-    // Ensure promise resolves on complete OR stop, with a fallback timer
-    const p1 = new Promise(res => {
-      let done = false;
-      let fallback1; let winFallback1;
-      const onDone = () => { if (done) return; done = true; if (fallback1 && fallback1.remove) fallback1.remove(false); if (winFallback1 && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(winFallback1); this._trackEnd(__id1, 'ok'); res(); };
-      const tween1 = this.tweens.add({ 
-        targets: f.sprite, 
-        x, 
-        y, 
-        duration, 
-        ease,
-        onUpdate: () => {
-          // Update scale based on current Y position during movement
-          const currentY = f.sprite.y;
-          const newScale = fighterBaseScale * this.getFighterScale(currentY);
-          f.sprite.setScale(newScale * scaleSign, newScale);
-          
-          // Armes et pets supprimés - utilisation des animations Spine uniquement
-        },
-        onComplete: onDone,
-        onStop: onDone
-      });
-      // Phaser fallback in case tween is killed without callbacks
-      const fb1Ms = Math.max(50, duration + 250);
-      fallback1 = this.time.delayedCall(fb1Ms, onDone);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winFallback1 = window.setTimeout(onDone, Math.ceil(fb1Ms * 1.5));
-      }
-    });
+    const p1 = new Promise(res => this.tweens.add({ 
+      targets: f.sprite, 
+      x, 
+      y, 
+      duration, 
+      ease,
+      onUpdate: () => {
+        // Update scale based on current Y position during movement
+        const currentY = f.sprite.y;
+        const newScale = fighterBaseScale * this.getFighterScale(currentY);
+        f.sprite.setScale(newScale * scaleSign, newScale);
+        
+        // FAIRE SUIVRE L'ARME - elle reste COLLÉE au personnage
+        if (f.weaponSprite && !f.weaponThrown) {
+          const xOffset = f.side === 'left' ? 25 : -25;
+          f.weaponSprite.x = f.sprite.x + xOffset;
+          f.weaponSprite.y = f.sprite.y - 80;
+        }
+        if (f.weaponText && !f.weaponThrown) {
+          const xOffset = f.side === 'left' ? 25 : -25;
+          f.weaponText.x = f.sprite.x + xOffset;
+          f.weaponText.y = f.sprite.y - 100;
+        }
+        // MÉCANIQUE OFFICIELLE : Les pets restent FIXES et ne bougent que pour attaquer
+      },
+      onComplete: res 
+    }));
     
     const sScale = this.getShadowScale(y);
     // Décalage selon le côté et le type de personnage (inversé)
-    const isRaptor = f.false;
+    const isRaptor = f.characterType === 'raptor';
     const shadowXOffset = f.side === 'left' ? (isRaptor ? 10 : 2) : (isRaptor ? -10 : -2);
     // Adapter l'échelle selon le type de personnage
     const shadowScaleX = sScale * (isRaptor ? 1.6 : 1.0); // Plus large pour le raptor
     const shadowScaleY = sScale * (isRaptor ? 0.48 : 0.4); // Plus épais pour Spineboy aussi
-    const __id2 = f.shadow ? this._trackStart('moveTo.shadow', `${f?.stats?.name || 'fighter'} -> (${x},${y}) dur=${duration}`) : 0;
-    const p2 = f.shadow ? new Promise(res => {
-      let done = false;
-      let fallback2; let winFallback2;
-      const onDone = () => { if (done) return; done = true; if (fallback2 && fallback2.remove) fallback2.remove(false); if (winFallback2 && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(winFallback2); if (__id2) this._trackEnd(__id2, 'ok'); res(); };
-      const tween2 = this.tweens.add({ 
-        targets: f.shadow, 
-        x: x + shadowXOffset, 
-        y: y + this.getShadowOffset(y), 
-        scaleX: shadowScaleX,
-        scaleY: shadowScaleY,
-        duration, 
-        ease, 
-        onComplete: onDone,
-        onStop: onDone
-      });
-      // Fallback timer for shadow tween as well
-      const fb2Ms = Math.max(50, duration + 250);
-      fallback2 = this.time.delayedCall(fb2Ms, onDone);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winFallback2 = window.setTimeout(onDone, Math.ceil(fb2Ms * 1.5));
-      }
-    }) : Promise.resolve();
+    const p2 = f.shadow ? new Promise(res => this.tweens.add({ 
+      targets: f.shadow, 
+      x: x + shadowXOffset, 
+      y: y + this.getShadowOffset(y), 
+      scaleX: shadowScaleX,
+      scaleY: shadowScaleY,
+      duration, 
+      ease, 
+      onComplete: res 
+    })) : Promise.resolve();
     
     return Promise.all([p1, p2]);
   }
@@ -908,7 +981,7 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Animation de fin
       if (loser && loser.sprite && !loser.deathAnimPlayed) {
-        const isRaptor = loser.false;
+        const isRaptor = loser.characterType === 'raptor';
         if (isRaptor) {
           this.setSpineAnim(loser.sprite, 'roar-long', false);
           this.tweens.add({
@@ -930,472 +1003,705 @@ export class FightSceneSpine extends Phaser.Scene {
     
     this.turnInProgress = true;
 
-    // Turn-level watchdog to avoid stalls
-    const turnTimeoutMs = this.turnTimeoutMs || 12000; // default 12s per turn
-    let turnTimeoutEvent;
-    let turnFallbackId;
-    const turnTimeoutPromise = new Promise(resolve => {
-      turnTimeoutEvent = this.time.delayedCall(turnTimeoutMs, () => resolve('timeout'));
-      // Fallback using window timer in case Phaser's clock stalls
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        turnFallbackId = window.setTimeout(() => resolve('timeout-window'), Math.ceil(turnTimeoutMs * 1.25));
-      }
-    });
-
+    let result;
     try {
-      const doTurn = async () => {
-        let result;
-        try {
-          result = this.engine.executeTurn();
-        } catch (e) {
-          console.error('Combat error:', e);
-          this.turnInProgress = false;
-          // Schedule next turn instead of recursion
-          this.time.delayedCall(60, () => this.executeTurn()); // Plus rapide
-          return;
+      result = this.engine.executeTurn();
+    } catch (e) {
+      console.error('Combat error:', e);
+      this.turnInProgress = false;
+      await this.sleep(120);
+      return this.executeTurn();
+    }
+
+    if (!result) { 
+      this.turnInProgress = false; 
+      await this.sleep(140); 
+      return this.executeTurn(); 
+    }
+    
+    const attacker = result.attacker; 
+    const target = result.target;
+    
+    // Vérifier si le combat est terminé AVANT d'animer
+    if (result.gameOver && result.damage === 0 && !result.hit) {
+      // C'est un cas où le personnage était déjà mort avant de pouvoir attaquer
+      console.log('Fighter was already dead, skipping attack animation');
+      this.combatOver = true;
+      this.updateUI();
+      
+      // Animation de victoire/défaite
+      const loser = result.loser;
+      const winner = result.winner;
+      
+      if (loser && loser.sprite && !loser.deathAnimPlayed) {
+        const isRaptor = loser.characterType === 'raptor';
+        if (isRaptor) {
+          this.setSpineAnim(loser.sprite, 'roar-long', false);
+          this.tweens.add({
+            targets: loser.sprite,
+            y: loser.sprite.y + 50,
+            alpha: 0.5,
+            duration: 800,
+            ease: 'Power2'
+          });
+        } else {
+          this.setSpineAnim(loser.sprite, 'death', false);
         }
+        loser.deathAnimPlayed = true;
+      }
+      
+      // Pas d'animation de victoire - le gagnant reste en idle
+      
+      this.showWinner(winner, loser);
+      this.turnInProgress = false;
+      return;
+    }
 
-        if (!result) { 
-          this.turnInProgress = false; 
-          // Schedule next turn instead of recursion
-          this.time.delayedCall(70, () => this.executeTurn()); // Plus rapide 
-          return; 
-        }
-        
-        const attacker = result.attacker; 
-        const target = result.target;
-        
-        // Vérifier si le combat est terminé AVANT d'animer
-        if (result.gameOver && result.damage === 0 && !result.hit) {
-          // C'est un cas où le personnage était déjà mort avant de pouvoir attaquer
-          console.log('Fighter was already dead, skipping attack animation');
-          this.combatOver = true;
-          this.updateUI();
-          
-          // Animation de victoire/défaite
-          const loser = result.loser;
-          const winner = result.winner;
-          
-          if (loser && loser.sprite && !loser.deathAnimPlayed) {
-            const isRaptor = loser.false;
-            if (isRaptor) {
-              this.setSpineAnim(loser.sprite, 'roar-long', false);
-              this.tweens.add({
-                targets: loser.sprite,
-                y: loser.sprite.y + 50,
-                alpha: 0.5,
-                duration: 800,
-                ease: 'Power2'
-              });
-            } else {
-              this.setSpineAnim(loser.sprite, 'death', false);
-            }
-            loser.deathAnimPlayed = true;
-          }
-          
-          // Pas d'animation de victoire - le gagnant reste en idle
-          
-          this.showWinner(winner, loser);
-          this.turnInProgress = false;
-          return;
-        }
+    if (result.type === 'attack' || result.type === 'multi_attack' || result.type === 'counter') {
+      // Affichage clair de l'action avec l'arme utilisée
+      const weaponName = result.bareHands ? ' à mains nues' : (attacker.weaponType ? ` avec ${attacker.weaponType}` : ' à mains nues');
+      this.appendLog(`${attacker.stats.name} attaque${weaponName} ${target.stats.name}${result.type==='multi_attack'?' (combo)':''}${result.critical?' [CRIT]':''}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
 
-        if (result.type === 'attack' || result.type === 'multi_attack' || result.type === 'counter') {
-          // Affichage clair de l'action avec l'arme utilisée
-          const weaponName = result.bareHands ? ' à mains nues' : (attacker.weaponType ? ` avec ${attacker.weaponType}` : ' à mains nues');
-          this.appendLog(`${attacker.stats.name} attaque${weaponName} ${target.stats.name}${result.type==='multi_attack'?' (combo)':''}${result.critical?' [CRIT]':''}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
+      const contactGap = this.getContactGap(attacker, target, 14);
+      // Pas de décalage Y - reste sur la même ligne horizontale
+      const contactY = target.sprite.y;
+      const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
+      const distance = Math.abs(attackX - attacker.sprite.x);
+      // Vitesse LaBrute officielle : rapide comme l'éclair
+      const LABRUTE_SPEED = 1500; // pixels/seconde (vitesse d'attaque)
+      const runDuration = Math.max(80, (distance / LABRUTE_SPEED) * 1000);
 
-          const contactGap = this.getContactGap(attacker, target, 14);
-          // Pas de décalage Y - reste sur la même ligne horizontale
-          const contactY = target.sprite.y;
-          const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
-          const distance = Math.abs(attackX - attacker.sprite.x);
-          // Vitesse LaBrute officielle : rapide comme l'éclair
-          const LABRUTE_SPEED = 1500; // pixels/seconde (vitesse d'attaque)
-          const runDuration = Math.max(80, (distance / LABRUTE_SPEED) * 1000);
-
-          this.playWalk(attacker);
+      this.playRun(attacker);
+      
+      // Lancer l'animation de l'arme PENDANT le déplacement (sauf si mains nues)
+      if (attacker.weaponSprite && attacker.hasWeapon && !result.bareHands) {
+        // Attendre un peu plus puis commencer l'animation d'arme pendant le déplacement
+        this.time.delayedCall(runDuration * 0.75, () => {
+          // Animation de frappe avec l'arme
+          const originalRotation = attacker.weaponSprite.rotation;
           
-          // Animations d'armes supprimées - utilisation des animations Spine uniquement
-          
-          await this.moveFighterTo(attacker, attackX, contactY, runDuration, 'Linear');
-          
-          // Mettre l'attaquant au premier plan (devant la cible)
-          const depthBonus = attacker.false ? 50 : 10;
-          attacker.sprite.setDepth(target.sprite.depth + depthBonus);
-          if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
-          // Armes supprimées
-          
-          // Animation d'attaque
-          this.playAttack(attacker);
-
-          if (result.hit && result.damage > 0) {
-            // Debug log pour vérifier les dégâts
-            console.log(`HIT CONFIRMED: ${attacker.stats.name} -> ${target.stats.name}: ${result.damage} dmg${result.bareHands ? ' (BARE HANDS)' : ''}`);
-            console.log(`Target HP before hit: ${target.stats.health}/${target.stats.maxHealth}`);
-            
-            // Affichage des dégâts au-dessus du personnage
-            this.showDamageText(target, result.damage, result.critical);
-            
-            // Mise à jour des HP avec animation
-            this.updateFighterHP(target);
-            
-            console.log(`Target HP after update: ${target.stats.health}/${target.stats.maxHealth}`);
-            
-            // Animations visuelles simultanées
-            this.playHit(target);
-            this.flashSpine(target.sprite);
-            
-            try {
-              const old = { ...target.sprite.skeleton.color };
-              target.sprite.skeleton.color.set(1,0.4,0.4,1);
-              this.time.delayedCall(120,()=> target.sprite.skeleton.color.set(old.r,old.g,old.b,old.a));
-            } catch(_) {}
-
-            this.shakeTarget(target);
-            // Shake immédiat (armes supprimées)
-            this.shakeMedium();
-            const g2 = this.add.graphics();
-            g2.fillStyle(0xff2a2a, 0.45);
-            g2.fillCircle(target.sprite.x + (target.side==='left'?-5:5), target.sprite.y - 46, 6);
-            this.tweens.add({targets:g2, alpha:0, scale:2.2, duration:320, onComplete:()=>g2.destroy()});
-
-            this.showDamageNumber(target, result.damage, !!result.critical);
-            
-            // IMPORTANT: Mettre à jour la barre de vie
-            this.updateFighterHP(target);
-            
-            // Vérifier si mort
-            if (target.stats.health <= 0) {
-              this.playDeath(target);
-            }
-          } else if (result.type !== 'dodge') {
-            this.showMissEffect(target);
-            this.playEvadeTick(target);
-          }
-
-          // Attendre que l'animation d'arme se termine
-          await this.sleep(120); // Plus rapide
-          await this.returnToPosition(attacker);
-          
-          // Vérifier si l'attaquant est mort (peut arriver avec des contres)
-          if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
-            this.playDeath(attacker);
-          }
-
-        } else if (result.type === 'block') {
-          this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
-          
-          // L'ATTAQUANT DOIT TENTER D'ATTAQUER (comme pour dodge)
-          const contactGap = this.getContactGap(attacker, target, 14);
-          const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
-          const contactY = target.sprite.y;
-          
-          // L'attaquant se déplace pour attaquer
-          const blockDistance = Math.abs(attackX - attacker.sprite.x);
-          const LABRUTE_SPEED = 1500; // pixels/seconde
-          const blockDuration = Math.max(80, (blockDistance / LABRUTE_SPEED) * 1000);
-          this.playWalk(attacker);
-          await this.moveFighterTo(attacker, attackX, contactY, blockDuration, 'Linear');
-          
-          // Mettre l'attaquant au premier plan
-          const depthBonus = attacker.false ? 50 : 10;
-          attacker.sprite.setDepth(target.sprite.depth + depthBonus);
-          if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
-          // Armes supprimées
-          
-          // Animation d'attaque bloquée
-          this.playAttack(attacker);
-          
-          // La cible BLOQUE visiblement
-          // Mise à jour immédiate des HP de la cible
-          this.updateFighterHP(target);
-          
-          this.playBlock(target);
-          this.showBlockIndicator(target);
-          
-          // Armes supprimées - blocage avec animations Spine uniquement
-          
-          await this.sleep(100); // Plus rapide
-          
-          // L'attaquant retourne à sa position
-          await this.returnToPosition(attacker);
-          
-          // Vérifier si l'attaquant est mort
-          if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
-            this.playDeath(attacker);
-          }
-          
-          // Rétablir l'ordre de profondeur après un délai pour laisser voir l'attaque
-          this.time.delayedCall(300, () => this.updateDepthOrdering());
-          
-          // Commentaire APRÈS l'animation de blocage
-          this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
-        } else if (result.type === 'dodge') {
-          // L'attaquant doit d'abord tenter d'attaquer
-          const contactGap = this.getContactGap(attacker, target, 14);
-          const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
-          const contactY = target.sprite.y;
-          
-          const dodgeDistance = Math.abs(attackX - attacker.sprite.x);
-          const LABRUTE_SPEED = 1500; // pixels/seconde
-          const dodgeDuration = Math.max(80, (dodgeDistance / LABRUTE_SPEED) * 1000);
-          this.playWalk(attacker);
-          await this.moveFighterTo(attacker, attackX, contactY, dodgeDuration, 'Linear');
-          
-          // Mettre l'attaquant au premier plan
-          const depthBonus = attacker.false ? 50 : 10;
-          attacker.sprite.setDepth(target.sprite.depth + depthBonus);
-          if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
-          // Armes supprimées
-          
-          // Puis la cible esquive
-          // Pas de mise à jour HP car pas de dégâts
-          
-          await this.playDodge(target);
-          this.createDodgeIndicator(target);
-          
-          // L'attaquant retourne
-          await this.sleep(75); // Plus rapide
-          await this.returnToPosition(attacker);
-          
-          // Vérifier si l'attaquant est mort (peut arriver avec des contres ou autres)
-          if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
-            this.playDeath(attacker);
-          }
-          
-          // Rétablir l'ordre de profondeur après un délai
-          this.time.delayedCall(300, () => this.updateDepthOrdering());
-          
-          // Commentaire APRÈS l'animation d'esquive
-          this.appendLog(`${target.stats.name} esquive l'attaque de ${attacker.stats.name}`);
-        } else if (result.type === 'throw') {
-          // Lancer d'armes simplifié - pas d'animation visuelle d'arme
-          if (result.hit && result.damage > 0) {
-            this.updateFighterHP(target);
-            this.flashSpine(target.sprite);
-            this.cameras.main.shake(150, 0.015);
-            this.showDamageNumber(target, result.damage, !!result.critical);
-          } else {
-            this.showMissEffect(target);
-          }
-
-          // Commentaire du lancer
-          const weaponThrown = attacker.weaponType || 'son arme';
-          this.appendLog(`🎯 ${attacker.stats.name} LANCE ${weaponThrown} sur ${target.stats.name}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
-
-          // Marquer que l'arme est lancée (pour la logique du moteur)
-          attacker.weaponType = null;
-          attacker.hasWeapon = false;
-          attacker.weapon = null;
-        } else if (result.type === 'special') {
-          this.cameras.main.shake(130, 0.004);
-          await this.sleep(70); // Plus rapide
-          this.appendLog(`${attacker.stats.name} utilise une capacité spéciale !`);
-        }
-
-        // Vérifier si il y a une action de pet
-        if (result.petAssist && result.petAssist.damage && result.petAssist.damage > 0) {
-          console.log('PET ASSIST DETECTED WITH DAMAGE:', result.petAssist);
-          
-          // Si le combat est déjà terminé par le pet (depuis le moteur), gérer directement
-          if (result.gameOver) {
-            console.log('Combat ended by pet attack (from engine)');
-            this.combatOver = true;
-            this.updateUI();
-            
-            // Animations de fin
-            const loser = result.loser || target;
-            const winner = result.winner || attacker;
-            
-            if (loser && loser.sprite && !loser.deathAnimPlayed) {
-              const isRaptor = loser.false;
-              if (isRaptor) {
-                this.setSpineAnim(loser.sprite, 'roar-long', false);
+          // Lever l'arme pour frapper
+          this.tweens.add({
+            targets: attacker.weaponSprite,
+            rotation: attacker.side === 'left' ? -2.0 : 2.0, // Lever haut
+            duration: 80,  // Timing original
+            ease: 'Power2',
+            onComplete: () => {
+              // Petite pause en position haute avant de frapper
+              this.time.delayedCall(40, () => {
+                // Frapper vers le bas
                 this.tweens.add({
-                  targets: loser.sprite,
-                  y: loser.sprite.y + 50,
-                  alpha: 0.5,
-                  duration: 800,
-                  ease: 'Power2'
-                });
-              } else {
-                this.setSpineAnim(loser.sprite, 'death', false);
-              }
-              loser.deathAnimPlayed = true;
-            }
-            
-            // Pas d'animation de victoire - le gagnant reste en idle
-            
-            this.showWinner(winner, loser);
-            this.turnInProgress = false;
-            return;
-          }
-          
-          await this.sleep(200);
-          
-          // Pets supprimés - pas d'animation de pet
-          if (result.petAssist && result.petAssist.damage > 0) {
-            // Appliquer les dégâts du pet sans animation visuelle
-            this.updateFighterHP(target);
-            this.showDamageNumber(target, result.petAssist.damage, false);
-            this.flashSpine(target.sprite);
-            this.cameras.main.shake(100, 0.01);
-
-            // Commentaire du pet
-            this.appendLog(`🐾 Le ${result.petAssist.petType || 'pet'} de ${attacker.stats.name} attaque et inflige ${result.petAssist.damage} dégâts!`);
-
-            // Vérifier si le combat est terminé
-            if (target.stats.health <= 0) {
-              this.combatOver = true;
-              const isRaptor = target.false;
-              if (isRaptor) {
-                this.setSpineAnim(target.sprite, 'roar-long', false);
-                this.tweens.add({
-                  targets: target.sprite,
-                  y: target.sprite.y + 50,
-                  alpha: 0.5,
-                  duration: 800,
-                  ease: 'Power2'
-                });
-              } else {
-                this.setSpineAnim(target.sprite, 'death', false);
-              }
-              target.deathAnimPlayed = true;
-
-              this.time.delayedCall(500, () => {
-                this.showWinner(attacker, target);
-                this.turnInProgress = false;
-              });
-              return;
-            }
-          }
-        }
-        
-        // Pas de mise à jour finale - tout est déjà synchronisé
-        
-        if (result.gameOver) {
-          this.combatOver = true;
-          
-          // Forcer la mise à jour IMMÉDIATE et COMPLÈTE des barres
-          // S'assurer que le perdant est bien à 0 HP
-          if (result.loser) {
-            // Les HP viennent du moteur uniquement
-            this.updateFighterHP(result.loser, 0); // Forcer à 0
-          }
-          this.updateUI();
-          
-          // Attendre un peu avant les animations de fin
-          await this.sleep(200);
-          
-          // Animation de défaite pour le perdant
-          const loser = result.winner === this.fighter1 ? this.fighter2 : this.fighter1;
-          const winner = result.winner === this.fighter1 ? this.fighter1 : this.fighter2;
-          
-          // Jouer l'animation de défaite pour le perdant (seulement si pas déjà fait)
-          if (loser && loser.sprite && !loser.deathAnimPlayed) {
-            // Pour Spineboy, utiliser death
-            // Pour Raptor, utiliser une animation de défaite
-            const isRaptor = loser.false;
-            
-            if (isRaptor) {
-              // Le raptor fait un rugissement long de défaite
-              this.setSpineAnim(loser.sprite, 'roar-long', false);
-              // Puis le faire tomber
-              this.tweens.add({
-                targets: loser.sprite,
-                y: loser.sprite.y + 50,
-                alpha: 0.5,
-                duration: 800,
-                ease: 'Power2'
-              });
-            } else {
-              // Spineboy a une vraie animation death
-              this.setSpineAnim(loser.sprite, 'death', false);
-            }
-          }
-          
-          // Animation de victoire pour le gagnant (optionnel)
-          if (winner && winner.sprite) {
-            // Pour le raptor, faire un rugissement de victoire
-            const isRaptorWinner = winner.false;
-            if (isRaptorWinner) {
-              this.setSpineAnim(winner.sprite, 'roar', false);
-              // Retour à idle après le rugissement
-              this.time.delayedCall(800, () => {
-                if (winner.sprite) {
-                  this.setSpineAnim(winner.sprite, 'idle', true);
+                targets: attacker.weaponSprite,
+                rotation: attacker.side === 'left' ? 0.5 : -0.5, // Frapper bas
+                scaleX: 1.3,
+                scaleY: 1.3,
+                duration: 70,
+                ease: 'Power3',
+                onComplete: () => {
+                  // Retour à la position normale
+                  this.tweens.add({
+                    targets: attacker.weaponSprite,
+                    rotation: originalRotation,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 100,
+                    ease: 'Power2'
+                  });
                 }
               });
-            } else {
-              // Spineboy reste en idle (pas de jump qui bug)
-              this.setSpineAnim(winner.sprite, 'idle', true);
+              });
             }
-          }
-          
-          // Message de victoire plus visible
-          const winText = this.add.text(this.scale.width/2, 120, `🏆 ${result.winner.stats.name} WINS! 🏆`, { 
-            fontSize: '36px', 
-            color: '#ffff00',
-            stroke: '#000000',
-            strokeThickness: 4
-          }).setOrigin(0.5);
-          
-          // Animation du texte de victoire
-          this.tweens.add({
-            targets: winText,
-            scale: 1.2,
-            duration: 500,
-            yoyo: true,
-            repeat: -1
           });
-          
-          // Hide combat controls
-          if (window.hideCombatControls) {
-            window.hideCombatControls();
+        });
+      }
+      
+      await this.moveFighterTo(attacker, attackX, contactY, runDuration, 'Linear');
+      
+      // Mettre l'attaquant au premier plan (devant la cible)
+      const depthBonus = attacker.characterType === 'raptor' ? 50 : 10;
+      attacker.sprite.setDepth(target.sprite.depth + depthBonus);
+      if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
+      if (attacker.weaponSprite) attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
+      
+      // Animation d'attaque
+      this.playAttack(attacker);
+
+      if (result.hit && result.damage > 0) {
+        // Debug log pour vérifier les dégâts
+        console.log(`HIT CONFIRMED: ${attacker.stats.name} -> ${target.stats.name}: ${result.damage} dmg${result.bareHands ? ' (BARE HANDS)' : ''}`);
+        console.log(`Target HP before hit: ${target.stats.health}/${target.stats.maxHealth}`);
+        
+        // Affichage des dégâts au-dessus du personnage
+        this.showDamageText(target, result.damage, result.critical);
+        
+        // Mise à jour des HP avec animation
+        this.updateFighterHP(target);
+        
+        console.log(`Target HP after update: ${target.stats.health}/${target.stats.maxHealth}`);
+        
+        // Animations visuelles simultanées
+        this.playHit(target);
+        this.flashSpine(target.sprite);
+        
+        try {
+          const old = { ...target.sprite.skeleton.color };
+          target.sprite.skeleton.color.set(1,0.4,0.4,1);
+          this.time.delayedCall(120,()=> target.sprite.skeleton.color.set(old.r,old.g,old.b,old.a));
+        } catch(_) {}
+
+        this.shakeTarget(target);
+        // Retarder le shake pour les armes (après l'animation de frappe)
+        if (attacker.weaponSprite && attacker.hasWeapon && !result.bareHands) {
+          this.time.delayedCall(140, () => this.shakeMedium()); // Après l'animation d'arme
+        } else {
+          this.shakeMedium(); // Immédiat pour les mains nues
+        }
+        const g2 = this.add.graphics();
+        g2.fillStyle(0xff2a2a, 0.45);
+        g2.fillCircle(target.sprite.x + (target.side==='left'?-5:5), target.sprite.y - 46, 6);
+        this.tweens.add({targets:g2, alpha:0, scale:2.2, duration:320, onComplete:()=>g2.destroy()});
+
+        this.showDamageNumber(target, result.damage, !!result.critical);
+        
+        // IMPORTANT: Mettre à jour la barre de vie
+        this.updateFighterHP(target);
+        
+        // Vérifier si mort
+        if (target.stats.health <= 0) {
+          this.playDeath(target);
+        }
+      } else if (result.type !== 'dodge') {
+        this.showMissEffect(target);
+        this.playEvadeTick(target);
+      }
+
+      // Attendre que l'animation d'arme se termine
+      await this.sleep(240); // Temps pour l'animation complète de l'arme
+      await this.returnToPosition(attacker);
+      
+      // Vérifier si l'attaquant est mort (peut arriver avec des contres)
+      if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
+        this.playDeath(attacker);
+      }
+
+    } else if (result.type === 'block') {
+      this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
+      
+      // L'ATTAQUANT DOIT TENTER D'ATTAQUER (comme pour dodge)
+      const contactGap = this.getContactGap(attacker, target, 14);
+      const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
+      const contactY = target.sprite.y;
+      
+      // L'attaquant se déplace pour attaquer
+      const blockDistance = Math.abs(attackX - attacker.sprite.x);
+      const LABRUTE_SPEED = 1500; // pixels/seconde
+      const blockDuration = Math.max(80, (blockDistance / LABRUTE_SPEED) * 1000);
+      this.playRun(attacker);
+      await this.moveFighterTo(attacker, attackX, contactY, blockDuration, 'Linear');
+      
+      // Mettre l'attaquant au premier plan
+      const depthBonus = attacker.characterType === 'raptor' ? 50 : 10;
+      attacker.sprite.setDepth(target.sprite.depth + depthBonus);
+      if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
+      if (attacker.weaponSprite) attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
+      
+      // Animation d'attaque bloquée
+      this.playAttack(attacker);
+      
+      // La cible BLOQUE visiblement
+      // Mise à jour immédiate des HP de la cible
+      this.updateFighterHP(target);
+      
+      this.playBlock(target);
+      this.showBlockIndicator(target);
+      
+      // MÉCANIQUES OFFICIELLES LABRUTE : Blocage simple
+      // Pas de recul dans LaBrute officiel pour le block
+      // Si la cible a une arme, elle la lève légèrement pour bloquer
+      if (target.weaponSprite) {
+        const originalRotation = target.weaponSprite.rotation;
+        const originalY = target.weaponSprite.y;
+        this.tweens.add({
+          targets: target.weaponSprite,
+          rotation: target.side === 'left' ? -1.2 : 1.2, // Lever légèrement (pas 90°)
+          y: originalY - 15, // Lever un peu l'arme
+          duration: 150,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          onComplete: () => {
+            target.weaponSprite.rotation = originalRotation;
+            target.weaponSprite.y = originalY;
           }
-          
-          // Add end combat buttons
-          const btnY = 180;
-          const returnBtn = this.add.text(this.scale.width/2 - 120, btnY, '[ Return to Menu ]', { fontSize: '20px', color: '#00ff88' })
-            .setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerup', () => {
-              this.scene.start('WaitingScene');
-              // Redirect to home page
-              window.location.href = '/home.html';
+        });
+      }
+      
+      await this.sleep(250);
+      
+      // L'attaquant retourne à sa position
+      await this.returnToPosition(attacker);
+      
+      // Vérifier si l'attaquant est mort
+      if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
+        this.playDeath(attacker);
+      }
+      
+      // Rétablir l'ordre de profondeur après un délai pour laisser voir l'attaque
+      this.time.delayedCall(300, () => this.updateDepthOrdering());
+      
+      // Commentaire APRÈS l'animation de blocage
+      this.appendLog(`${target.stats.name} bloque l'attaque de ${attacker.stats.name}`);
+    } else if (result.type === 'dodge') {
+      // L'attaquant doit d'abord tenter d'attaquer
+      const contactGap = this.getContactGap(attacker, target, 14);
+      const attackX = target.sprite.x + (attacker.side === 'left' ? -contactGap : contactGap);
+      const contactY = target.sprite.y;
+      
+      const dodgeDistance = Math.abs(attackX - attacker.sprite.x);
+      const LABRUTE_SPEED = 1500; // pixels/seconde
+      const dodgeDuration = Math.max(80, (dodgeDistance / LABRUTE_SPEED) * 1000);
+      this.playRun(attacker);
+      await this.moveFighterTo(attacker, attackX, contactY, dodgeDuration, 'Linear');
+      
+      // Mettre l'attaquant au premier plan
+      const depthBonus = attacker.characterType === 'raptor' ? 50 : 10;
+      attacker.sprite.setDepth(target.sprite.depth + depthBonus);
+      if (attacker.shadow) attacker.shadow.setDepth(attacker.sprite.depth - 1);
+      if (attacker.weaponSprite) attacker.weaponSprite.setDepth(attacker.sprite.depth + 1);
+      
+      // Puis la cible esquive
+      // Pas de mise à jour HP car pas de dégâts
+      
+      this.playDodge(target);
+      this.createDodgeIndicator(target);
+      
+      // L'attaquant retourne
+      await this.sleep(150);
+      await this.returnToPosition(attacker);
+      
+      // Vérifier si l'attaquant est mort (peut arriver avec des contres ou autres)
+      if (attacker.stats.health <= 0 && !attacker.deathAnimPlayed) {
+        this.playDeath(attacker);
+      }
+      
+      // Rétablir l'ordre de profondeur après un délai
+      this.time.delayedCall(300, () => this.updateDepthOrdering());
+      
+      // Commentaire APRÈS l'animation d'esquive
+      this.appendLog(`${target.stats.name} esquive l'attaque de ${attacker.stats.name}`);
+    } else if (result.type === 'throw') {
+      // Animation VISIBLE du lancer d'arme avec préparation
+      if (attacker.weaponSprite) {
+        // Marquer l'arme comme lancée pour qu'elle ne tombe pas lors de la mort
+        attacker.weaponThrown = true;
+        const thrownWeapon = attacker.weaponSprite;
+        const originalRotation = thrownWeapon.rotation;
+        
+        // Animation de préparation : lever l'arme pour le lancer
+        this.tweens.add({
+          targets: thrownWeapon,
+          rotation: attacker.side === 'left' ? -2.5 : -2.5, // CORRIGÉ: même rotation pour les deux côtés
+          x: attacker.sprite.x + (attacker.side === 'left' ? -30 : 30),
+          y: attacker.sprite.y - 120,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 250,
+          ease: 'Back.easeOut',
+          onComplete: () => {
+            // Maintenant lancer l'arme
+            thrownWeapon.setDepth(200); // Au-dessus de tout
+            
+            // Trajectoire parabolique de l'arme
+            const startX = thrownWeapon.x;
+            const startY = thrownWeapon.y;
+            const endX = result.hit ? target.sprite.x : target.sprite.x + Phaser.Math.Between(-200, 200);
+            const endY = result.hit ? target.sprite.y - 50 : this.scale.height + 100;
+            const midX = (startX + endX) / 2;
+            const midY = Math.min(startY, endY) - 200; // Point haut de la parabole
+            
+            // Animation de vol avec rotation plus rapide
+            this.tweens.add({
+              targets: thrownWeapon,
+              x: endX,
+              y: endY,
+              rotation: thrownWeapon.rotation + (attacker.side === 'left' ? Math.PI * 8 : -Math.PI * 8), // Rotation selon le côté
+              scaleX: 1.5,
+              scaleY: 1.5,
+              duration: 600,
+              ease: 'Quad.easeIn',
+              onUpdate: (tween) => {
+                // Trajectoire parabolique manuelle
+                const progress = tween.progress;
+                const x = Phaser.Math.Interpolation.Linear([startX, midX, endX], progress);
+                const y = Phaser.Math.Interpolation.Bezier([startY, midY, endY], progress);
+                thrownWeapon.x = x;
+                thrownWeapon.y = y;
+              },
+              onComplete: () => {
+                // Effet d'impact ou disparition
+                if (result.hit) {
+                  // Camera shake important lors de l'impact
+                  this.cameras.main.shake(200, 0.02);
+                  
+                  // Flash de l'arme à l'impact
+                  this.tweens.add({
+                    targets: thrownWeapon,
+                    alpha: 0,
+                    duration: 100,
+                    yoyo: true,
+                    repeat: 2
+                  });
+                  
+                  // Afficher les dégâts au moment de l'impact
+                  if (result.damage > 0) {
+                    this.updateFighterHP(target);
+                    this.flashSpine(target.sprite);
+                    this.showDamageNumber(target, result.damage, !!result.critical);
+                  }
+                }
+                
+                // TOUTES les armes disparaissent après un lancer (comme dans LaBrute officiel)
+                // Faire disparaître l'arme après l'impact
+                this.tweens.add({
+                  targets: thrownWeapon,
+                  alpha: 0,
+                  duration: 300,
+                  delay: 100,
+                  onComplete: () => {
+                    thrownWeapon.destroy();
+                    attacker.weaponSprite = null;
+                    // IMPORTANT: Mettre à jour weaponType pour que les attaques suivantes soient à mains nues
+                    attacker.weaponType = null;
+                  }
+                });
+                if (attacker.weaponText) {
+                  attacker.weaponText.destroy();
+                  attacker.weaponText = null;
+                }
+                attacker.hasWeapon = false;
+                attacker.weapon = null;
+              }
+            });
+          }
+        });
+        
+        // Attendre que l'animation de lancer se termine
+        await this.sleep(850); // 250ms de préparation + 600ms de vol
+        
+        // Commentaire APRÈS le lancer
+        const weaponThrown = attacker.weaponType || 'son arme';
+        this.appendLog(`🎯 ${attacker.stats.name} LANCE ${weaponThrown} sur ${target.stats.name}${result.hit?` et inflige ${result.damage} dégâts`:" mais rate"}`);
+      } else {
+        // Si pas de sprite d'arme, afficher quand même les dégâts
+        if (result.hit && result.damage > 0) { 
+          this.updateFighterHP(target);
+          this.flashSpine(target.sprite); 
+          this.cameras.main.shake(150, 0.015);
+          this.showDamageNumber(target, result.damage, !!result.critical);
+        } else { 
+          this.showMissEffect(target);
+        }
+      }
+    } else if (result.type === 'special') {
+      this.cameras.main.shake(130, 0.004);
+      await this.sleep(140);
+      this.appendLog(`${attacker.stats.name} utilise une capacité spéciale !`);
+    }
+
+    // Vérifier si il y a une action de pet
+    if (result.petAssist && result.petAssist.damage && result.petAssist.damage > 0) {
+      console.log('PET ASSIST DETECTED WITH DAMAGE:', result.petAssist);
+      
+      // Si le combat est déjà terminé par le pet (depuis le moteur), gérer directement
+      if (result.gameOver) {
+        console.log('Combat ended by pet attack (from engine)');
+        this.combatOver = true;
+        this.updateUI();
+        
+        // Animations de fin
+        const loser = result.loser || target;
+        const winner = result.winner || attacker;
+        
+        if (loser && loser.sprite && !loser.deathAnimPlayed) {
+          const isRaptor = loser.characterType === 'raptor';
+          if (isRaptor) {
+            this.setSpineAnim(loser.sprite, 'roar-long', false);
+            this.tweens.add({
+              targets: loser.sprite,
+              y: loser.sprite.y + 50,
+              alpha: 0.5,
+              duration: 800,
+              ease: 'Power2'
+            });
+          } else {
+            this.setSpineAnim(loser.sprite, 'death', false);
+          }
+          loser.deathAnimPlayed = true;
+        }
+        
+        // Pas d'animation de victoire - le gagnant reste en idle
+        
+        this.showWinner(winner, loser);
+        this.turnInProgress = false;
+        return;
+      }
+      
+      await this.sleep(200);
+      
+      // Animation du pet qui attaque
+      if (attacker.petSprite && attacker.petText) {
+        console.log('Animating pet attack with damage:', result.petAssist.damage);
+        const pet = attacker.petSprite;
+        const petLabel = attacker.petText;
+        
+        // Grossir temporairement le pet pour l'attaque
+        this.tweens.add({
+          targets: pet,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 150,
+          ease: 'Back.easeOut'
+        });
+        
+        // Positions originales
+        const originalX = pet.x;
+        const originalY = pet.y;
+        const originalLabelX = petLabel.x;
+        const originalLabelY = petLabel.y;
+        
+        // Calculer la position cible
+        const targetX = target.sprite.x + (attacker.side === 'left' ? -50 : 50);
+        const targetY = target.sprite.y + 20;
+        
+        // Mouvement d'attaque du pet ET de son label
+        this.tweens.add({
+          targets: [pet, petLabel],
+          x: targetX,
+          y: targetY,
+          duration: 400,
+          ease: 'Power2.easeOut',
+          onUpdate: (tween) => {
+            // Faire suivre le label sous le pet
+            petLabel.x = pet.x;
+            petLabel.y = pet.y + 35;
+          },
+          onComplete: () => {
+            // Impact
+            this.cameras.main.shake(150, 0.015);
+            
+            // Flash du pet pour montrer l'attaque
+            this.tweens.add({
+              targets: pet,
+              alpha: 0.3,
+              duration: 50,
+              yoyo: true,
+              repeat: 2
             });
             
-          // Utiliser la fonction rematch du système RematchFix
-          const rematchBtn = setupRematchButton(this, this.scale.width/2 + 120, btnY);
-          
-          return;
-        }
-
-        this.turnInProgress = false;
-        // Schedule next turn instead of recursion
-        this.time.delayedCall(160, () => this.executeTurn());
-        return;
-      };
-
-      const raced = await Promise.race([doTurn(), turnTimeoutPromise]);
-      if (raced === 'timeout' || raced === 'timeout-window') {
-        console.warn(`⏰ Turn watchdog: exceeded ${turnTimeoutMs}ms. Forcing next turn.`);
-        this.turnInProgress = false;
-        if (!this.stopCombat && !this.combatOver) {
-          this.time.delayedCall(50, () => this.executeTurn());
-        }
+            if (result.petAssist.damage > 0) {
+              const damage = result.petAssist.damage;
+              // IMPORTANT: Le pet du ATTACKER attaque le TARGET (pas l'attacker!)
+              console.log(`PET DAMAGE APPLICATION: ${attacker.stats.name}'s pet attacks ${target.stats.name} for ${damage} damage`);
+              
+              // NE PAS calculer les HP ici - laisser le moteur gérer
+              // Synchroniser depuis le moteur
+              this.updateFighterHP(target); // Pas de valeur forcée - récupérer depuis le moteur
+              
+              // Afficher les dégâts
+              this.showDamageNumber(target, damage, false);
+              
+              // Effets visuels
+              this.flashSpine(target.sprite);
+              this.cameras.main.shake(100, 0.01);
+              
+              console.log(`Target HP after update: ${target.stats.health}`);
+              
+              // VÉRIFIER SI LE COMBAT EST TERMINÉ APRÈS L'ATTAQUE DU PET
+              if (target.stats.health <= 0) {
+                console.log(`${target.stats.name} KILLED BY PET! Ending combat...`);
+                this.combatOver = true;
+                
+                // Animation de mort IMMÉDIATE
+                const isRaptor = target.characterType === 'raptor';
+                if (isRaptor) {
+                  this.setSpineAnim(target.sprite, 'roar-long', false);
+                  this.tweens.add({
+                    targets: target.sprite,
+                    y: target.sprite.y + 50,
+                    alpha: 0.5,
+                    duration: 800,
+                    ease: 'Power2'
+                  });
+                } else {
+                  this.setSpineAnim(target.sprite, 'death', false);
+                }
+                target.deathAnimPlayed = true;
+                
+                // Faire retourner le pet à sa base EN PARALLÈLE
+                this.tweens.add({
+                  targets: pet,
+                  x: originalX,
+                  y: originalY,
+                  scaleX: 1,
+                  scaleY: 1,
+                  duration: 400,
+                  ease: 'Power2.easeInOut',
+                  onUpdate: (tween) => {
+                    // Faire suivre le label
+                    petLabel.x = pet.x;
+                    petLabel.y = pet.y + 35;
+                  },
+                  onComplete: () => {
+                    // Remettre exactement les positions originales
+                    petLabel.x = originalLabelX;
+                    petLabel.y = originalLabelY;
+                    
+                    // Commentaire APRÈS l'animation du pet
+                    this.appendLog(`🐾 Le ${result.petAssist.petType || 'pet'} de ${attacker.stats.name} attaque et inflige ${result.petAssist.damage} dégâts!`);
+                  }
+                });
+                
+                // Afficher le gagnant après un court délai
+                this.time.delayedCall(500, () => {
+                  this.showWinner(attacker, target);
+                  this.turnInProgress = false; // Libérer le verrou
+                });
+                
+                // Ne pas continuer avec l'animation normale
+                return;
+              }
+            }
+            
+            // Retour à la position originale
+            this.tweens.add({
+              targets: pet,
+              x: originalX,
+              y: originalY,
+              scaleX: 1,
+              scaleY: 1,
+              duration: 400,
+              ease: 'Power2.easeInOut',
+              onUpdate: (tween) => {
+                // Faire suivre le label
+                petLabel.x = pet.x;
+                petLabel.y = pet.y + 35;
+              },
+              onComplete: () => {
+                // Remettre exactement les positions originales
+                petLabel.x = originalLabelX;
+                petLabel.y = originalLabelY;
+              }
+            });
+          }
+        });
+        
+        // Attendre que l'animation se termine
+        await this.sleep(800);
       }
-    } finally {
-      if (turnTimeoutEvent && turnTimeoutEvent.remove) {
-        turnTimeoutEvent.remove(false);
-      }
-      if (typeof window !== 'undefined' && window.clearTimeout && turnFallbackId) {
-        window.clearTimeout(turnFallbackId);
-      }
-      // Ensure the flag is not left stuck
-      this.turnInProgress = false;
     }
+    
+    // Pas de mise à jour finale - tout est déjà synchronisé
+    
+    if (result.gameOver) {
+      this.combatOver = true;
+      
+      // Forcer la mise à jour IMMÉDIATE et COMPLÈTE des barres
+      // S'assurer que le perdant est bien à 0 HP
+      if (result.loser) {
+        // Les HP viennent du moteur uniquement
+        this.updateFighterHP(result.loser, 0); // Forcer à 0
+      }
+      this.updateUI();
+      
+      // Attendre un peu avant les animations de fin
+      await this.sleep(200);
+      
+      // Animation de défaite pour le perdant
+      const loser = result.winner === this.fighter1 ? this.fighter2 : this.fighter1;
+      const winner = result.winner === this.fighter1 ? this.fighter1 : this.fighter2;
+      
+      // Jouer l'animation de défaite pour le perdant (seulement si pas déjà fait)
+      if (loser && loser.sprite && !loser.deathAnimPlayed) {
+        // Pour Spineboy, utiliser death
+        // Pour Raptor, utiliser une animation de défaite
+        const isRaptor = loser.characterType === 'raptor';
+        
+        if (isRaptor) {
+          // Le raptor fait un rugissement long de défaite
+          this.setSpineAnim(loser.sprite, 'roar-long', false);
+          // Puis le faire tomber
+          this.tweens.add({
+            targets: loser.sprite,
+            y: loser.sprite.y + 50,
+            alpha: 0.5,
+            duration: 800,
+            ease: 'Power2'
+          });
+        } else {
+          // Spineboy a une vraie animation death
+          this.setSpineAnim(loser.sprite, 'death', false);
+        }
+      }
+      
+      // Animation de victoire pour le gagnant (optionnel)
+      if (winner && winner.sprite) {
+        // Pour le raptor, faire un rugissement de victoire
+        const isRaptorWinner = winner.characterType === 'raptor';
+        if (isRaptorWinner) {
+          this.setSpineAnim(winner.sprite, 'roar', false);
+          // Retour à idle après le rugissement
+          this.time.delayedCall(800, () => {
+            if (winner.sprite) {
+              this.setSpineAnim(winner.sprite, 'idle', true);
+            }
+          });
+        } else {
+          // Spineboy reste en idle (pas de jump qui bug)
+          this.setSpineAnim(winner.sprite, 'idle', true);
+        }
+      }
+      
+      // Message de victoire plus visible
+      const winText = this.add.text(this.scale.width/2, 120, `🏆 ${result.winner.stats.name} WINS! 🏆`, { 
+        fontSize: '36px', 
+        color: '#ffff00',
+        stroke: '#000000',
+        strokeThickness: 4
+      }).setOrigin(0.5);
+      
+      // Animation du texte de victoire
+      this.tweens.add({
+        targets: winText,
+        scale: 1.2,
+        duration: 500,
+        yoyo: true,
+        repeat: -1
+      });
+      
+      // Hide combat controls
+      if (window.hideCombatControls) {
+        window.hideCombatControls();
+      }
+      
+      // Add end combat buttons
+      const btnY = 180;
+      const returnBtn = this.add.text(this.scale.width/2 - 120, btnY, '[ Return to Menu ]', { fontSize: '20px', color: '#00ff88' })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerup', () => {
+          this.scene.start('WaitingScene');
+          // Redirect to home page
+          window.location.href = '/home.html';
+        });
+        
+      // Utiliser la fonction rematch du système RematchFix
+      const rematchBtn = setupRematchButton(this, this.scale.width/2 + 120, btnY);
+      
+      return;
+    }
+
+    this.turnInProgress = false;
+    await this.sleep(160);
+    return this.executeTurn();
   }
 
   showDodgeChanceIndicator(defender, dodgeChance, dodgeAttempted, dodgeSuccess) {}
@@ -1429,13 +1735,13 @@ export class FightSceneSpine extends Phaser.Scene {
     const duration = Math.max(60, (dist / LABRUTE_RETURN_SPEED) * 1000);
     
     // Utiliser walk au lieu de run pour le retour (plus naturel, surtout pour le Raptor)
-    const isRaptor = fighter.false;
+    const isRaptor = fighter.characterType === 'raptor';
     if (isRaptor) {
       // Pour le Raptor, utiliser walk pour éviter le saut
       this.setSpineAnim(fighter.sprite, 'walk', true);
     } else {
       // Pour Spineboy, continuer avec run
-      this.playWalk(fighter);
+      this.playRun(fighter);
     }
     
     // Déplacer le personnage avec les armes/pets qui suivent
@@ -1447,28 +1753,29 @@ export class FightSceneSpine extends Phaser.Scene {
 
   // UI that adapts to canvas width
   createSimpleUI(W, H) {
-    // UI basée sur LaBrute officiel
-    const barWidth = 236;  // Largeur officielle LaBrute
-    const barHeight = 20;
-    const topMargin = 50;
-    const sideMargin = 150;
+    const margin = Math.round(W * 0.0625); // ~80 when W=1280
+    const barWidth = Math.round(W * 0.28); // ~358 when W=1280
+    const barHeight = 26;
     
-    // Background container
-    const bg = this.add.rectangle(W/2, 0, W, 100, 0x000000, 0.5).setOrigin(0.5, 0).setDepth(1000).setScrollFactor(0);
-
-    // Barre gauche (verte)
-    const f1bg = this.add.rectangle(sideMargin, topMargin, barWidth, barHeight, 0x222222).setOrigin(0, 0.5);
-    const f1 = this.add.rectangle(sideMargin, topMargin, barWidth, barHeight, 0x00e676).setOrigin(0, 0.5).setStrokeStyle(2, 0x000000, 0.8);
+    // Barre gauche : origin(0,0.5) = se vide de droite à gauche (partie gauche reste) ✓
+    const f1bg = this.add.rectangle(margin, 40, barWidth, barHeight, 0x222222).setOrigin(0,0.5);
+    const f1 = this.add.rectangle(margin, 40, barWidth, barHeight, 0x00e676).setOrigin(0,0.5).setStrokeStyle(2, 0x000000, 0.8);
     
-    // Barre droite (rouge) - MÊME TECHNIQUE QUE LA GAUCHE
-    const f2bg = this.add.rectangle(W - sideMargin, topMargin, barWidth, barHeight, 0x222222).setOrigin(1, 0.5);
-    const f2 = this.add.rectangle(W - sideMargin, topMargin, barWidth, barHeight, 0xff5252).setOrigin(1, 0.5).setStrokeStyle(2, 0x000000, 0.8);
-    f2.isRightBar = true; // Marquer comme barre droite
+    // Barre droite : TECHNIQUE DIFFÉRENTE pour se vider depuis la gauche
+    const rightBarX = W - margin - barWidth;
+    const f2bg = this.add.rectangle(rightBarX, 40, barWidth, barHeight, 0x222222).setOrigin(0,0.5);
+    // Barre rouge PLEINE en dessous
+    const f2full = this.add.rectangle(rightBarX, 40, barWidth, barHeight, 0xff5252).setOrigin(0,0.5).setStrokeStyle(2, 0x000000, 0.8);
+    // Masque noir qui grandit depuis la gauche pour cacher la partie perdue
+    const f2mask = this.add.rectangle(rightBarX, 40, 0, barHeight, 0x222222).setOrigin(0,0.5);
     
-    const f1t = this.add.text(sideMargin, 16, this.fighter1.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(0,0.5);
-    const f2t = this.add.text(W - sideMargin, 16, this.fighter2.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(1,0.5);
-    this.logBox = this.add.rectangle(W/2, H - 20, W - sideMargin*0.8, 44, 0x000000, 0.35).setStrokeStyle(2, 0xffffff, 0.2);
-    this.logText = this.add.text(sideMargin * 0.6, H - 36, '', { fontSize:'16px', color:'#fff' });
+    // On stocke le masque dans f2 pour pouvoir l'animer
+    const f2 = { mask: f2mask, full: f2full, isRightBar: true };
+    
+    const f1t = this.add.text(margin, 16, this.fighter1.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(0,0.5);
+    const f2t = this.add.text(W - margin, 16, this.fighter2.stats.name, { fontSize:'16px', color:'#fff' }).setOrigin(1,0.5);
+    this.logBox = this.add.rectangle(W/2, H - 20, W - margin*0.8, 44, 0x000000, 0.35).setStrokeStyle(2, 0xffffff, 0.2);
+    this.logText = this.add.text(margin * 0.6, H - 36, '', { fontSize:'16px', color:'#fff' });
     return { f1, f2, f1bg, f2bg, f1t, f2t, w: barWidth };
   }
   appendLog(line) { if (this.logText) this.logText.setText(line); }
@@ -1527,19 +1834,37 @@ export class FightSceneSpine extends Phaser.Scene {
     
     // Calculer les largeurs finales basées sur les HP du moteur
     const winnerPercent = winnerHP / realWinner.stats.maxHealth;
-    const clampedWinner = Math.max(0, Math.min(1, winnerPercent));
+    const winnerWidth = this.ui.w * Math.max(0, Math.min(1, winnerPercent));
     
     // Barre du perdant basée sur ses vrais HP
     const loserPercent = loserHP / realLoser.stats.maxHealth;
-    const clampedLoser = Math.max(0, Math.min(1, loserPercent));
+    const loserWidth = this.ui.w * Math.max(0, Math.min(1, loserPercent));
     
-    // Appliquer directement les échelles finales (scaleX) en fonction de l'origine de chaque barre
-    // La barre gauche a origin (0, 0.5), la droite a origin (1, 0.5), ainsi la réduction se fait vers le centre
-    winnerBar.scaleX = clampedWinner;
-    loserBar.scaleX = clampedLoser;
+    // Appliquer DIRECTEMENT sans animation pour le résultat final
+    // Gagnant
+    if (winnerBar.isRightBar && winnerBar.mask) {
+      // Pour la barre droite du gagnant
+      const maskWidth = this.ui.w * (1 - winnerPercent);
+      winnerBar.mask.width = maskWidth;
+    } else if (winnerBar.health) {
+      winnerBar.health.width = winnerWidth;
+    } else {
+      winnerBar.width = winnerWidth;
+    }
     
-    console.log(`[BARS] Winner bar (${realWinner.stats.name}): ${clampedWinner*100}% (${winnerHP}/${realWinner.stats.maxHealth})`);
-    console.log(`[BARS] Loser bar (${realLoser.stats.name}): ${clampedLoser*100}% (${loserHP}/${realLoser.stats.maxHealth})`);
+    // Perdant
+    if (loserBar.isRightBar && loserBar.mask) {
+      // Pour la barre droite du perdant
+      const maskWidth = this.ui.w * (1 - loserPercent);
+      loserBar.mask.width = maskWidth;
+    } else if (loserBar.health) {
+      loserBar.health.width = loserWidth;
+    } else {
+      loserBar.width = loserWidth;
+    }
+    
+    console.log(`[BARS] Winner bar (${realWinner.stats.name}): ${winnerPercent*100}% (${winnerHP}/${realWinner.stats.maxHealth})`);
+    console.log(`[BARS] Loser bar (${realLoser.stats.name}): ${loserPercent*100}% (${loserHP}/${realLoser.stats.maxHealth})`);
     
     // Utiliser les vrais noms
     const winnerName = realWinner.stats?.name || realWinner.name || 'Gagnant';
@@ -1613,32 +1938,47 @@ export class FightSceneSpine extends Phaser.Scene {
   }
 
   updateFighterHP(fighter) {
-    // Basé sur le code officiel LaBrute (updateHp.ts)
+    // VERSION SIMPLE QUI FONCTIONNAIT
+    // Met à jour SEULEMENT la barre du combattant spécifié
     const isF1 = (fighter === this.fighter1);
     const healthBar = isF1 ? this.ui.f1 : this.ui.f2;
     const stats = fighter.stats;
     
+    // NOTE: Avec l'architecture MMO, les HP sont déjà mis à jour par animateServerHit
+    // Pas besoin de synchroniser avec un moteur local qui n'existe plus
+    
     const healthPercent = Math.max(0, stats.health) / stats.maxHealth;
-    const clamped = Math.max(0, Math.min(1, healthPercent));
-
-    console.log('🔴 UPDATE HP BAR ════════════════════════════');
-    console.log(`  Fighter: ${stats.name} (${isF1 ? 'LEFT' : 'RIGHT'})`);
-    console.log(`  HP: ${stats.health}/${stats.maxHealth} = ${Math.round(clamped * 100)}%`);
-    console.log(`  Target scaleX: ${clamped}`);
-    console.log('═════════════════════════════════════════════');
-
-    if (healthBar) {
+    const newWidth = this.ui.w * Math.max(0, Math.min(1, healthPercent));
+    
+    console.log(`Updating HP bar for ${stats.name}: ${stats.health}/${stats.maxHealth} (${Math.round(healthPercent * 100)}%)`);
+    
+    if (!isF1 && healthBar.isRightBar) {
+      // Pour la barre droite : on anime le MASQUE qui grandit depuis la gauche
+      const maskWidth = this.ui.w * (1 - healthPercent); // Largeur du masque = partie perdue
+      
       this.tweens.add({
-        targets: healthBar,
-        scaleX: clamped,
-        duration: 250,  // Durée identique à LaBrute officiel
-        ease: 'Power2',
-        onComplete: () => {
-          console.log(`  ✅ Bar animation complete: scaleX=${healthBar.scaleX}`);
-        }
+        targets: healthBar.mask,
+        width: maskWidth,
+        duration: 50, // TRÈS RAPIDE comme avant
+        ease: 'Power2'
       });
     } else {
-      console.log('  ❌ ERROR: Health bar not found!')
+      // Pour la barre gauche : comportement normal
+      if (healthBar.health) {
+        this.tweens.add({
+          targets: healthBar.health,
+          width: newWidth,
+          duration: 50, // TRÈS RAPIDE comme avant
+          ease: 'Power2'
+        });
+      } else {
+        this.tweens.add({
+          targets: healthBar,
+          width: newWidth,
+          duration: 50, // TRÈS RAPIDE comme avant
+          ease: 'Power2'
+        });
+      }
     }
   }
   
@@ -1731,7 +2071,7 @@ export class FightSceneSpine extends Phaser.Scene {
         await this.animateOfficialStep(step, i);
         
         // Small delay between steps for visual clarity
-        await this.delayAsync(150); // Plus rapide entre les steps
+        await this.delayAsync(300);
       }
       
       // Handle fight end
@@ -1766,150 +2106,51 @@ export class FightSceneSpine extends Phaser.Scene {
     
     console.log(`🎬 Animating official step ${index}: ${step.action}`, step);
     this.animationInProgress = true;
-    this._currentStepIndex = index;
-    if (this.debugAnims && this._debug?.pending) {
-      console.log(`[Step ${index}] starting; pending helpers count=${this._debug.pending.size}`);
-    }
-    // Tag the step with its index for helper logs (local-only debug)
-    try { step.__i = index; } catch(_) {}
-
-    // Watchdog: ensure we never hang indefinitely on a single step
-    const stepTimeoutMs = this.stepTimeoutMs || 8000; // default 8s per step
-    let timeoutEvent;
-    let timeoutId;
-    const timeoutPromise = new Promise(resolve => {
-      timeoutEvent = this.time.delayedCall(stepTimeoutMs, () => resolve('timeout'));
-      // Window fallback in case Phaser time stalls
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        timeoutId = window.setTimeout(() => resolve('timeout-window'), Math.ceil(stepTimeoutMs * 1.25));
-      }
-    });
-
+    
     try {
-      const actionPromise = (async () => {
-        // Route to appropriate animation based on action type
-        switch (step.action) {
-          case 'arrive':
-            await this.animateArrival(step);
-            break;
-          case 'move':
-            await this.animateMove(step);
-            break;
-          case 'moveBack':
-            await this.animateMoveBack(step);
-            break;
-          case 'hit':
-            await this.animateHit(step);
-            break;
-          case 'miss':
-            await this.animateMiss(step);
-            break;
-          case 'evade':
-            await this.animateEvade(step);
-            break;
-          case 'block':
-            await this.animateBlock(step);
-            break;
-          case 'counter':
-            await this.animateCounter(step);
-            break;
-          case 'throw':
-            await this.animateThrow(step);
-            break;
-          case 'death':
-            await this.animateDeath(step);
-            break;
-          case 'end':
-            await this.animateEnd(step);
-            break;
-          default:
-            console.log(`Unknown step action: ${step.action}`);
-        }
-      })();
-
-      const result = await Promise.race([actionPromise, timeoutPromise]);
-      const timedOut = (result === 'timeout' || result === 'timeout-window');
-      if (timedOut) {
-        console.warn(`⏰ Watchdog: step ${index} (${step.action}) timed out after ${stepTimeoutMs}ms. Forcing continue and resetting flags.`);
-        if (this._debug?.pending) {
-          console.warn(`[Watchdog] Pending helpers at timeout (step ${index}):`, Array.from(this._debug.pending.values()));
-        }
-        // Force recovery to ensure we never get stuck on this step
-        await this.forceStepRecovery(step, index);
-        return; // Exit early; finally will still run to clean timeout handles
-      } else {
-        if (this.debugAnims && this._debug?.pending?.size) {
-          console.warn(`[AnimDebug] Pending helpers after step ${index} normal finish:`, Array.from(this._debug.pending.values()));
-        }
-        console.log(`✅ Step ${index} (${step.action}) finished normally`);
+      // Route to appropriate animation based on action type
+      switch (step.action) {
+        case 'arrive':
+          await this.animateArrival(step);
+          break;
+        case 'move':
+          await this.animateMove(step);
+          break;
+        case 'moveBack':
+          await this.animateMoveBack(step);
+          break;
+        case 'hit':
+          await this.animateHit(step);
+          break;
+        case 'miss':
+          await this.animateMiss(step);
+          break;
+        case 'evade':
+          await this.animateEvade(step);
+          break;
+        case 'block':
+          await this.animateBlock(step);
+          break;
+        case 'counter':
+          await this.animateCounter(step);
+          break;
+        case 'throw':
+          await this.animateThrow(step);
+          break;
+        case 'death':
+          await this.animateDeath(step);
+          break;
+        case 'end':
+          await this.animateEnd(step);
+          break;
+        default:
+          console.log(`Unknown step action: ${step.action}`);
       }
     } catch (error) {
       console.error(`Error animating step ${index}:`, error);
-    } finally {
-      if (timeoutEvent && timeoutEvent.remove) {
-        timeoutEvent.remove(false);
-      }
-      if (typeof window !== 'undefined' && window.clearTimeout && timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
-      this._currentStepIndex = -1;
-      this.animationInProgress = false;
     }
-  }
-
-  /**
-   * Forcefully recover from a stuck/timed-out animation step.
-   * Kills all active tweens, clears timers, resets time scales and sets fighters to idle.
-   * Ensures flags are reset so the fight flow continues.
-   */
-  async forceStepRecovery(step, index) {
-    if (this._recoveryActive) return; // prevent reentrancy
-    this._recoveryActive = true;
-    try {
-      // Signal all helpers to bail out immediately
-      this._cancelAnims = true;
-      console.warn(`[Recovery] Forcing recovery for step #${index} (${step?.action}). Killing tweens and clearing timers.`);
-      if (this._debug?.pending) {
-        console.warn('[Recovery] Aborting pending helpers:', Array.from(this._debug.pending.values()));
-        try { for (const id of Array.from(this._debug.pending.keys())) this._trackEnd(id, 'recovery'); } catch(_) {}
-      }
-
-      // Reset any potential slow-motion/time scaling
-      try { if (this.time) this.time.timeScale = 1; } catch(_) {}
-      try { if (this.tweens) this.tweens.timeScale = 1; } catch(_) {}
-
-      // Kill all ongoing tweens to avoid dangling onComplete handlers
-      try { if (this.tweens && this.tweens.killAll) this.tweens.killAll(); } catch(_) {}
-
-      // Clear any delayed calls that might be holding the step
-      try { if (this.time && this.time.removeAllEvents) this.time.removeAllEvents(); } catch(_) {}
-
-      // Put fighters back to a safe, non-blocking state
-      try {
-        const fighters = [this.fighter1, this.fighter2].filter(Boolean);
-        fighters.forEach(f => {
-          if (f && f.sprite) {
-            // Best-effort: return to idle
-            this.setSpineAnim(f.sprite, 'idle', true);
-          }
-        });
-      } catch (e) {
-        console.debug('[Recovery] Fighter reset error (non-fatal):', e);
-      }
-
-      // Clear step/animation flags
-      this.animationInProgress = false;
-
-      // Small yield to allow Phaser to settle
-      await this.delayAsync(50);
-    } catch (e) {
-      console.error('[Recovery] Error during forced recovery:', e);
-    } finally {
-      this._recoveryActive = false;
-      // Keep a short post-recovery quarantine window so any in-flight awaits bail immediately
-      this._cancelUntilTs = Date.now() + 1500;
-      this._cancelAnims = false;
-    }
+    
+    this.animationInProgress = false;
   }
 
   // Animation helper functions for official steps
@@ -1929,7 +2170,7 @@ export class FightSceneSpine extends Phaser.Scene {
     if (fighter && target) {
       console.log(`🏃 ${fighter.stats.name} moves to ${target.stats.name}`);
       
-      this.setSpineAnim(fighter.sprite, 'walk');
+      this.setSpineAnim(fighter.sprite, 'run');
       const gap = this.getContactGap(fighter, target);
       const targetX = target.sprite.x - gap;
       const targetY = target.sprite.y + Phaser.Math.Between(-20, 20);
@@ -1944,7 +2185,7 @@ export class FightSceneSpine extends Phaser.Scene {
     if (fighter) {
       console.log(`🔙 ${fighter.stats.name} moves back`);
       
-      this.setSpineAnim(fighter.sprite, 'walk');
+      this.setSpineAnim(fighter.sprite, 'run');
       const returnY = fighter.baseY + Phaser.Math.Between(-20, 20);
       await this.moveFighterTo(fighter, fighter.baseX, returnY, 300);
       this.setSpineAnim(fighter.sprite, 'idle', true);
@@ -1969,7 +2210,7 @@ export class FightSceneSpine extends Phaser.Scene {
       if (step.damage > 0) {
         defender.stats.health = Math.max(0, defender.stats.health - step.damage);
         this.showDamageText(defender, step.damage, step.critical);
-        this.updateFighterHP(defender);  // Mettre à jour SEULEMENT le défenseur
+        this.updateUI();
       }
       
       // Camera shake for big hits
@@ -2001,12 +2242,11 @@ export class FightSceneSpine extends Phaser.Scene {
     if (evader) {
       console.log(`🤸 ${evader.stats.name} evades`);
       
-      // Utiliser notre animation d'esquive avec recul Phaser et attendre la fin
-      await this.playDodge(evader);
+      this.setSpineAnim(evader.sprite, 'dodge');
       this.showMissText(evader.sprite.x, evader.sprite.y - 30);
       
-      // Petite pause pour lisibilité si nécessaire
-      await this.delayAsync(120);
+      await this.delayAsync(600);
+      this.setSpineAnim(evader.sprite, 'idle', true);
     }
   }
 
@@ -2051,7 +2291,7 @@ export class FightSceneSpine extends Phaser.Scene {
       if (step.damage > 0) {
         target.stats.health = Math.max(0, target.stats.health - step.damage);
         this.showDamageText(target, step.damage, false);
-        this.updateFighterHP(target);  // Mettre à jour SEULEMENT la cible
+        this.updateUI();
       }
       
       await this.delayAsync(200);
@@ -2060,84 +2300,9 @@ export class FightSceneSpine extends Phaser.Scene {
   }
 
   async animateThrow(step) {
-    const attacker = this.getFighterByIndex(step.fighter);
-    const defender = this.getFighterByIndex(step.target);
-    console.log(`🎯 Throw animation${step.weapon ? ' for weapon: ' + step.weapon : ''}`);
-
-    if (this._recoveryActive || this._cancelAnims || this.stopCombat || this.combatOver) {
-      return;
-    }
-
-    if (!attacker || !attacker.sprite || !defender || !defender.sprite) {
-      await this.delayAsync(300);
-      return;
-    }
-
-    // Play throw/attack animation
-    this.setSpineAnim(attacker.sprite, 'attack');
-
-    // Simple projectile visual (circle) traveling towards defender
-    const startX = attacker.sprite.x;
-    const startY = attacker.sprite.y - 70;
-    const endX = defender.sprite.x + (attacker.side === 'left' ? -10 : 10);
-    const endY = defender.sprite.y - 60;
-    const proj = this.add.circle(startX, startY, 6, 0xffe066).setDepth(2500);
-
-    // Duration based on distance with sane clamps
-    const dx = endX - startX;
-    const dy = endY - startY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const duration = Math.max(120, Math.min(450, (distance / 1400) * 1000)); // ~1400 px/s
-
-    // Guaranteed-resolve tween with window fallback
-    const __idProj = this._trackStart('throw.projectile', `d=${Math.round(distance)} dur=${Math.round(duration)}ms`);
-    await new Promise(resolve => {
-      let done = false;
-      let winId; let evt;
-      const finish = () => {
-        if (done) return; done = true;
-        try { proj.destroy(); } catch (_) {}
-        if (evt && evt.remove) evt.remove(false);
-        if (typeof window !== 'undefined' && window.clearTimeout && winId) {
-          window.clearTimeout(winId);
-        }
-        this._trackEnd(__idProj, 'ok');
-        resolve();
-      };
-
-      this.tweens.add({
-        targets: proj,
-        x: endX,
-        y: endY,
-        alpha: { from: 1, to: 0.6 },
-        scale: { from: 1, to: 1.1 },
-        rotation: 6.283,
-        duration,
-        ease: 'Linear',
-        onComplete: finish,
-        onStop: finish
-      });
-
-      // Phaser fallback in case tween is killed without callbacks
-      const fbMs = Math.max(60, duration + 200);
-      evt = this.time.delayedCall(fbMs, finish);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winId = window.setTimeout(finish, Math.ceil(fbMs * 1.5));
-      }
-    });
-
-    // Brief hit reaction for defender
-    if (defender && defender.sprite) {
-      const __idReact = this._trackStart('throw.react', defender.stats?.name || 'defender');
-      this.setSpineAnim(defender.sprite, 'hit');
-      await this.delayAsync(140);
-      this.setSpineAnim(defender.sprite, 'idle', true);
-      this._trackEnd(__idReact, 'ok');
-    }
-
-    const __idCd = this._trackStart('throw.cooldown', '60ms');
-    await this.delayAsync(60);
-    this._trackEnd(__idCd, 'ok');
+    console.log(`🎯 Throw animation for weapon: ${step.weapon}`);
+    // TODO: Implement throw animation
+    await this.delayAsync(500);
   }
 
   async animateDeath(step) {
@@ -2175,17 +2340,6 @@ export class FightSceneSpine extends Phaser.Scene {
    */
   async animateStep(step, index) {
     if (this.stopCombat || this.combatOver) return;
-    
-    // SYSTÈME DE LOG COMPLET
-    console.log('╔═══════════════════════════════════════════════════════╗');
-    console.log(`║ 📊 STEP #${index} - Type: ${step.a}                     `);
-    console.log('╠═══════════════════════════════════════════════════════╣');
-    console.log('║ 📋 Step data:', JSON.stringify(step));
-    console.log(`║ ❤️ Fighter 1 (${this.fighter1.stats.name}): ${this.fighter1.stats.health}/${this.fighter1.stats.maxHealth} HP`);
-    console.log(`║ 💙 Fighter 2 (${this.fighter2.stats.name}): ${this.fighter2.stats.health}/${this.fighter2.stats.maxHealth} HP`);
-    console.log(`║ 📍 F1 Position: x=${Math.round(this.fighter1.sprite?.x || 0)}, y=${Math.round(this.fighter1.sprite?.y || 0)}`);
-    console.log(`║ 📍 F2 Position: x=${Math.round(this.fighter2.sprite?.x || 0)}, y=${Math.round(this.fighter2.sprite?.y || 0)}`);
-    console.log('╚═══════════════════════════════════════════════════════╝');
     
     // Map numeric step types from server to string types
     const stepTypeMap = {
@@ -2270,13 +2424,11 @@ export class FightSceneSpine extends Phaser.Scene {
       console.log(`🏃 ${fighter.stats.name} moves to ${target.stats.name}`);
       
       // Move animation with FREE MOVEMENT (both X and Y)
-      this.setSpineAnim(fighter.sprite, 'walk');
+      this.setSpineAnim(fighter.sprite, 'run');
       
-      // Calculate position with gap from target - STAY ON CORRECT SIDE
+      // Calculate position with gap from target
       const gap = this.getContactGap(fighter, target);
-      const targetX = fighter.side === 'left' 
-        ? Math.min(target.sprite.x - gap, target.sprite.x - 80)  // Stay left of target
-        : Math.max(target.sprite.x + gap, target.sprite.x + 80); // Stay right of target
+      const targetX = target.sprite.x - gap;
       
       // IMPORTANT: Move to target's Y position for realistic combat positioning
       const targetY = target.sprite.y + Phaser.Math.Between(-30, 30); // Small Y variation for natural movement
@@ -2297,33 +2449,13 @@ export class FightSceneSpine extends Phaser.Scene {
     const attacker = this.getFighterByIndex(step.f);
     const defender = this.getFighterByIndex(step.t);
     
-    console.log('🎯 ANIMATE SERVER HIT ════════════════════════');
-    console.log(`  Attacker index: ${step.f}, Defender index: ${step.t}`);
-    console.log(`  Damage: ${step.d}`);
-    console.log(`  Attacker found: ${!!attacker}, has sprite: ${!!attacker?.sprite}`);
-    console.log(`  Defender found: ${!!defender}, has sprite: ${!!defender?.sprite}`);
-    
     if (attacker && defender && attacker.sprite && defender.sprite) {
-      console.log(`  Attacker: ${attacker.stats.name} at (${Math.round(attacker.sprite.x)}, ${Math.round(attacker.sprite.y)})`);
-      console.log(`  Defender: ${defender.stats.name} at (${Math.round(defender.sprite.x)}, ${Math.round(defender.sprite.y)})`);
-      console.log('═════════════════════════════════════════════');
+      console.log(`👊 ${attacker.stats.name} hits ${defender.stats.name} for ${step.d} damage`);
       
       // Move attacker closer with FREE VERTICAL MOVEMENT
-      this.setSpineAnim(attacker.sprite, 'walk');
+      this.setSpineAnim(attacker.sprite, 'run');
       const gap = this.getContactGap(attacker, defender, 20);
-      
-      // POSITIONNEMENT FACE À FACE : L'attaquant s'arrête juste avant le contact
-      let targetX;
-      if (attacker.side === 'left') {
-        // Attaquant à gauche : s'arrêter à gauche du défenseur avec le gap
-        targetX = defender.sprite.x - gap;
-      } else {
-        // Attaquant à droite : s'arrêter à droite du défenseur avec le gap
-        targetX = defender.sprite.x + gap;
-      }
-      
-      console.log(`  Moving attacker to targetX: ${targetX} (gap: ${gap})`);
-      console.log(`  Attacker side: ${attacker.side}, Defender pos: ${defender.sprite.x}`);
+      const targetX = defender.side === 'left' ? defender.sprite.x + gap : defender.sprite.x - gap;
       
       // IMPORTANT: Move to defender's Y position for proper combat alignment
       const targetY = defender.sprite.y + Phaser.Math.Between(-10, 10); // Small variation for natural combat
@@ -2338,30 +2470,18 @@ export class FightSceneSpine extends Phaser.Scene {
       this.setSpineAnim(defender.sprite, 'hit');
       
       // CRITICAL: Update HP from server data properly
-      console.log('💥 DAMAGE APPLICATION ════════════════════════');
-      console.log(`  Step damage value: ${step.d}`);
-      console.log(`  Damage defined: ${step.d !== undefined}`);
-      console.log(`  Damage > 0: ${step.d > 0}`);
-      
       if (step.d !== undefined && step.d > 0) {
         // Update defender's health
         const oldHealth = defender.stats.health;
         defender.stats.health = Math.max(0, oldHealth - step.d);
         
-        console.log(`  ✅ APPLYING DAMAGE`);
-        console.log(`  Old HP: ${oldHealth}`);
-        console.log(`  Damage: ${step.d}`);
-        console.log(`  New HP: ${defender.stats.health}`);
-        console.log('═════════════════════════════════════════════');
+        console.log(`HP Update: ${defender.stats.name} ${oldHealth} -> ${defender.stats.health} (damage: ${step.d})`);
         
         // Show damage text
         this.showDamageText(defender, step.d, step.c === 1);
         
-        // Update ONLY the defender's HP bar (not both!)
-        this.updateFighterHP(defender);
-      } else {
-        console.log(`  ❌ NO DAMAGE APPLIED (step.d = ${step.d})`);
-        console.log('═════════════════════════════════════════════');
+        // Update UI immediately for proper synchronization
+        this.updateUI();
       }
       
       // Camera shake for big hits
@@ -2371,7 +2491,7 @@ export class FightSceneSpine extends Phaser.Scene {
       
       // Move back to original position
       await this.delayAsync(200);
-      this.setSpineAnim(attacker.sprite, 'walk');
+      this.setSpineAnim(attacker.sprite, 'run');
       
       // Return to base position with some Y variation for dynamic movement
       const returnY = attacker.baseY + Phaser.Math.Between(-20, 20);
@@ -2387,13 +2507,13 @@ export class FightSceneSpine extends Phaser.Scene {
     if (evader) {
       console.log(`🤸 ${evader.stats.name} evades`);
       
-      // Utiliser notre animation d'esquive avec recul Phaser au lieu du jump Spine
-      await this.playDodge(evader);
+      this.setSpineAnim(evader.sprite, 'dodge');
       
       // Show "MISS" text
       this.showMissText(evader.sprite.x, evader.sprite.y - 30);
       
-      await this.delayAsync(120);  // Petite pause pour lisibilité
+      await this.delayAsync(600);
+      this.setSpineAnim(evader.sprite, 'idle', true);
     }
   }
 
@@ -2482,18 +2602,7 @@ export class FightSceneSpine extends Phaser.Scene {
   }
 
   delayAsync(ms) {
-    if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { if (this.debugAnims) console.log('[Bail] delayAsync'); return Promise.resolve(); }
-    const phaserMs = Math.max(50, ms * 0.4);
-    const __id = this._trackStart('delay', `${ms}ms`);
-    return new Promise(resolve => {
-      let done = false;
-      let evt; let winId;
-      const finish = () => { if (done) return; done = true; if (evt && evt.remove) evt.remove(false); if (winId && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(winId); this._trackEnd(__id, 'ok'); resolve(); };
-      evt = this.time.delayedCall(phaserMs, finish);
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        winId = window.setTimeout(finish, Math.ceil(phaserMs * 1.5));
-      }
-    }); // Réduire les délais serveur
+    return new Promise(resolve => this.time.delayedCall(ms, resolve));
   }
 
   showErrorMessage(message) {

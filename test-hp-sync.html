@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Synchronisation HP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.5);
+            padding: 30px;
+            border-radius: 10px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .log-area {
+            background: black;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #4CAF50;
+        }
+        .status.error {
+            background: #f44336;
+        }
+        .status.warning {
+            background: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test de Synchronisation des Barres de Vie</h1>
+        
+        <div class="test-section">
+            <h2>Tests de Combat</h2>
+            <p>Ces tests vérifient que les HP sont correctement synchronisés entre le serveur et le client.</p>
+            
+            <button onclick="testNormalCombat()">Test Combat Normal</button>
+            <button onclick="testSurvivalSkill()">Test Skill Survival</button>
+            <button onclick="testRegeneration()">Test Régénération</button>
+            <button onclick="testOverkill()">Test Overkill</button>
+            <button onclick="clearLog()">Effacer Log</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Résultats</h2>
+            <div id="status"></div>
+            <div class="log-area" id="logArea"></div>
+        </div>
+    </div>
+
+    <script>
+        const logArea = document.getElementById('logArea');
+        const statusArea = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : 
+                         type === 'success' ? '#51cf66' : 
+                         type === 'warning' ? '#ffd43b' : '#0f0';
+            
+            logArea.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function setStatus(message, type) {
+            statusArea.className = `status ${type}`;
+            statusArea.textContent = message;
+        }
+
+        function clearLog() {
+            logArea.innerHTML = '';
+            statusArea.innerHTML = '';
+            log('Log effacé', 'info');
+        }
+
+        async function testNormalCombat() {
+            log('=== TEST COMBAT NORMAL ===', 'info');
+            setStatus('Test en cours...', 'warning');
+            
+            try {
+                // Simuler un combat entre deux Shackers
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shackerAId: 'shacker1',
+                        shackerBId: 'shacker2'
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Vérifier les steps
+                let hpSyncOk = true;
+                let previousHp = {};
+                
+                data.steps.forEach((step, index) => {
+                    if (step.hp1 !== undefined && step.hp2 !== undefined) {
+                        log(`Step ${index}: HP1=${step.hp1}, HP2=${step.hp2}`, 'info');
+                        
+                        // Vérifier la cohérence
+                        if (previousHp.hp1 !== undefined) {
+                            if (step.hp1 > previousHp.hp1) {
+                                log(`⚠️ HP1 a augmenté sans raison! ${previousHp.hp1} -> ${step.hp1}`, 'error');
+                                hpSyncOk = false;
+                            }
+                            if (step.hp2 > previousHp.hp2) {
+                                log(`⚠️ HP2 a augmenté sans raison! ${previousHp.hp2} -> ${step.hp2}`, 'error');
+                                hpSyncOk = false;
+                            }
+                        }
+                        
+                        previousHp = { hp1: step.hp1, hp2: step.hp2 };
+                    }
+                    
+                    // Vérifier les dégâts
+                    if (step.a === 9 && step.d) { // Hit step
+                        log(`  → Coup: Fighter ${step.f} frappe ${step.t} pour ${step.d} dégâts`, 'info');
+                    }
+                });
+                
+                if (hpSyncOk) {
+                    setStatus('✅ Test réussi - HP synchronisés correctement', 'success');
+                    log('Test complété avec succès!', 'success');
+                } else {
+                    setStatus('❌ Test échoué - Problème de synchronisation détecté', 'error');
+                    log('Des problèmes de synchronisation ont été détectés', 'error');
+                }
+                
+            } catch (error) {
+                setStatus('❌ Erreur lors du test', 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSurvivalSkill() {
+            log('=== TEST SKILL SURVIVAL ===', 'info');
+            setStatus('Test Survival en cours...', 'warning');
+            
+            try {
+                // Test avec un Shacker ayant le skill survival
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shackerAId: 'shacker3', // Doit avoir survival
+                        shackerBId: 'shacker4'
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Chercher des cas où HP tombe à 1 au lieu de 0
+                let survivalDetected = false;
+                
+                data.steps.forEach((step, index) => {
+                    if (step.hp1 === 1 || step.hp2 === 1) {
+                        log(`Survival potentiel détecté au step ${index}: HP1=${step.hp1}, HP2=${step.hp2}`, 'warning');
+                        survivalDetected = true;
+                    }
+                });
+                
+                if (survivalDetected) {
+                    setStatus('✅ Skill Survival détecté', 'success');
+                } else {
+                    setStatus('ℹ️ Pas de Survival déclenché dans ce combat', 'warning');
+                }
+                
+            } catch (error) {
+                setStatus('❌ Erreur lors du test', 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRegeneration() {
+            log('=== TEST REGENERATION ===', 'info');
+            setStatus('Test Régénération en cours...', 'warning');
+            
+            try {
+                // Test avec un Shacker ayant régénération
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shackerAId: 'shacker5', // Doit avoir regeneration
+                        shackerBId: 'shacker6'
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Chercher des augmentations de HP (régénération)
+                let regenDetected = false;
+                let previousHp = {};
+                
+                data.steps.forEach((step, index) => {
+                    if (step.hp1 !== undefined && step.hp2 !== undefined) {
+                        if (previousHp.hp1 !== undefined) {
+                            if (step.hp1 > previousHp.hp1) {
+                                log(`Régénération F1: ${previousHp.hp1} -> ${step.hp1} (+${step.hp1 - previousHp.hp1})`, 'success');
+                                regenDetected = true;
+                            }
+                            if (step.hp2 > previousHp.hp2) {
+                                log(`Régénération F2: ${previousHp.hp2} -> ${step.hp2} (+${step.hp2 - previousHp.hp2})`, 'success');
+                                regenDetected = true;
+                            }
+                        }
+                        previousHp = { hp1: step.hp1, hp2: step.hp2 };
+                    }
+                });
+                
+                if (regenDetected) {
+                    setStatus('✅ Régénération détectée et synchronisée', 'success');
+                } else {
+                    setStatus('ℹ️ Pas de régénération dans ce combat', 'warning');
+                }
+                
+            } catch (error) {
+                setStatus('❌ Erreur lors du test', 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function testOverkill() {
+            log('=== TEST OVERKILL PROTECTION ===', 'info');
+            setStatus('Test Overkill en cours...', 'warning');
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shackerAId: 'shacker7',
+                        shackerBId: 'shacker8'
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Vérifier qu'aucun HP ne descend en dessous de 0
+                let overkillProtected = true;
+                
+                data.steps.forEach((step, index) => {
+                    if (step.hp1 !== undefined && step.hp2 !== undefined) {
+                        if (step.hp1 < 0) {
+                            log(`❌ HP1 négatif détecté: ${step.hp1}`, 'error');
+                            overkillProtected = false;
+                        }
+                        if (step.hp2 < 0) {
+                            log(`❌ HP2 négatif détecté: ${step.hp2}`, 'error');
+                            overkillProtected = false;
+                        }
+                    }
+                });
+                
+                if (overkillProtected) {
+                    setStatus('✅ Protection Overkill fonctionnelle', 'success');
+                    log('Aucun HP négatif détecté', 'success');
+                } else {
+                    setStatus('❌ Problème avec la protection Overkill', 'error');
+                }
+                
+            } catch (error) {
+                setStatus('❌ Erreur lors du test', 'error');
+                log(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Test initial au chargement
+        window.onload = () => {
+            log('Page de test chargée', 'info');
+            log('Serveur backend: http://localhost:4000', 'info');
+            log('Serveur frontend: http://localhost:5174', 'info');
+            log('Prêt pour les tests!', 'success');
+        };
+    </script>
+</body>
+</html>

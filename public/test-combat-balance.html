@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Combat Balance - LaBrute</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #2a2a2a;
+            color: #fff;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .fighter-card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #555;
+        }
+        .fighter-card h2 {
+            margin-top: 0;
+            color: #ffa500;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 30px;
+            background: #222;
+            border: 2px solid #666;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff3333, #ff6666);
+            transition: width 0.3s ease;
+        }
+        .hp-text {
+            text-align: center;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat {
+            background: #444;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        #combat-log {
+            background: #222;
+            border: 2px solid #666;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #666;
+            padding-left: 10px;
+        }
+        .log-hit { border-color: #4CAF50; }
+        .log-miss { border-color: #f44336; }
+        .log-critical { border-color: #ffa500; background: rgba(255,165,0,0.1); }
+        .log-counter { border-color: #9c27b0; }
+        .log-dodge { border-color: #2196F3; }
+        .log-block { border-color: #795548; }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .summary {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .summary h3 {
+            color: #ffa500;
+        }
+        .turn-indicator {
+            background: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; color: #ffa500;">🥊 Test Combat Balance LaBrute 🥊</h1>
+    
+    <div class="controls">
+        <button id="startBtn">▶️ Démarrer Combat</button>
+        <button id="stepBtn" disabled>⏭️ Prochain Tour</button>
+        <button id="autoBtn" disabled>🔄 Mode Auto</button>
+        <button id="resetBtn">🔄 Réinitialiser</button>
+    </div>
+    
+    <div class="container">
+        <div class="fighter-card">
+            <h2>👤 MonGuerrier</h2>
+            <div class="turn-indicator" id="turn1" style="display: none;">🎯 C'est son tour!</div>
+            <div class="hp-bar">
+                <div class="hp-fill" id="hp1" style="width: 100%"></div>
+            </div>
+            <div class="hp-text" id="hpText1">100/100 HP</div>
+            <div class="stats">
+                <div class="stat">💪 Force: <span id="str1">10</span></div>
+                <div class="stat">🏃 Agilité: <span id="agi1">10</span></div>
+                <div class="stat">⚡ Vitesse: <span id="spd1">10</span></div>
+                <div class="stat">🛡️ Endurance: <span id="end1">10</span></div>
+            </div>
+            <div class="combat-stats">
+                <div>🎯 Attaques: <span id="attacks1">0</span></div>
+                <div>✅ Touches: <span id="hits1">0</span></div>
+                <div>❌ Ratés: <span id="misses1">0</span></div>
+                <div>💥 Dégâts infligés: <span id="damage1">0</span></div>
+            </div>
+        </div>
+        
+        <div class="fighter-card">
+            <h2>🔥 Fireborn758</h2>
+            <div class="turn-indicator" id="turn2" style="display: none;">🎯 C'est son tour!</div>
+            <div class="hp-bar">
+                <div class="hp-fill" id="hp2" style="width: 100%"></div>
+            </div>
+            <div class="hp-text" id="hpText2">100/100 HP</div>
+            <div class="stats">
+                <div class="stat">💪 Force: <span id="str2">10</span></div>
+                <div class="stat">🏃 Agilité: <span id="agi2">10</span></div>
+                <div class="stat">⚡ Vitesse: <span id="spd2">10</span></div>
+                <div class="stat">🛡️ Endurance: <span id="end2">10</span></div>
+            </div>
+            <div class="combat-stats">
+                <div>🎯 Attaques: <span id="attacks2">0</span></div>
+                <div>✅ Touches: <span id="hits2">0</span></div>
+                <div>❌ Ratés: <span id="misses2">0</span></div>
+                <div>💥 Dégâts infligés: <span id="damage2">0</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="combat-log">
+        <h3>📜 Journal de Combat</h3>
+        <div id="log-content"></div>
+    </div>
+    
+    <div class="summary" id="summary" style="display: none;">
+        <h3>📊 Résumé du Combat</h3>
+        <div id="summary-content"></div>
+    </div>
+
+    <script type="module">
+        import { LaBruteCombatEngine } from '/src/engine/labrute-complete.js';
+        
+        let engine = null;
+        let autoMode = false;
+        let autoInterval = null;
+        
+        const fighters = {
+            fighter1: {
+                name: "MonGuerrier",
+                hp: 100,
+                maxHp: 100,
+                strength: 10,
+                agility: 10,
+                speed: 10,
+                endurance: 10,
+                skills: [],
+                weapons: []
+            },
+            fighter2: {
+                name: "Fireborn758",
+                hp: 100,
+                maxHp: 100,
+                strength: 10,
+                agility: 10,
+                speed: 10,
+                endurance: 10,
+                skills: [],
+                weapons: []
+            }
+        };
+        
+        const stats = {
+            1: { attacks: 0, hits: 0, misses: 0, damage: 0 },
+            2: { attacks: 0, hits: 0, misses: 0, damage: 0 }
+        };
+        
+        function seedRandom(seed) {
+            let counter = 0;
+            return function() {
+                counter++;
+                const x = Math.sin(seed + counter * 1.234) * 10000;
+                return x - Math.floor(x);
+            };
+        }
+        
+        function initCombat() {
+            const rng = seedRandom(Date.now());
+            engine = new LaBruteCombatEngine(fighters.fighter1, fighters.fighter2, rng);
+            
+            // Afficher les stats initiales
+            updateDisplay();
+            addLog("⚔️ Combat initialisé! " + (engine.activeIndex === 0 ? "MonGuerrier" : "Fireborn758") + " commence!", "info");
+        }
+        
+        function executeTurn() {
+            if (!engine || engine.isOver()) return;
+            
+            const result = engine.executeTurn();
+            if (!result) return;
+            
+            // Mettre à jour les indicateurs de tour
+            document.getElementById('turn1').style.display = engine.activeIndex === 0 ? 'inline-block' : 'none';
+            document.getElementById('turn2').style.display = engine.activeIndex === 1 ? 'inline-block' : 'none';
+            
+            // Analyser le résultat
+            let attackerIndex = result.attacker?.name === "MonGuerrier" ? 1 : 2;
+            let defenderIndex = result.target?.name === "MonGuerrier" ? 1 : 2;
+            
+            if (result.type === 'counter') {
+                // Inverser pour les contre-attaques
+                [attackerIndex, defenderIndex] = [defenderIndex, attackerIndex];
+            }
+            
+            // Mettre à jour les statistiques
+            if (result.type === 'attack' || result.type === 'throw') {
+                stats[attackerIndex].attacks++;
+                if (result.hit) {
+                    stats[attackerIndex].hits++;
+                    stats[attackerIndex].damage += result.damage || 0;
+                } else {
+                    stats[attackerIndex].misses++;
+                }
+            }
+            
+            // Ajouter au log
+            let logClass = "log-entry";
+            let logText = "";
+            
+            switch(result.type) {
+                case 'attack':
+                    if (result.hit) {
+                        logClass += result.critical ? " log-critical" : " log-hit";
+                        logText = `⚔️ ${result.attacker.name} frappe ${result.target.name} pour ${result.damage} dégâts${result.critical ? ' (CRITIQUE!)' : ''}`;
+                    } else {
+                        logClass += " log-miss";
+                        logText = `❌ ${result.attacker.name} rate son attaque!`;
+                    }
+                    break;
+                case 'counter':
+                    logClass += " log-counter";
+                    logText = `🔄 ${result.attacker.name} contre-attaque pour ${result.damage} dégâts!`;
+                    break;
+                case 'dodge':
+                    logClass += " log-dodge";
+                    logText = `💨 ${result.target.name} esquive l'attaque!`;
+                    break;
+                case 'block':
+                    logClass += " log-block";
+                    logText = `🛡️ ${result.target.name} bloque l'attaque (${result.damage} dégâts réduits)`;
+                    break;
+                case 'throw':
+                    logClass += " log-critical";
+                    logText = `🏹 ${result.attacker.name} lance son arme pour ${result.damage} dégâts!`;
+                    break;
+            }
+            
+            if (logText) addLog(logText, logClass);
+            
+            // Mettre à jour l'affichage
+            updateDisplay();
+            
+            // Vérifier la fin du combat
+            if (result.gameOver) {
+                endCombat(result.winner, result.loser);
+            }
+        }
+        
+        function updateDisplay() {
+            // Fighter 1
+            const hp1 = engine.fighters[0].currentHp;
+            const maxHp1 = engine.fighters[0].maxHp;
+            document.getElementById('hp1').style.width = Math.max(0, (hp1 / maxHp1) * 100) + '%';
+            document.getElementById('hpText1').textContent = `${Math.max(0, hp1)}/${maxHp1} HP`;
+            
+            // Fighter 2
+            const hp2 = engine.fighters[1].currentHp;
+            const maxHp2 = engine.fighters[1].maxHp;
+            document.getElementById('hp2').style.width = Math.max(0, (hp2 / maxHp2) * 100) + '%';
+            document.getElementById('hpText2').textContent = `${Math.max(0, hp2)}/${maxHp2} HP`;
+            
+            // Stats de combat
+            for (let i = 1; i <= 2; i++) {
+                document.getElementById(`attacks${i}`).textContent = stats[i].attacks;
+                document.getElementById(`hits${i}`).textContent = stats[i].hits;
+                document.getElementById(`misses${i}`).textContent = stats[i].misses;
+                document.getElementById(`damage${i}`).textContent = stats[i].damage;
+            }
+        }
+        
+        function addLog(text, className = "") {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = className || 'log-entry';
+            entry.textContent = `[Tour ${engine ? engine.turn : 0}] ${text}`;
+            logContent.insertBefore(entry, logContent.firstChild);
+            
+            // Limiter le nombre d'entrées
+            while (logContent.children.length > 100) {
+                logContent.removeChild(logContent.lastChild);
+            }
+        }
+        
+        function endCombat(winner, loser) {
+            stopAuto();
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stepBtn').disabled = true;
+            document.getElementById('autoBtn').disabled = true;
+            
+            const summary = document.getElementById('summary');
+            const content = document.getElementById('summary-content');
+            
+            const hitRate1 = stats[1].attacks > 0 ? ((stats[1].hits / stats[1].attacks) * 100).toFixed(1) : 0;
+            const hitRate2 = stats[2].attacks > 0 ? ((stats[2].hits / stats[2].attacks) * 100).toFixed(1) : 0;
+            
+            content.innerHTML = `
+                <h2>🏆 ${winner.name} remporte la victoire!</h2>
+                <p>Combat terminé en ${engine.turn} tours</p>
+                <hr>
+                <h4>MonGuerrier</h4>
+                <p>Attaques: ${stats[1].attacks} | Touches: ${stats[1].hits} (${hitRate1}%) | Dégâts: ${stats[1].damage}</p>
+                <h4>Fireborn758</h4>
+                <p>Attaques: ${stats[2].attacks} | Touches: ${stats[2].hits} (${hitRate2}%) | Dégâts: ${stats[2].damage}</p>
+            `;
+            
+            summary.style.display = 'block';
+            addLog(`🏆 ${winner.name} remporte la victoire!`, "log-entry log-critical");
+        }
+        
+        function stopAuto() {
+            autoMode = false;
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+            }
+            document.getElementById('autoBtn').textContent = '🔄 Mode Auto';
+        }
+        
+        function reset() {
+            stopAuto();
+            engine = null;
+            
+            // Réinitialiser les stats
+            for (let i = 1; i <= 2; i++) {
+                stats[i] = { attacks: 0, hits: 0, misses: 0, damage: 0 };
+            }
+            
+            // Réinitialiser l'affichage
+            document.getElementById('hp1').style.width = '100%';
+            document.getElementById('hp2').style.width = '100%';
+            document.getElementById('hpText1').textContent = '100/100 HP';
+            document.getElementById('hpText2').textContent = '100/100 HP';
+            document.getElementById('turn1').style.display = 'none';
+            document.getElementById('turn2').style.display = 'none';
+            
+            updateDisplay();
+            
+            // Vider le log
+            document.getElementById('log-content').innerHTML = '';
+            
+            // Cacher le résumé
+            document.getElementById('summary').style.display = 'none';
+            
+            // Réactiver les boutons
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stepBtn').disabled = true;
+            document.getElementById('autoBtn').disabled = true;
+        }
+        
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', () => {
+            initCombat();
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stepBtn').disabled = false;
+            document.getElementById('autoBtn').disabled = false;
+        });
+        
+        document.getElementById('stepBtn').addEventListener('click', executeTurn);
+        
+        document.getElementById('autoBtn').addEventListener('click', () => {
+            if (autoMode) {
+                stopAuto();
+            } else {
+                autoMode = true;
+                document.getElementById('autoBtn').textContent = '⏸️ Pause';
+                autoInterval = setInterval(() => {
+                    executeTurn();
+                    if (!engine || engine.isOver()) {
+                        stopAuto();
+                    }
+                }, 500);
+            }
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', reset);
+    </script>
+</body>
+</html>

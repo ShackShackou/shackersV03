@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LaBrute Combat Test - Placeholders</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+            width: 100%;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        .info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            font-size: 12px;
+            max-width: 400px;
+        }
+        .hp-bar-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            width: 300px;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border: 1px solid #0f0;
+            margin: 5px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameCanvas"></div>
+    
+    <div class="hp-bar-container">
+        <div>Fighter 1: <span id="hp1">100</span>/100</div>
+        <div class="hp-bar"><div id="hp1-bar" class="hp-fill" style="width: 100%"></div></div>
+        <div>Fighter 2: <span id="hp2">100</span>/100</div>
+        <div class="hp-bar"><div id="hp2-bar" class="hp-fill" style="width: 100%"></div></div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="testCombat()">Test Combat</button>
+        <button onclick="testMovement()">Test Movement</button>
+        <button onclick="testDistance()">Test Distance</button>
+        <button onclick="resetScene()">Reset</button>
+    </div>
+    
+    <div class="info" id="info">
+        Position info will appear here
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script>
+        class PlaceholderFightScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'PlaceholderFight' });
+                this.fighters = [];
+                this.fighterHP = [100, 100];
+                this.maxHP = [100, 100];
+                this.combatActive = false;
+            }
+            
+            create() {
+                // Background
+                this.add.rectangle(512, 384, 1024, 768, 0x2a2a2a);
+                
+                // Arena floor line
+                this.add.line(512, 500, 100, 0, 924, 0, 0x00ff00, 0.5);
+                
+                // Create placeholder fighters (rectangles)
+                this.fighters[0] = this.createPlaceholder(300, 450, 0xff0000, 'Fighter 1');
+                this.fighters[1] = this.createPlaceholder(724, 450, 0x0000ff, 'Fighter 2');
+                
+                // Distance markers
+                for (let x = 100; x < 1000; x += 100) {
+                    this.add.text(x, 520, `${x}`, { fontSize: '10px', color: '#666' }).setOrigin(0.5);
+                    this.add.line(x, 500, 0, 0, 0, 10, 0x666666, 0.3);
+                }
+                
+                // Info display
+                this.infoText = this.add.text(10, 550, '', { fontSize: '12px', color: '#0f0' });
+                
+                // Update loop
+                this.time.addEvent({
+                    delay: 100,
+                    callback: this.updateInfo,
+                    callbackScope: this,
+                    loop: true
+                });
+            }
+            
+            createPlaceholder(x, y, color, name) {
+                const container = this.add.container(x, y);
+                
+                // Body (rectangle)
+                const body = this.add.rectangle(0, 0, 60, 100, color);
+                
+                // Name label
+                const label = this.add.text(0, -60, name, { 
+                    fontSize: '12px', 
+                    color: '#fff' 
+                }).setOrigin(0.5);
+                
+                // Animation state indicator
+                const stateText = this.add.text(0, 60, 'idle', {
+                    fontSize: '10px',
+                    color: '#0f0'
+                }).setOrigin(0.5);
+                
+                container.add([body, label, stateText]);
+                container.body = body;
+                container.label = label;
+                container.stateText = stateText;
+                container.currentAnim = 'idle';
+                
+                // Custom properties for combat
+                container.targetX = x;
+                container.isMoving = false;
+                
+                return container;
+            }
+            
+            setAnimation(fighter, animName) {
+                fighter.currentAnim = animName;
+                fighter.stateText.setText(animName);
+                
+                // Visual feedback for different animations
+                switch(animName) {
+                    case 'walk':
+                    case 'run':
+                        fighter.body.setFillStyle(0xffff00); // Yellow for movement
+                        break;
+                    case 'hit':
+                    case 'attack':
+                        fighter.body.setFillStyle(0xff0000); // Red for attack
+                        this.time.delayedCall(300, () => {
+                            fighter.body.setFillStyle(fighter === this.fighters[0] ? 0xff0000 : 0x0000ff);
+                        });
+                        break;
+                    case 'idle':
+                        fighter.body.setFillStyle(fighter === this.fighters[0] ? 0xff0000 : 0x0000ff);
+                        break;
+                    case 'death':
+                        fighter.body.setFillStyle(0x666666); // Gray for death
+                        fighter.angle = 90; // Lay down
+                        break;
+                }
+            }
+            
+            moveFighter(fighterIndex, targetX) {
+                const fighter = this.fighters[fighterIndex];
+                const distance = Math.abs(targetX - fighter.x);
+                const duration = (distance / 300) * 1000; // 300px/s speed
+                
+                this.setAnimation(fighter, 'run');
+                fighter.isMoving = true;
+                
+                this.tweens.add({
+                    targets: fighter,
+                    x: targetX,
+                    duration: duration,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        fighter.isMoving = false;
+                        this.setAnimation(fighter, 'idle');
+                    }
+                });
+            }
+            
+            hitFighter(attackerIndex, targetIndex, damage) {
+                const attacker = this.fighters[attackerIndex];
+                const target = this.fighters[targetIndex];
+                
+                // Attack animation
+                this.setAnimation(attacker, 'attack');
+                
+                // Damage effect
+                this.time.delayedCall(200, () => {
+                    // Flash target
+                    this.tweens.add({
+                        targets: target.body,
+                        alpha: 0.3,
+                        duration: 100,
+                        yoyo: true,
+                        repeat: 2
+                    });
+                    
+                    // Update HP
+                    this.fighterHP[targetIndex] -= damage;
+                    if (this.fighterHP[targetIndex] < 0) this.fighterHP[targetIndex] = 0;
+                    this.updateHPBar(targetIndex);
+                    
+                    // Check death
+                    if (this.fighterHP[targetIndex] <= 0) {
+                        this.setAnimation(target, 'death');
+                    }
+                });
+                
+                // Return to idle
+                this.time.delayedCall(600, () => {
+                    if (this.fighterHP[attackerIndex] > 0) {
+                        this.setAnimation(attacker, 'idle');
+                    }
+                });
+            }
+            
+            updateHPBar(fighterIndex) {
+                const hp = this.fighterHP[fighterIndex];
+                const maxHP = this.maxHP[fighterIndex];
+                const percentage = (hp / maxHP) * 100;
+                
+                document.getElementById(`hp${fighterIndex + 1}`).textContent = hp;
+                document.getElementById(`hp${fighterIndex + 1}-bar`).style.width = percentage + '%';
+            }
+            
+            updateInfo() {
+                if (!this.fighters[0] || !this.fighters[1]) return;
+                
+                const distance = Math.abs(this.fighters[1].x - this.fighters[0].x);
+                const info = [
+                    `Fighter 1: x=${Math.round(this.fighters[0].x)}, state=${this.fighters[0].currentAnim}`,
+                    `Fighter 2: x=${Math.round(this.fighters[1].x)}, state=${this.fighters[1].currentAnim}`,
+                    `Distance: ${Math.round(distance)}px`,
+                    `Combat active: ${this.combatActive}`
+                ];
+                
+                this.infoText.setText(info.join('\n'));
+                document.getElementById('info').innerHTML = info.join('<br>');
+            }
+        }
+        
+        // Create game
+        const config = {
+            type: Phaser.AUTO,
+            width: 1024,
+            height: 768,
+            parent: 'gameCanvas',
+            scene: PlaceholderFightScene
+        };
+        
+        const game = new Phaser.Game(config);
+        let scene = null;
+        
+        game.events.once('ready', () => {
+            scene = game.scene.scenes[0];
+        });
+        
+        // Test functions
+        async function testCombat() {
+            if (!scene) return;
+            
+            scene.combatActive = true;
+            
+            // Simulate combat sequence
+            const steps = [
+                { type: 'move', fighter: 0, x: 400 },
+                { type: 'move', fighter: 1, x: 600 },
+                { type: 'wait', duration: 1000 },
+                { type: 'hit', attacker: 0, target: 1, damage: 20 },
+                { type: 'wait', duration: 800 },
+                { type: 'hit', attacker: 1, target: 0, damage: 15 },
+                { type: 'wait', duration: 800 },
+                { type: 'move', fighter: 0, x: 450 },
+                { type: 'wait', duration: 500 },
+                { type: 'hit', attacker: 0, target: 1, damage: 25 },
+                { type: 'wait', duration: 800 },
+                { type: 'hit', attacker: 1, target: 0, damage: 30 },
+            ];
+            
+            for (const step of steps) {
+                switch(step.type) {
+                    case 'move':
+                        scene.moveFighter(step.fighter, step.x);
+                        break;
+                    case 'hit':
+                        scene.hitFighter(step.attacker, step.target, step.damage);
+                        break;
+                    case 'wait':
+                        await new Promise(resolve => setTimeout(resolve, step.duration));
+                        break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            scene.combatActive = false;
+        }
+        
+        function testMovement() {
+            if (!scene) return;
+            
+            // Test different movement distances
+            scene.moveFighter(0, 500);
+            setTimeout(() => scene.moveFighter(1, 500), 500);
+        }
+        
+        function testDistance() {
+            if (!scene) return;
+            
+            // Position fighters at exact distances for testing
+            const distances = [100, 150, 200, 300];
+            let index = 0;
+            
+            const interval = setInterval(() => {
+                if (index >= distances.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                const dist = distances[index];
+                const center = 512;
+                scene.fighters[0].x = center - dist/2;
+                scene.fighters[1].x = center + dist/2;
+                
+                console.log(`Testing distance: ${dist}px`);
+                index++;
+            }, 2000);
+        }
+        
+        function resetScene() {
+            if (!scene) return;
+            
+            // Reset positions
+            scene.fighters[0].x = 300;
+            scene.fighters[1].x = 724;
+            scene.fighters[0].angle = 0;
+            scene.fighters[1].angle = 0;
+            
+            // Reset animations
+            scene.setAnimation(scene.fighters[0], 'idle');
+            scene.setAnimation(scene.fighters[1], 'idle');
+            
+            // Reset HP
+            scene.fighterHP = [100, 100];
+            scene.updateHPBar(0);
+            scene.updateHPBar(1);
+            
+            scene.combatActive = false;
+        }
+    </script>
+</body>
+</html>

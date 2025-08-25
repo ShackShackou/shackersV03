@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LaBrute Combat Mechanics Test</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+            width: 100%;
+        }
+        .info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameCanvas"></div>
+    
+    <div class="controls">
+        <button onclick="startServerCombat()">Start Server Combat</button>
+        <button onclick="resetScene()">Reset</button>
+    </div>
+    
+    <div class="info" id="info">
+        Waiting for combat...
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script type="module">
+        // Import the real combat engine
+        import LaBruteClientEngine from '/src/engine/LaBruteClientEngine.js';
+        
+        class CombatMechanicsTestScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'CombatTest' });
+                this.fighters = [];
+                this.hpBars = [];
+                this.fighterHP = [100, 100];
+                this.maxHP = [100, 100];
+                this.clientEngine = null;
+            }
+            
+            create() {
+                // Arena background
+                this.add.rectangle(512, 384, 1024, 768, 0x2a2a2a);
+                
+                // Ground line
+                this.add.line(512, 500, 100, 0, 924, 0, 0x00ff00, 0.5);
+                
+                // Distance markers every 50px
+                for (let x = 100; x <= 900; x += 50) {
+                    this.add.text(x, 510, `${x}`, { 
+                        fontSize: '8px', 
+                        color: '#666' 
+                    }).setOrigin(0.5);
+                }
+                
+                // Create placeholder fighters
+                this.createFighter(0, 300, 450, 0xff0000, 'Fighter 1');
+                this.createFighter(1, 724, 450, 0x0000ff, 'Fighter 2');
+                
+                // Info text
+                this.infoText = this.add.text(10, 10, 'Ready', { 
+                    fontSize: '12px', 
+                    color: '#0f0' 
+                });
+                
+                // Initialize client engine
+                this.clientEngine = new LaBruteClientEngine(this);
+            }
+            
+            createFighter(index, x, y, color, name) {
+                const container = this.add.container(x, y);
+                
+                // Body rectangle
+                const body = this.add.rectangle(0, 0, 40, 80, color);
+                
+                // Name
+                const nameText = this.add.text(0, -50, name, {
+                    fontSize: '12px',
+                    color: '#fff'
+                }).setOrigin(0.5);
+                
+                // HP bar background
+                const hpBarBg = this.add.rectangle(0, -70, 60, 8, 0x333333);
+                hpBarBg.setStrokeStyle(1, 0x00ff00);
+                
+                // HP bar fill
+                const hpBarFill = this.add.rectangle(0, -70, 60, 8, 0x00ff00);
+                
+                // State text
+                const stateText = this.add.text(0, 50, 'idle', {
+                    fontSize: '10px',
+                    color: '#0f0'
+                }).setOrigin(0.5);
+                
+                container.add([body, nameText, hpBarBg, hpBarFill, stateText]);
+                
+                // Store fighter data
+                this.fighters[index] = {
+                    container: container,
+                    body: body,
+                    hpBar: hpBarFill,
+                    stateText: stateText,
+                    x: x,
+                    y: y,
+                    hp: 100,
+                    maxHp: 100,
+                    state: 'idle'
+                };
+                
+                return container;
+            }
+            
+            updateFighterHP(index, newHP) {
+                const fighter = this.fighters[index];
+                if (!fighter) return;
+                
+                fighter.hp = Math.max(0, newHP);
+                const percentage = fighter.hp / fighter.maxHp;
+                
+                // Update HP bar width
+                fighter.hpBar.setSize(60 * percentage, 8);
+                fighter.hpBar.x = -30 + (30 * percentage); // Keep centered
+                
+                // Update color
+                if (percentage > 0.6) {
+                    fighter.hpBar.setFillStyle(0x00ff00);
+                } else if (percentage > 0.3) {
+                    fighter.hpBar.setFillStyle(0xffff00);
+                } else {
+                    fighter.hpBar.setFillStyle(0xff0000);
+                }
+                
+                // Update info
+                this.updateInfo();
+            }
+            
+            moveFighter(index, targetX, duration = 1000) {
+                const fighter = this.fighters[index];
+                if (!fighter) return;
+                
+                fighter.state = 'moving';
+                fighter.stateText.setText('moving');
+                
+                this.tweens.add({
+                    targets: fighter.container,
+                    x: targetX,
+                    duration: duration,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        fighter.state = 'idle';
+                        fighter.stateText.setText('idle');
+                        fighter.x = targetX;
+                        this.updateInfo();
+                    }
+                });
+            }
+            
+            attackFighter(attackerIndex, targetIndex, damage) {
+                const attacker = this.fighters[attackerIndex];
+                const target = this.fighters[targetIndex];
+                if (!attacker || !target) return;
+                
+                // Attack animation
+                attacker.state = 'attacking';
+                attacker.stateText.setText('attack');
+                attacker.body.setFillStyle(0xffff00);
+                
+                // Hit effect after delay
+                this.time.delayedCall(200, () => {
+                    // Flash target
+                    target.body.setFillStyle(0xffffff);
+                    this.time.delayedCall(100, () => {
+                        target.body.setFillStyle(targetIndex === 0 ? 0xff0000 : 0x0000ff);
+                    });
+                    
+                    // Apply damage
+                    this.updateFighterHP(targetIndex, target.hp - damage);
+                    
+                    // Check death
+                    if (target.hp <= 0) {
+                        target.state = 'dead';
+                        target.stateText.setText('dead');
+                        target.container.angle = 90;
+                    }
+                });
+                
+                // Return to idle
+                this.time.delayedCall(500, () => {
+                    if (attacker.hp > 0) {
+                        attacker.state = 'idle';
+                        attacker.stateText.setText('idle');
+                        attacker.body.setFillStyle(attackerIndex === 0 ? 0xff0000 : 0x0000ff);
+                    }
+                });
+            }
+            
+            updateInfo() {
+                const distance = Math.abs(this.fighters[1].x - this.fighters[0].x);
+                const info = [
+                    `F1: HP=${this.fighters[0].hp}/${this.fighters[0].maxHp} X=${Math.round(this.fighters[0].x)} State=${this.fighters[0].state}`,
+                    `F2: HP=${this.fighters[1].hp}/${this.fighters[1].maxHp} X=${Math.round(this.fighters[1].x)} State=${this.fighters[1].state}`,
+                    `Distance: ${Math.round(distance)}px`
+                ];
+                this.infoText.setText(info.join('\n'));
+                document.getElementById('info').innerHTML = info.join('<br>');
+            }
+            
+            async processServerSteps(steps) {
+                console.log('Processing', steps.length, 'combat steps');
+                
+                for (const step of steps) {
+                    // Process step based on type
+                    switch(step.a) {
+                        case 2: // Arrive
+                            console.log('Fighter arrives');
+                            break;
+                            
+                        case 15: // Move
+                            if (step.f !== undefined && step.x !== undefined) {
+                                this.moveFighter(step.f, step.x);
+                                await this.delay(1000);
+                            }
+                            break;
+                            
+                        case 9: // Hit
+                            if (step.f !== undefined && step.t !== undefined && step.d) {
+                                this.attackFighter(step.f, step.t, step.d);
+                                await this.delay(600);
+                            }
+                            break;
+                            
+                        case 21: // Evade
+                            console.log('Evade');
+                            break;
+                            
+                        case 20: // Block
+                            console.log('Block');
+                            break;
+                            
+                        case 24: // Death
+                            if (step.f !== undefined) {
+                                const fighter = this.fighters[step.f];
+                                if (fighter) {
+                                    fighter.state = 'dead';
+                                    fighter.stateText.setText('dead');
+                                }
+                            }
+                            break;
+                            
+                        case 26: // End
+                            console.log('Combat ended');
+                            break;
+                    }
+                    
+                    await this.delay(200);
+                }
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            reset() {
+                // Reset fighters
+                this.fighters[0].container.x = 300;
+                this.fighters[0].container.angle = 0;
+                this.fighters[0].hp = 100;
+                this.fighters[0].state = 'idle';
+                this.fighters[0].stateText.setText('idle');
+                this.updateFighterHP(0, 100);
+                
+                this.fighters[1].container.x = 724;
+                this.fighters[1].container.angle = 0;
+                this.fighters[1].hp = 100;
+                this.fighters[1].state = 'idle';
+                this.fighters[1].stateText.setText('idle');
+                this.updateFighterHP(1, 100);
+                
+                this.updateInfo();
+            }
+        }
+        
+        // Create game
+        const config = {
+            type: Phaser.AUTO,
+            width: 1024,
+            height: 768,
+            parent: 'gameCanvas',
+            scene: CombatMechanicsTestScene
+        };
+        
+        const game = new Phaser.Game(config);
+        let scene = null;
+        
+        game.events.once('ready', () => {
+            scene = game.scene.scenes[0];
+        });
+        
+        // Server combat function
+        window.startServerCombat = async function() {
+            if (!scene) return;
+            
+            console.log('Requesting combat from server...');
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile1: 'tank',
+                        profile2: 'agile'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Received combat data:', data);
+                
+                // Set fighter HP
+                scene.fighters[0].maxHp = data.fight.fighters[0].maxHp;
+                scene.fighters[0].hp = data.fight.fighters[0].maxHp;
+                scene.fighters[1].maxHp = data.fight.fighters[1].maxHp;
+                scene.fighters[1].hp = data.fight.fighters[1].maxHp;
+                
+                scene.updateFighterHP(0, scene.fighters[0].hp);
+                scene.updateFighterHP(1, scene.fighters[1].hp);
+                
+                // Process steps
+                await scene.processServerSteps(data.steps);
+                
+                console.log('Combat finished. Winner:', data.fight.winner);
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        };
+        
+        window.resetScene = function() {
+            if (scene) scene.reset();
+        };
+    </script>
+</body>
+</html>

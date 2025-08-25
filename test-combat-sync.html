@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Synchronisation Combat Serveur/Client</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .status.connected {
+            background: rgba(76,175,80,0.3);
+        }
+        .status.disconnected {
+            background: rgba(244,67,54,0.3);
+        }
+        .health-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        .fighter-health {
+            width: 45%;
+        }
+        .fighter-health h3 {
+            margin: 10px 0;
+            color: #ffd700;
+        }
+        .health-bar-container {
+            width: 100%;
+            height: 40px;
+            background: #333;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        .health-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        .health-bar.left {
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+        }
+        .health-bar.right {
+            background: linear-gradient(90deg, #f44336, #ff9800);
+            float: right;
+        }
+        .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .vs-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.4);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .sync-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .info-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .info-card h4 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        .sync-status {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .sync-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .sync-indicator.synced {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+        .sync-indicator.desynced {
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+        .combat-log {
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 8px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .log-entry.damage {
+            border-left-color: #f44336;
+        }
+        .log-entry.critical {
+            border-left-color: #ffd700;
+            background: rgba(255,215,0,0.15);
+        }
+        .log-entry.sync {
+            border-left-color: #4caf50;
+            background: rgba(76,175,80,0.1);
+        }
+        .log-entry.death {
+            border-left-color: #9c27b0;
+            background: rgba(156,39,176,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ Test Synchronisation Combat Serveur/Client 🛡️</h1>
+        
+        <div class="status disconnected" id="connectionStatus">
+            <span id="statusText">❌ Déconnecté du serveur</span>
+        </div>
+        
+        <div class="health-display">
+            <div class="fighter-health">
+                <h3>⚔️ Combattant 1: <span id="fighter1Name">Brutus</span></h3>
+                <div class="health-bar-container">
+                    <div class="health-text" id="health1Text">140/140</div>
+                    <div class="health-bar left" id="health1Bar" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="vs-text">VS</div>
+            
+            <div class="fighter-health">
+                <h3>🛡️ Combattant 2: <span id="fighter2Name">Maximus</span></h3>
+                <div class="health-bar-container">
+                    <div class="health-text" id="health2Text">122/122</div>
+                    <div class="health-bar right" id="health2Bar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="connectBtn">🔌 Connecter au Serveur</button>
+            <button id="startBtn" disabled>⚔️ Lancer le Combat</button>
+            <button id="testSyncBtn" disabled>🔄 Tester la Synchronisation</button>
+            <button id="resetBtn">🔄 Réinitialiser</button>
+        </div>
+        
+        <div class="sync-info">
+            <div class="info-card">
+                <h4>État de Synchronisation</h4>
+                <div class="sync-status">
+                    <div class="sync-indicator desynced" id="serverSyncIndicator"></div>
+                    <span>Serveur: <span id="serverSyncStatus">Non synchronisé</span></span>
+                </div>
+                <div class="sync-status">
+                    <div class="sync-indicator desynced" id="clientSyncIndicator"></div>
+                    <span>Client: <span id="clientSyncStatus">Non synchronisé</span></span>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h4>Statistiques</h4>
+                <div>Steps reçus: <span id="stepsReceived">0</span></div>
+                <div>Latence: <span id="latency">-</span> ms</div>
+                <div>État combat: <span id="combatState">En attente</span></div>
+            </div>
+        </div>
+        
+        <div class="combat-log" id="combatLog">
+            <div class="log-entry">En attente de connexion au serveur...</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let connected = false;
+        let fighters = {};
+        let currentStep = 0;
+        let syncCheckInterval = null;
+        
+        // Éléments DOM
+        const connectBtn = document.getElementById('connectBtn');
+        const startBtn = document.getElementById('startBtn');
+        const testSyncBtn = document.getElementById('testSyncBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('statusText');
+        const combatLog = document.getElementById('combatLog');
+        
+        // HP actuels côté client
+        let clientHP = {
+            fighter1: { current: 140, max: 140 },
+            fighter2: { current: 122, max: 122 }
+        };
+        
+        // Connexion au serveur
+        function connectToServer() {
+            socket = io('http://localhost:4001');
+            
+            socket.on('connect', () => {
+                connected = true;
+                connectionStatus.className = 'status connected';
+                statusText.textContent = '✅ Connecté au serveur';
+                connectBtn.disabled = true;
+                startBtn.disabled = false;
+                testSyncBtn.disabled = false;
+                addLog('✅ Connexion établie avec le serveur', 'sync');
+                updateSyncStatus('server', true);
+            });
+            
+            socket.on('disconnect', () => {
+                connected = false;
+                connectionStatus.className = 'status disconnected';
+                statusText.textContent = '❌ Déconnecté du serveur';
+                connectBtn.disabled = false;
+                startBtn.disabled = true;
+                testSyncBtn.disabled = true;
+                addLog('❌ Connexion perdue avec le serveur', 'error');
+                updateSyncStatus('server', false);
+                updateSyncStatus('client', false);
+            });
+            
+            socket.on('combatStep', (data) => {
+                processCombatStep(data);
+            });
+            
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                addLog(`❌ Erreur: ${error}`, 'error');
+            });
+        }
+        
+        // Lancer le combat
+        function startCombat() {
+            if (!connected) {
+                addLog('❌ Non connecté au serveur', 'error');
+                return;
+            }
+            
+            const fighter1 = {
+                name: 'Brutus',
+                strength: 20,
+                agility: 15,
+                speed: 10,
+                endurance: 15
+            };
+            
+            const fighter2 = {
+                name: 'Maximus',
+                strength: 15,
+                agility: 20,
+                speed: 15,
+                endurance: 12
+            };
+            
+            // Calculer les HP max
+            clientHP.fighter1.max = 50 + fighter1.endurance * 6;
+            clientHP.fighter1.current = clientHP.fighter1.max;
+            clientHP.fighter2.max = 50 + fighter2.endurance * 6;
+            clientHP.fighter2.current = clientHP.fighter2.max;
+            
+            // Mettre à jour l'affichage
+            updateHealthDisplay();
+            
+            // Envoyer la requête au serveur
+            socket.emit('requestFight', {
+                fighter1,
+                fighter2,
+                seed: Date.now()
+            });
+            
+            addLog('⚔️ Combat lancé! En attente des données serveur...', 'info');
+            document.getElementById('combatState').textContent = 'En combat';
+            currentStep = 0;
+            
+            // Démarrer la vérification de sync
+            startSyncCheck();
+        }
+        
+        // Traiter un step de combat
+        function processCombatStep(data) {
+            const { step, index, total } = data;
+            currentStep++;
+            document.getElementById('stepsReceived').textContent = currentStep;
+            
+            // Mesurer la latence
+            const latency = Date.now() - (step.timestamp || Date.now());
+            document.getElementById('latency').textContent = Math.abs(latency);
+            
+            switch(step.a) {
+                case 'init':
+                    addLog('⚔️ Le combat commence!', 'info');
+                    updateSyncStatus('client', true);
+                    break;
+                    
+                case 'hit':
+                    const attackerName = step.f === 0 ? 'Brutus' : 'Maximus';
+                    const defenderName = step.t === 0 ? 'Brutus' : 'Maximus';
+                    
+                    // Synchroniser les HP depuis le serveur
+                    if (step.hp) {
+                        const serverHP1 = step.hp[0];
+                        const serverHP2 = step.hp[1];
+                        
+                        // Vérifier la désynchronisation
+                        const fighter1Key = step.t === 0 ? 'fighter1' : 'fighter2';
+                        const fighter2Key = step.t === 1 ? 'fighter2' : 'fighter1';
+                        
+                        // Appliquer les dégâts côté client
+                        if (step.t === 0) {
+                            clientHP.fighter1.current = Math.max(0, clientHP.fighter1.current - step.d);
+                        } else {
+                            clientHP.fighter2.current = Math.max(0, clientHP.fighter2.current - step.d);
+                        }
+                        
+                        // Vérifier la synchronisation
+                        const clientTotal = clientHP.fighter1.current + clientHP.fighter2.current;
+                        const serverTotal = serverHP1 + serverHP2;
+                        
+                        if (Math.abs(clientTotal - serverTotal) > 1) {
+                            addLog(`⚠️ Désynchronisation détectée! Client: ${clientTotal} HP, Serveur: ${serverTotal} HP`, 'error');
+                            updateSyncStatus('client', false);
+                            
+                            // Forcer la resynchronisation
+                            clientHP.fighter1.current = serverHP1;
+                            clientHP.fighter2.current = serverHP2;
+                            addLog('🔄 Resynchronisation forcée avec le serveur', 'sync');
+                        } else {
+                            updateSyncStatus('client', true);
+                        }
+                    }
+                    
+                    if (step.c === 1) {
+                        addLog(`💥 COUP CRITIQUE! ${attackerName} inflige ${step.d} dégâts à ${defenderName}!`, 'critical');
+                    } else {
+                        addLog(`⚔️ ${attackerName} frappe ${defenderName} pour ${step.d} dégâts`, 'damage');
+                    }
+                    
+                    updateHealthDisplay();
+                    break;
+                    
+                case 'death':
+                    const deadName = step.f === 0 ? 'Brutus' : 'Maximus';
+                    addLog(`💀 ${deadName} est vaincu!`, 'death');
+                    
+                    // Forcer HP à 0
+                    if (step.f === 0) {
+                        clientHP.fighter1.current = 0;
+                    } else {
+                        clientHP.fighter2.current = 0;
+                    }
+                    updateHealthDisplay();
+                    break;
+                    
+                case 'end':
+                    addLog(`🏆 Combat terminé! ${step.winner} remporte la victoire!`, 'info');
+                    document.getElementById('combatState').textContent = 'Terminé';
+                    stopSyncCheck();
+                    break;
+            }
+            
+            // Vérifier si on a reçu tous les steps
+            if (index === total - 1) {
+                addLog('✅ Tous les steps ont été reçus et traités', 'sync');
+            }
+        }
+        
+        // Mettre à jour l'affichage des HP
+        function updateHealthDisplay() {
+            // Fighter 1 (gauche)
+            const health1Bar = document.getElementById('health1Bar');
+            const health1Text = document.getElementById('health1Text');
+            const percent1 = Math.max(0, (clientHP.fighter1.current / clientHP.fighter1.max) * 100);
+            health1Bar.style.width = percent1 + '%';
+            health1Text.textContent = `${Math.max(0, Math.floor(clientHP.fighter1.current))}/${clientHP.fighter1.max}`;
+            
+            // Fighter 2 (droite)
+            const health2Bar = document.getElementById('health2Bar');
+            const health2Text = document.getElementById('health2Text');
+            const percent2 = Math.max(0, (clientHP.fighter2.current / clientHP.fighter2.max) * 100);
+            health2Bar.style.width = percent2 + '%';
+            health2Text.textContent = `${Math.max(0, Math.floor(clientHP.fighter2.current))}/${clientHP.fighter2.max}`;
+        }
+        
+        // Tester la synchronisation
+        function testSync() {
+            if (!connected) return;
+            
+            addLog('🔄 Test de synchronisation en cours...', 'sync');
+            
+            // Envoyer une requête de test au serveur
+            socket.emit('syncTest', {
+                clientHP: clientHP,
+                timestamp: Date.now()
+            });
+            
+            socket.once('syncTestResponse', (data) => {
+                const latency = Date.now() - data.timestamp;
+                addLog(`📡 Latence réseau: ${latency}ms`, 'sync');
+                
+                if (data.synced) {
+                    addLog('✅ Client et serveur sont synchronisés!', 'sync');
+                    updateSyncStatus('client', true);
+                    updateSyncStatus('server', true);
+                } else {
+                    addLog('⚠️ Désynchronisation détectée!', 'error');
+                    updateSyncStatus('client', false);
+                }
+            });
+        }
+        
+        // Démarrer la vérification de sync
+        function startSyncCheck() {
+            syncCheckInterval = setInterval(() => {
+                // Vérifier périodiquement la synchronisation
+                const syncOk = clientHP.fighter1.current >= 0 && clientHP.fighter2.current >= 0;
+                updateSyncStatus('client', syncOk);
+            }, 1000);
+        }
+        
+        // Arrêter la vérification de sync
+        function stopSyncCheck() {
+            if (syncCheckInterval) {
+                clearInterval(syncCheckInterval);
+                syncCheckInterval = null;
+            }
+        }
+        
+        // Mettre à jour le statut de synchronisation
+        function updateSyncStatus(type, synced) {
+            const indicator = document.getElementById(`${type}SyncIndicator`);
+            const status = document.getElementById(`${type}SyncStatus`);
+            
+            if (synced) {
+                indicator.className = 'sync-indicator synced';
+                status.textContent = 'Synchronisé';
+            } else {
+                indicator.className = 'sync-indicator desynced';
+                status.textContent = 'Non synchronisé';
+            }
+        }
+        
+        // Ajouter une entrée au log
+        function addLog(message, type = 'normal') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            combatLog.insertBefore(entry, combatLog.firstChild);
+            
+            // Limiter le nombre d'entrées
+            while (combatLog.children.length > 50) {
+                combatLog.removeChild(combatLog.lastChild);
+            }
+        }
+        
+        // Réinitialiser
+        function reset() {
+            currentStep = 0;
+            clientHP = {
+                fighter1: { current: 140, max: 140 },
+                fighter2: { current: 122, max: 122 }
+            };
+            
+            updateHealthDisplay();
+            document.getElementById('stepsReceived').textContent = '0';
+            document.getElementById('latency').textContent = '-';
+            document.getElementById('combatState').textContent = 'En attente';
+            
+            updateSyncStatus('client', false);
+            updateSyncStatus('server', connected);
+            
+            stopSyncCheck();
+            
+            combatLog.innerHTML = '<div class="log-entry">Système réinitialisé</div>';
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', connectToServer);
+        startBtn.addEventListener('click', startCombat);
+        testSyncBtn.addEventListener('click', testSync);
+        resetBtn.addEventListener('click', reset);
+        
+        // Auto-connexion au chargement
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addLog('Tentative de connexion automatique...', 'info');
+                connectToServer();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,16 +1,16 @@
-// ================================================
-// 🎮 SYSTÈME LABRUTE/MYBRUTE COMPLET
-// ================================================
-// CE FICHIER CONTIENT TOUT LE SYSTÈME LABRUTE :
-// - Formules de combat exactes
-// - 28 Armes officielles avec stats réelles
-// - 3 Pets (Chien, Ours, Panthère) 
-// - 30 Skills/Compétences
-// - Système de niveaux (1-80)
-// - Tournois et compétitions
-// - Arbre de talents
-// - Système de pupils/élèves
-// ================================================
+// ============================================================================
+// LABRUTE COMBAT ENGINE - COMPLETE VERSION
+// ============================================================================
+// Ce fichier contient le moteur de combat complet de LaBrute avec :
+// - Gestion des armes et de leurs effets spéciaux
+// - Système de dégâts basé sur les statistiques
+// - Compétences (skills) et leurs effets
+// - Logique de blocage, esquive et contre-attaque
+// - Gestion des pets et de leurs actions
+// - Système de combat tour par tour
+// ============================================================================
+
+import { hpManager } from './HPManager.js';
 
 // ================================================
 // PARTIE 1 : CONFIGURATION GLOBALE
@@ -1575,43 +1575,76 @@ export const LaBruteCombatFormulas = {
 // ================================================
 
 export class LaBruteCombatEngine {
-    constructor(fighter1, fighter2, options = {}) {
+    constructor(fighter1, fighter2, rng, maxTurns = 500) {
         // Compatibility with existing FightSceneSpine
         this.fighter1 = fighter1;
         this.fighter2 = fighter2;
         
-        // MÉCANIQUE OFFICIELLE : RNG avec seed pour éviter les répétitions
-        this.rngSeed = options.seed || Date.now() + Math.random();
-        this.rngCounter = 0;
+        // Initialiser le RNG
+        if (typeof rng === 'function') {
+            this.rng = rng;
+        } else {
+            // RNG interne avec seed
+            this.rngSeed = rng || Date.now();
+            this.rngCounter = 0;
+            this.rng = () => {
+                this.rngCounter++;
+                const x = Math.sin(this.rngSeed + this.rngCounter * 1.234) * 10000;
+                return x - Math.floor(x);
+            };
+        }
         
-        // Initialiser AVANT de préparer les fighters
+        this.activeIndex = 0;
         this.turn = 0;
-        this.maxTurns = 100;
-        this.combatLog = [];
+        this.maxTurns = maxTurns;
         this.winner = null;
-        this.lastResult = null;
-        this.onHPChange = options.onHPChange || null; // Callback pour notifier les changements de HP
+        this.combatLog = [];
+        this.hpManager = hpManager;
         
-        // Maintenant on peut préparer les fighters (qui utilisent this.rng())
+        // Initialiser le gestionnaire HP centralisé
+        this.hpManager.reset();
+        this.hpManager.setDebug(true);
+        
+        // Préparer les fighters
         this.fighters = [
             this.prepareFighter(fighter1),
             this.prepareFighter(fighter2)
         ];
         
+        // Enregistrer les fighters dans le HPManager
+        for (const fighter of this.fighters) {
+            console.log(`[LaBruteCombat] Registering fighter: ${fighter.name}`);
+            this.hpManager.registerFighter(fighter.name, fighter.maxHp, fighter.currentHp, fighter.skills);
+        }
+        
         // Calculer l'initiative
         this.calculateInitiative();
     }
     
-    // MÉCANIQUE OFFICIELLE : RNG Seedé pour éviter les répétitions
-    rng() {
-        // Générateur pseudo-aléatoire simple mais efficace
-        this.rngCounter++;
-        const x = Math.sin(this.rngSeed + this.rngCounter * 1.234) * 10000;
-        return x - Math.floor(x);
+    // MÉCANIQUE OFFICIELLE : Calcul de l'initiative
+    calculateInitiative() {
+        const init1 = this.fighters[0].stats?.speed || 10;
+        const init2 = this.fighters[1].stats?.speed || 10;
+        
+        // Celui avec la plus grande vitesse commence
+        if (init1 > init2) {
+            this.activeIndex = 0;
+        } else if (init2 > init1) {
+            this.activeIndex = 1;
+        } else {
+            // Égalité : au hasard
+            this.activeIndex = this.rng() < 0.5 ? 0 : 1;
+        }
+        
+        console.log(`[Initiative] ${this.fighters[this.activeIndex].name} commence le combat`);
     }
     
     prepareFighter(fighter) {
         const prepared = { ...fighter };
+        
+        // Assurer qu'on a un nom pour le fighter
+        prepared.name = fighter.name || fighter.stats?.name || 'Fighter';
+        console.log(`[prepareFighter] Preparing fighter: ${prepared.name}`);
         
         // Si le fighter a déjà des stats de combat (depuis FightSceneSpine)
         if (fighter.stats) {
@@ -1619,7 +1652,6 @@ export class LaBruteCombatEngine {
             if (fighter.stats.health !== undefined && fighter.stats.maxHealth !== undefined) {
                 prepared.maxHp = fighter.stats.maxHealth;
                 prepared.currentHp = fighter.stats.health;
-                prepared.name = fighter.stats.name || fighter.name || 'Fighter';
                 
                 // Copier les stats pour les formules
                 if (!prepared.stats) {
@@ -1638,6 +1670,16 @@ export class LaBruteCombatEngine {
             // Calculer les HP selon la formule LaBrute
             prepared.maxHp = LaBruteCombatFormulas.computeFinalHP(fighter);
             prepared.currentHp = prepared.maxHp;
+            
+            // S'assurer qu'on a les stats de base
+            if (!prepared.stats) {
+                prepared.stats = {
+                    strength: fighter.strength || 10,
+                    agility: fighter.agility || 10,
+                    speed: fighter.speed || 10,
+                    endurance: fighter.endurance || 10
+                };
+            }
         }
         
         // Préparer les armes (MÉCANIQUE OFFICIELLE LABRUTE)
@@ -1680,17 +1722,6 @@ export class LaBruteCombatEngine {
         }
         
         return prepared;
-    }
-    
-    calculateInitiative() {
-        this.fighters.forEach(f => {
-            // Comme dans LaBrute officiel : Math.random() pour l'initiative
-            f.initiative = LaBruteCombatFormulas.computeInitiative(f);
-        });
-        
-        // Trier par initiative (plus bas = plus rapide)
-        this.fighters.sort((a, b) => a.initiative - b.initiative);
-        this.activeIndex = 0;
     }
     
     executeTurn() {
@@ -1915,7 +1946,7 @@ export class LaBruteCombatEngine {
                     hit: lastAttackResult.hit || false,
                     critical: lastAttackResult.critical || false,
                     petAssist: lastAttackResult.petAssist,
-                    gameOver: false
+                    gameOver: false  
                 };
             }
         }
@@ -1931,67 +1962,68 @@ export class LaBruteCombatEngine {
         };
     }
     
+    // Résolution d'attaque (tuning: combats plus rapides, moins de ratés)
     performAttack(attacker, defender) {
-        const weapon = attacker.currentWeapon;
+        // Déterminer l'arme
+        const weapon = attacker.currentWeapon || attacker.activeWeapon || null;
         
-        // NOUVEAU : Check pour le lancer d'arme (30% de chance pour test)
-        if (weapon && this.rng() < 0.3) {
-            // Simuler un lancer d'arme
+        // Chance de toucher
+        const attackerAgi = (attacker.agility ?? attacker.stats?.agility ?? 0);
+        const defenderAgi = (defender.agility ?? defender.stats?.agility ?? 0);
+        const baseHitChance = 0.7; // 70%
+        const agilityBonus = (attackerAgi - defenderAgi) * 0.01; // impact réduit
+        const rawWeaponAcc = (weapon && LABRUTE_WEAPONS[weapon] && typeof LABRUTE_WEAPONS[weapon].accuracy === 'number')
+          ? LABRUTE_WEAPONS[weapon].accuracy / 100
+          : (weapon ? 0.10 : 0); // léger bonus si arme équipée
+        let hitChance = baseHitChance + agilityBonus + rawWeaponAcc;
+        if (attacker.skills?.includes('precision')) hitChance += 0.05;
+        hitChance = Math.max(0.5, Math.min(0.95, hitChance));
+        
+        console.log(`HIT CHANCE: ${attacker.name} vs ${defender.name} = ${(hitChance * 100).toFixed(1)}%`);
+        console.log(`  Base: ${baseHitChance}, Agility bonus: ${agilityBonus.toFixed(2)}, Weapon: ${rawWeaponAcc.toFixed(2)}`);
+        
+        // Jet pour toucher
+        const hitRoll = this.rng();
+        if (hitRoll > hitChance) {
+            console.log(`MISS! Roll ${hitRoll.toFixed(3)} > ${hitChance.toFixed(3)}`);
+            this.log(`${attacker.name} rate son attaque !`);
+            return { hit: false, damage: 0 };
+        }
+        
+        // Esquive (réduite)
+        const agiDiff = defenderAgi - attackerAgi;
+        let dodgeChance = 0.05 + Math.max(0, agiDiff) * 0.0025; // ~5-8%
+        if (defender.skills?.includes('dodge')) dodgeChance += 0.02;
+        dodgeChance = Math.min(0.10, dodgeChance);
+        if (this.rng() < dodgeChance) {
+            this.log(`${defender.name} esquive !`);
+            return { hit: false, damage: 0, dodge: true };
+        }
+        
+        // Parade (réduite)
+        let blockChance = 0.10;
+        if (defender.skills?.includes('shield')) blockChance += 0.05;
+        if (defender.skills?.includes('armor')) blockChance += 0.03;
+        blockChance = Math.min(0.18, blockChance);
+        const blocked = this.rng() < blockChance;
+        
+        // Lancer d'arme (10%)
+        if (weapon && this.rng() < 0.10) {
             const damage = Math.floor(LaBruteCombatFormulas.computeBaseDamage(attacker, defender, weapon) * 1.5);
             this.dealDamage(defender, damage);
-            this.log(`${attacker.name} LANCE ${weapon} pour ${damage} dégâts !`);
-            
-            // TOUTES les armes sont perdues après un lancer (comme dans LaBrute officiel)
-            attacker.currentWeapon = null;
-            attacker.activeWeapon = null;
-            // Retirer l'arme de l'inventaire
-            const weaponIndex = attacker.weaponInventory.indexOf(weapon);
-            if (weaponIndex > -1) {
-                attacker.weaponInventory.splice(weaponIndex, 1);
-            }
-            this.log(`${attacker.name} perd son arme !`);
-            
-            // Retourner le type throw pour déclencher l'animation
-            return { 
-                type: 'throw', 
-                throw: true,
-                damage,
-                hit: true,
-                weapon: weapon
-            };
+            this.log(`${attacker.name} lance son ${LABRUTE_WEAPONS[weapon]?.name || weapon} et inflige ${damage} dégâts !`);
+            attacker.currentWeapon = null; // arme perdue
+            return { hit: true, damage, throw: true };
         }
         
-        // 1. Check contre-attaque
-        const counterChance = LaBruteCombatFormulas.computeCounterChance(defender, attacker, weapon);
-        if (this.rng() * 100 < counterChance) {
-            const damage = Math.floor(LaBruteCombatFormulas.computeBaseDamage(defender, attacker, defender.currentWeapon) * 0.5);
-            this.dealDamage(attacker, damage);
-            this.log(`${defender.name} contre-attaque pour ${damage} dégâts !`);
-            return { counter: true, damage };
-        }
-        
-        // 2. Check esquive
-        const dodgeChance = LaBruteCombatFormulas.computeDodgeChance(defender, attacker, weapon);
-        if (this.rng() * 100 < dodgeChance) {
-            this.log(`${defender.name} esquive !`);
-            return { dodge: true };
-        }
-        
-        // 3. Check parade
-        const blockChance = LaBruteCombatFormulas.computeBlockChance(defender, attacker, weapon);
-        const blocked = this.rng() * 100 < blockChance;
-        
-        // 4. Calculer les dégâts
+        // Dégâts de base
         let damage = LaBruteCombatFormulas.computeBaseDamage(attacker, defender, weapon);
         
-        // Assurer un minimum de dégâts
-        damage = Math.max(1, damage);
-        
-        // Log détaillé pour TOUTES les attaques
+        // Log détaillé
         console.log(`ATTACK CALCULATION: ${attacker.name} -> ${defender.name}`);
         console.log(`  Weapon: ${weapon || 'BARE HANDS'}`);
         console.log(`  Base damage before variation: ${damage}`);
-        console.log(`  Attacker strength: ${attacker.strength}`);
+        console.log(`  Attacker strength: ${attacker.strength ?? attacker.stats?.strength}`);
         console.log(`  Defender HP before: ${defender.currentHp}`);
         
         // Variation ±20%
@@ -1999,20 +2031,18 @@ export class LaBruteCombatEngine {
         damage = damage * variation;
         console.log(`  Variation: ${variation.toFixed(2)}x, damage after variation: ${damage}`);
         
-        // Critique ?
+        // Critique
         const critChance = LaBruteCombatFormulas.computeCritChance(attacker, defender, weapon);
         const critical = this.rng() * 100 < critChance;
-        if (critical) {
-            damage *= 2;
-        }
+        if (critical) damage *= 2;
         
         // Parade réduit les dégâts
         if (blocked) {
             damage *= defender.skills?.includes('armor') ? 0.25 : 0.5;
         }
         
-        // Garantir un minimum de 1 dégât si l'attaque touche
-        damage = Math.max(1, Math.floor(damage));
+        // Minimum
+        damage = Math.max(2, Math.floor(damage));
         console.log(`  Final damage to deal: ${damage}`);
         
         this.dealDamage(defender, damage);
@@ -2023,12 +2053,11 @@ export class LaBruteCombatEngine {
         if (blocked) logMsg += ' (paré)';
         this.log(logMsg);
         
-        // Combo ?
+        // Combo
         const comboChance = LaBruteCombatFormulas.computeComboChance(attacker, weapon);
         if (this.rng() * 100 < comboChance) {
             const maxCombo = attacker.skills?.includes('tornado') ? 4 : 2;
             const comboHits = 1 + Math.floor(this.rng() * maxCombo);
-            
             for (let i = 0; i < comboHits; i++) {
                 const comboDamage = Math.floor(damage * 0.7);
                 this.dealDamage(defender, comboDamage);
@@ -2036,7 +2065,7 @@ export class LaBruteCombatEngine {
             }
         }
         
-        // Skills spéciaux
+        // Compétences spéciales
         this.checkSpecialSkills(attacker, defender);
         
         return { hit: true, damage, critical, blocked };
@@ -2100,68 +2129,52 @@ export class LaBruteCombatEngine {
     }
     
     dealDamage(fighter, damage) {
-        console.log(`[DEALDAMAGE] ${fighter.name}: HP before=${fighter.currentHp}, damage=${damage}`);
+        console.log(`[dealDamage] ${fighter.name} takes ${damage} damage`);
         
-        // Skill Resistant : max 20% HP perdus
-        if (fighter.skills?.includes('resistant')) {
-            const maxDamage = Math.floor(fighter.maxHp * 0.2);
-            damage = Math.min(damage, maxDamage);
-            console.log(`[DEALDAMAGE] Resistant skill limited damage to ${damage}`);
-        }
+        // Utiliser HPManager pour appliquer les dégâts
+        const result = hpManager.applyDamage(fighter.name, damage);
         
-        const oldHP = fighter.currentHp;
-        fighter.currentHp -= damage;
-        console.log(`[DEALDAMAGE] ${fighter.name}: HP ${oldHP} -> ${fighter.currentHp}`);
-        
-        // Survie
-        if (fighter.currentHp <= 0 && 
-            fighter.skills?.includes('survival') &&
-            !fighter.tempEffects.survived) {
-            fighter.currentHp = 1;
-            fighter.tempEffects.survived = true;
-            this.log(`${fighter.name} survit avec 1 HP !`);
-        }
-        
-        // Notifier le changement de HP
-        if (this.onHPChange) {
-            this.onHPChange(fighter.name, fighter.currentHp, fighter.maxHp);
+        if (result) {
+            // Synchroniser avec currentHp
+            fighter.currentHp = result.currentHP;
+            
+            // Synchroniser avec stats.health si présent
+            if (fighter.stats) {
+                fighter.stats.health = result.currentHP;
+            }
+            
+            // Log pour debug
+            console.log(`[dealDamage] ${fighter.name} HP: ${result.currentHP}/${result.maxHP}`);
+            
+            // Vérifier survival
+            if (result.survived) {
+                console.log(`[dealDamage] ${fighter.name} SURVIVES with 1 HP!`);
+                this.log(`${fighter.name} survit avec 1 HP !`);
+            }
         }
     }
     
     checkVictory() {
-        // Vérifier si un combattant est KO
-        for (let i = 0; i < this.fighters.length; i++) {
-            if (this.fighters[i].currentHp <= 0) {
-                // S'assurer que le perdant est bien à 0
-                this.fighters[i].currentHp = 0;
-                
-                // Notifier le changement de HP final
-                if (this.onHPChange) {
-                    this.onHPChange(this.fighters[i].name, 0, this.fighters[i].maxHp);
-                }
-                
-                this.winner = this.fighters[1 - i].name;
-                
-                console.log(`[VICTORY] ${this.fighters[i].name} is KO with ${this.fighters[i].currentHp} HP`);
-                console.log(`[VICTORY] Winner is ${this.winner} with ${this.fighters[1-i].currentHp} HP`);
-                
-                // NE PAS modifier directement stats.health ici - laisser updateFighterHP le faire
-                
-                return true;
-            }
+        const fighter1 = this.fighters[0];
+        const fighter2 = this.fighters[1];
+        
+        if (fighter1.currentHp <= 0) {
+            fighter1.currentHp = 0;
+            this.winner = fighter2;
+            this.log(`[VICTORY] ${fighter1.name} is KO with ${fighter1.currentHp} HP`);
+            this.log(`[VICTORY] Winner is ${fighter2.name} with ${fighter2.currentHp} HP`);
+            return fighter2;
         }
         
-        if (this.turn >= this.maxTurns) {
-            // Victoire au plus de HP
-            if (this.fighters[0].currentHp > this.fighters[1].currentHp) {
-                this.winner = this.fighters[0].name;
-            } else {
-                this.winner = this.fighters[1].name;
-            }
-            return true;
+        if (fighter2.currentHp <= 0) {
+            fighter2.currentHp = 0;
+            this.winner = fighter1;
+            this.log(`[VICTORY] ${fighter2.name} is KO with ${fighter2.currentHp} HP`);
+            this.log(`[VICTORY] Winner is ${fighter1.name} with ${fighter1.currentHp} HP`);
+            return fighter1;
         }
         
-        return false;
+        return null;
     }
     
     switchTurn() {

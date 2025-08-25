@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spine Animations List</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .character-section {
+            background: #2a2a2a;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 {
+            text-align: center;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+        h2 {
+            color: #ffff00;
+        }
+        .animation-list {
+            column-count: 3;
+            column-gap: 20px;
+        }
+        .animation-item {
+            background: #333;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-left: 3px solid #0f0;
+            cursor: pointer;
+        }
+        .animation-item:hover {
+            background: #444;
+        }
+        #gameCanvas {
+            border: 2px solid #0f0;
+            display: block;
+            margin: 20px auto;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📜 Spine Animations Available 📜</h1>
+        
+        <div id="gameCanvas"></div>
+        
+        <div class="character-section">
+            <h2>🤖 Spineboy Animations</h2>
+            <div id="spineboy-anims" class="animation-list">Loading...</div>
+        </div>
+        
+        <div class="character-section">
+            <h2>🦖 Raptor Animations</h2>
+            <div id="raptor-anims" class="animation-list">Loading...</div>
+        </div>
+        
+        <div class="character-section">
+            <h2>📝 Animation Mapping for LaBrute</h2>
+            <pre id="mapping">Loading...</pre>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-phaser@4.1.20/dist/iife/spine-phaser.js"></script>
+    <script>
+        window.spine = spine;
+        
+        class AnimationListScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'AnimList' });
+                this.currentSpine = null;
+            }
+            
+            preload() {
+                // Load Spine assets
+                this.load.setPath('assets/spine/');
+                this.load.spine('spineboy', 'spineboy-pro.json', 'spineboy.atlas');
+                this.load.spine('raptor', 'raptor-pro.json', 'raptor.atlas');
+            }
+            
+            create() {
+                // Background
+                this.add.rectangle(400, 300, 800, 600, 0x2a2a2a);
+                
+                // Load spineboy to get animations
+                try {
+                    const spineboy = this.add.spine(200, 450, 'spineboy', 'idle', true);
+                    spineboy.setScale(0.3);
+                    this.currentSpine = spineboy;
+                    
+                    // Get all animations
+                    const spineboyAnims = spineboy.skeleton.data.animations.map(a => a.name);
+                    this.displayAnimations('spineboy-anims', spineboyAnims, spineboy);
+                    
+                } catch (e) {
+                    console.error('Error loading spineboy:', e);
+                    document.getElementById('spineboy-anims').innerHTML = 'Error loading spineboy';
+                }
+                
+                // Load raptor to get animations
+                try {
+                    const raptor = this.add.spine(600, 450, 'raptor', 'walk', true);
+                    raptor.setScale(0.3);
+                    
+                    // Get all animations
+                    const raptorAnims = raptor.skeleton.data.animations.map(a => a.name);
+                    this.displayAnimations('raptor-anims', raptorAnims, raptor);
+                    
+                } catch (e) {
+                    console.error('Error loading raptor:', e);
+                    document.getElementById('raptor-anims').innerHTML = 'Error loading raptor';
+                }
+                
+                // Generate mapping suggestions
+                this.generateMapping();
+            }
+            
+            displayAnimations(elementId, animations, spineObj) {
+                const container = document.getElementById(elementId);
+                container.innerHTML = '';
+                
+                animations.forEach(anim => {
+                    const div = document.createElement('div');
+                    div.className = 'animation-item';
+                    div.textContent = anim;
+                    div.onclick = () => {
+                        console.log(`Playing ${anim}`);
+                        spineObj.play(anim, true);
+                    };
+                    container.appendChild(div);
+                });
+            }
+            
+            generateMapping() {
+                const mapping = `
+// Animation Mapping for LaBrute Combat Engine
+// Based on available Spine animations
+
+const ANIMATION_MAP = {
+    spineboy: {
+        idle: 'idle',      // ✅ exists
+        walk: 'walk',      // ✅ exists 
+        run: 'run',        // ✅ exists
+        hit: 'shoot',      // 🔄 mapped to shoot
+        attack: 'shoot',   // 🔄 mapped to shoot
+        death: 'death',    // ✅ exists
+        block: 'idle',     // 🔄 no block, use idle
+        evade: 'jump',     // 🔄 mapped to jump
+        arrive: 'walk',    // 🔄 use walk for arrival
+    },
+    raptor: {
+        idle: 'walk',      // 🔄 no idle, use walk
+        walk: 'walk',      // ✅ exists
+        run: 'walk',       // 🔄 use walk for run
+        hit: 'roar',       // 🔄 mapped to roar
+        attack: 'roar',    // 🔄 mapped to roar  
+        death: 'walk',     // 🔄 no death, use walk
+        block: 'walk',     // 🔄 no block
+        evade: 'walk',     // 🔄 no evade
+        arrive: 'walk',    // 🔄 use walk
+    }
+};
+
+// Combat-specific mappings
+const COMBAT_ANIMS = {
+    arrive: ['walk', 'run'],
+    attack: ['shoot', 'roar', 'attack'],
+    hurt: ['hit', 'hurt'],
+    death: ['death', 'die'],
+    idle: ['idle', 'stand'],
+    move: ['walk', 'run'],
+    dodge: ['jump', 'evade', 'dodge'],
+    block: ['block', 'defend']
+};`;
+                
+                document.getElementById('mapping').textContent = mapping;
+            }
+        }
+        
+        // Create game
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'gameCanvas',
+            scene: AnimationListScene,
+            plugins: {
+                scene: [{
+                    key: 'SpinePlugin',
+                    plugin: window.SpinePlugin,
+                    mapping: 'spine'
+                }]
+            }
+        };
+        
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>

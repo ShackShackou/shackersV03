@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Combat Debug Test</title>
+</head>
+<body>
+    <h1>Combat Debug Test</h1>
+    <div id="fighter1">
+        <h3 id="fighter1-name">Fighter 1</h3>
+        <div>HP: <span id="fighter1-hp">-</span>/<span id="fighter1-maxhp">-</span></div>
+    </div>
+    <div id="fighter2">
+        <h3 id="fighter2-name">Fighter 2</h3>
+        <div>HP: <span id="fighter2-hp">-</span>/<span id="fighter2-maxhp">-</span></div>
+    </div>
+    <button onclick="testCombat()">Test Combat</button>
+    <div id="log"></div>
+
+    <script>
+        async function testCombat() {
+            const response = await fetch('http://localhost:4000/api/fights/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile1: 'tank', profile2: 'agile' })
+            });
+            
+            const data = await response.json();
+            console.log('Full data:', data);
+            
+            // Show fighters
+            const f1 = data.fight.fighters[0];
+            const f2 = data.fight.fighters[1];
+            
+            document.getElementById('fighter1-name').textContent = `${f1.name} (index ${f1.index})`;
+            document.getElementById('fighter1-hp').textContent = f1.maxHp;
+            document.getElementById('fighter1-maxhp').textContent = f1.maxHp;
+            
+            document.getElementById('fighter2-name').textContent = `${f2.name} (index ${f2.index})`;
+            document.getElementById('fighter2-hp').textContent = f2.maxHp;
+            document.getElementById('fighter2-maxhp').textContent = f2.maxHp;
+            
+            // Process steps
+            let currentHp = [f1.maxHp, f2.maxHp];
+            const log = document.getElementById('log');
+            log.innerHTML = '<h3>Combat Steps:</h3>';
+            
+            for (const step of data.steps) {
+                if (step.a === 9) { // Hit
+                    const attacker = data.fight.fighters[step.f];
+                    const defender = data.fight.fighters[step.t];
+                    currentHp[step.t] -= step.d;
+                    
+                    log.innerHTML += `<p>Hit: ${attacker.name}(${step.f}) hits ${defender.name}(${step.t}) for ${step.d} damage. ${defender.name} now has ${currentHp[step.t]} HP</p>`;
+                    
+                    // Update display
+                    if (step.t === 0) {
+                        document.getElementById('fighter1-hp').textContent = currentHp[0];
+                    } else {
+                        document.getElementById('fighter2-hp').textContent = currentHp[1];
+                    }
+                }
+            }
+            
+            log.innerHTML += `<p><b>Winner: ${data.fight.winner}</b></p>`;
+        }
+    </script>
+</body>
+</html>

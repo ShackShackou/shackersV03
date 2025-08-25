@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Spine Animations - Debug</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #gameCanvas {
+            border: 2px solid #0f0;
+            display: block;
+            margin: 20px auto;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        .log {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 20px auto;
+            width: 90%;
+            white-space: pre-wrap;
+        }
+        h1 {
+            text-align: center;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Spine Animation Detection Test 🔍</h1>
+    
+    <div id="gameCanvas"></div>
+    
+    <div class="controls">
+        <button onclick="startCombat()">Start Combat Test</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="log" id="log">
+        === Spine Animation Test ===
+        Loading Phaser and Spine...
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script type="module">
+        import FightSceneSpine from '/src/scenes/FightSceneSpine.js';
+        
+        let scene = null;
+        
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${timestamp}] ${msg}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+        
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '=== Spine Animation Test ===\n';
+        }
+        
+        // Create Phaser game
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'gameCanvas',
+            backgroundColor: '#2a2a2a',
+            scene: FightSceneSpine,
+            plugins: {
+                scene: [{
+                    key: 'SpinePlugin',
+                    plugin: window.SpinePlugin,
+                    mapping: 'spine'
+                }]
+            }
+        };
+        
+        const game = new Phaser.Game(config);
+        
+        // Wait for scene to be ready
+        game.events.once('ready', () => {
+            scene = game.scene.scenes[0];
+            log('✅ Phaser game ready');
+            log('✅ FightSceneSpine loaded');
+            
+            // Override the scene's init to add logging
+            const originalInit = scene.init;
+            scene.init = function(data) {
+                log('🎬 Initializing FightSceneSpine...');
+                originalInit.call(this, data);
+            };
+            
+            // Override setSpineAnim to log available animations
+            const originalSetSpineAnim = scene.setSpineAnim;
+            scene.setSpineAnim = function(spineObj, name, loop) {
+                if (spineObj && spineObj.skeleton && spineObj.skeleton.data) {
+                    const availableAnims = spineObj.skeleton.data.animations.map(a => a.name);
+                    log(`📋 Available animations for fighter: ${availableAnims.join(', ')}`);
+                    log(`🎯 Requesting animation: ${name}`);
+                }
+                return originalSetSpineAnim.call(this, spineObj, name, loop);
+            };
+        });
+        
+        window.startCombat = async function() {
+            log('🔥 Starting combat test with server...');
+            
+            try {
+                // Request combat from server
+                const response = await fetch('http://localhost:4000/api/fights/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profile1: 'tank',
+                        profile2: 'agile'
+                    })
+                });
+                
+                const fightData = await response.json();
+                log(`✅ Received ${fightData.steps.length} combat steps from server`);
+                
+                // Start the scene with combat data
+                if (scene) {
+                    log('🎮 Starting FightSceneSpine with server data...');
+                    game.scene.start('FightSceneSpine', {
+                        fight: fightData.fight,
+                        steps: fightData.steps
+                    });
+                } else {
+                    log('❌ Scene not ready yet');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        };
+        
+        log('🚀 Test page initialized');
+        log('📋 Click "Start Combat Test" to begin');
+    </script>
+</body>
+</html>

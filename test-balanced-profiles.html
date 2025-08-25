@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Profils Équilibrés - LaBrute V08</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            color: white;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            width: 1280px;
+            height: 720px;
+            margin: 20px auto;
+            border: 3px solid #ff6b35;
+            box-shadow: 0 0 40px rgba(255, 107, 53, 0.3);
+            background: #0f0f23;
+            position: relative;
+        }
+        
+        /* Loading screen */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            padding: 40px;
+            border-radius: 10px;
+            border: 2px solid #ff6b35;
+        }
+        
+        .loading h2 {
+            color: #ff6b35;
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff6b35;
+            animation: pulse 2s infinite;
+        }
+        
+        .loading .subtitle {
+            color: #ffa726;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .loading .progress {
+            width: 300px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loading .progress-bar {
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b35, #ffa726);
+            width: 0%;
+            animation: loading 3s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        /* Combat controls */
+        .combat-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #ff6b35, #ffa726);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-family: inherit;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .control-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Profile info */
+        .profile-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ff6b35;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        
+        .profile-info h4 {
+            color: #ffa726;
+            margin-bottom: 5px;
+        }
+        
+        .fighter-profile {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-left: 2px solid #ff6b35;
+            padding-left: 8px;
+        }
+        
+        .fighter-name {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .fighter-stats {
+            color: #ccc;
+            font-size: 11px;
+        }
+        
+        /* Status messages */
+        .status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ff6b35;
+            text-align: center;
+            display: none;
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div class="loading" id="loading">
+            <h2>🥊 LABRUTE COMBAT AUTHENTIQUE</h2>
+            <div class="subtitle">Chargement du moteur de combat V10...</div>
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+        
+        <!-- Combat Controls -->
+        <div class="combat-controls" id="combatControls" style="display: none;">
+            <button class="control-btn" onclick="generateNewFight()">🎲 Nouveau Combat</button>
+            <button class="control-btn" onclick="togglePause()">⏸️ Pause</button>
+            <button class="control-btn" onclick="restartFight()">🔄 Recommencer</button>
+            <button class="control-btn" onclick="showProfileInfo()">📊 Profils</button>
+        </div>
+        
+        <!-- Profile Information -->
+        <div class="profile-info" id="profileInfo" style="display: none;">
+            <h4>Profils de Combat Actuel</h4>
+            <div class="fighter-profile" id="fighter1Info">
+                <div class="fighter-name">Fighter 1</div>
+                <div class="fighter-stats">HP: 100/100 | STR: 10 | AGI: 10 | SPD: 10</div>
+            </div>
+            <div class="fighter-profile" id="fighter2Info">
+                <div class="fighter-name">Fighter 2</div>
+                <div class="fighter-stats">HP: 100/100 | STR: 10 | AGI: 10 | SPD: 10</div>
+            </div>
+        </div>
+        
+        <!-- Status Messages -->
+        <div class="status" id="statusMessage">
+            <h3>Combat Terminé!</h3>
+            <p id="statusText">Résultat du combat...</p>
+            <button class="control-btn" onclick="hideStatus()">OK</button>
+        </div>
+    </div>
+
+    <!-- Phaser 3 -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.85.2/dist/phaser.min.js"></script>
+    
+    <!-- Spine Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser3-spine@4.2.1/dist/phaser3-spine.min.js"></script>
+    
+    <!-- Game Application -->
+    <script type="module">
+        import { generateTestFight, TEST_PROFILES, profileGenerator } from './src/game/test-profiles.js';
+        import { FightSceneSpine } from './src/scenes/FightSceneSpine.js';
+        
+        class BalancedProfileTestApp {
+            constructor() {
+                this.game = null;
+                this.currentFight = null;
+                this.isPaused = false;
+                
+                this.initializeGame();
+                this.setupGlobalFunctions();
+            }
+            
+            initializeGame() {
+                // Configuration Phaser avec Spine
+                const config = {
+                    type: Phaser.WEBGL,
+                    width: 1280,
+                    height: 720,
+                    parent: 'game-container',
+                    backgroundColor: '#0f0f23',
+                    physics: {
+                        default: 'arcade',
+                        arcade: { debug: false }
+                    },
+                    plugins: {
+                        scene: [
+                            { plugin: SpinePlugin.SpinePlugin, key: 'SpinePlugin', mapping: 'spine' }
+                        ]
+                    },
+                    scene: []
+                };
+
+                this.game = new Phaser.Game(config);
+                
+                // Simuler le chargement
+                setTimeout(() => this.startFirstFight(), 3000);
+            }
+            
+            startFirstFight() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('combatControls').style.display = 'flex';
+                
+                this.generateNewFight();
+            }
+            
+            generateNewFight() {
+                console.log('=== GÉNÉRATION NOUVEAU COMBAT DE TEST ===');
+                
+                // Générer un combat équilibré
+                this.currentFight = generateTestFight();
+                
+                // Mettre à jour l'affichage des profils
+                this.updateProfileDisplay();
+                
+                // Stopper le combat actuel si nécessaire
+                if (this.game.scene.getScene('FightSpine')) {
+                    this.game.scene.stop('FightSpine');
+                    this.game.scene.remove('FightSpine');
+                }
+                
+                // Créer une nouvelle instance de la scène
+                const fightScene = new FightSceneSpine();
+                this.game.scene.add('FightSpine', fightScene, true);
+                
+                // Démarrer le combat avec les données
+                fightScene.scene.restart({
+                    a: this.currentFight.a,
+                    b: this.currentFight.b,
+                    background: Math.floor(Math.random() * 7) // Background aléatoire
+                });
+                
+                console.log('Combat démarré avec les profils:', this.currentFight.a.name, 'vs', this.currentFight.b.name);
+            }
+            
+            updateProfileDisplay() {
+                if (!this.currentFight) return;
+                
+                const f1 = this.currentFight.a;
+                const f2 = this.currentFight.b;
+                
+                document.getElementById('fighter1Info').innerHTML = `
+                    <div class="fighter-name">${f1.name} (${f1.spineModel})</div>
+                    <div class="fighter-stats">HP: ${f1.stats.health}/${f1.stats.maxHealth} | STR: ${f1.stats.strength} | AGI: ${f1.stats.agility} | SPD: ${f1.stats.speed}</div>
+                    <div class="fighter-stats">Arme: ${f1.weapon || 'Mains nues'} | Pet: ${f1.pet || 'Aucun'}</div>
+                    <div class="fighter-stats">Skills: ${f1.skills.join(', ')}</div>
+                `;
+                
+                document.getElementById('fighter2Info').innerHTML = `
+                    <div class="fighter-name">${f2.name} (${f2.spineModel})</div>
+                    <div class="fighter-stats">HP: ${f2.stats.health}/${f2.stats.maxHealth} | STR: ${f2.stats.strength} | AGI: ${f2.stats.agility} | SPD: ${f2.stats.speed}</div>
+                    <div class="fighter-stats">Arme: ${f2.weapon || 'Mains nues'} | Pet: ${f2.pet || 'Aucun'}</div>
+                    <div class="fighter-stats">Skills: ${f2.skills.join(', ')}</div>
+                `;
+            }
+            
+            setupGlobalFunctions() {
+                // Exposer les fonctions globalement pour les boutons
+                window.generateNewFight = () => this.generateNewFight();
+                window.togglePause = () => this.togglePause();
+                window.restartFight = () => this.restartFight();
+                window.showProfileInfo = () => this.toggleProfileInfo();
+                window.hideStatus = () => this.hideStatus();
+            }
+            
+            togglePause() {
+                const scene = this.game.scene.getScene('FightSpine');
+                if (scene) {
+                    if (this.isPaused) {
+                        scene.scene.resume();
+                        this.isPaused = false;
+                    } else {
+                        scene.scene.pause();
+                        this.isPaused = true;
+                    }
+                }
+            }
+            
+            restartFight() {
+                if (this.currentFight) {
+                    const scene = this.game.scene.getScene('FightSpine');
+                    if (scene) {
+                        scene.scene.restart({
+                            a: this.currentFight.a,
+                            b: this.currentFight.b,
+                            background: Math.floor(Math.random() * 7)
+                        });
+                    }
+                }
+            }
+            
+            toggleProfileInfo() {
+                const info = document.getElementById('profileInfo');
+                info.style.display = info.style.display === 'none' ? 'block' : 'none';
+            }
+            
+            showStatus(message) {
+                document.getElementById('statusText').textContent = message;
+                document.getElementById('statusMessage').style.display = 'block';
+            }
+            
+            hideStatus() {
+                document.getElementById('statusMessage').style.display = 'none';
+            }
+        }
+        
+        // Démarrer l'application
+        window.addEventListener('DOMContentLoaded', () => {
+            window.testApp = new BalancedProfileTestApp();
+            
+            // Exposer les profils de test dans la console pour debug
+            window.TEST_PROFILES = TEST_PROFILES;
+            window.profileGenerator = profileGenerator;
+            
+            console.log('=== TEST APP INITIALIZED ===');
+            console.log('Profils disponibles:', Object.keys(TEST_PROFILES));
+            console.log('Utilisez window.TEST_PROFILES pour voir tous les profils');
+            console.log('Utilisez window.profileGenerator pour générer des combats');
+        });
+    </script>
+</body>
+</html>
