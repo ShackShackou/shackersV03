@@ -27,8 +27,12 @@
         "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42"
     },
     "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "jest": "^30.0.5",
+        "jest-environment-jsdom": "^30.0.5",
         "phaser-asset-pack-hashing": "^1.0.6",
         "terser": "^5.28.1",
+        "ts-jest": "^29.4.1",
         "typescript": "^5.3.3",
         "vite": "^5.1.4"
     },
