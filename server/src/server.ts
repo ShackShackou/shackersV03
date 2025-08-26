@@ -9,6 +9,9 @@ import fightsRouter from './routes/fights';
 import fightsTestRouter from './routes/fights-test';
 import fightsOfficialRouter from './routes/fights-official';
 import matchmakingRouter from './routes/matchmaking';
+import masterServer from './masterServer';
+
+export { masterServer };
 
 const app = express();
 app.use(cors());
