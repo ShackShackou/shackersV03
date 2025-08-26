@@ -302,8 +302,20 @@ export class FightScene extends Phaser.Scene {
         petColor = 0x2F2F2F; // Dark gray
         petSize = { width: 35, height: 25 };
         break;
-      default: // Dogs and other variants
-        petColor = 0x964B00; // Dark brown
+      case PetName.dog1:
+        petColor = 0x8B4513; // Light brown
+        petSize = { width: 30, height: 20 };
+        break;
+      case PetName.dog2:
+        petColor = 0x964B00; // Medium brown
+        petSize = { width: 35, height: 25 };
+        break;
+      case PetName.dog3:
+        petColor = 0x654321; // Dark brown
+        petSize = { width: 40, height: 30 };
+        break;
+      default:
+        petColor = 0x964B00; // Fallback color
         petSize = { width: 30, height: 20 };
         break;
     }

@@ -158,25 +158,24 @@ async function main() {
   });
 
   const rng = new RNG(seed);
-  const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas });
+  const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas, useLaBrute: false });
 
   if (enablePets) {
     const verifyPet = (fighter) => {
-      if (!fighter.pet) return;
-      const data = petData.find(p => p.name === fighter.pet.type);
-      const expectedHp = getPetStat(fighter.stats, data, 'hp');
-      const expectedStr = getPetStat(fighter.stats, data, 'strength');
-      const expectedAgi = getPetStat(fighter.stats, data, 'agility');
-      const expectedSpd = getPetStat(fighter.stats, data, 'speed');
-      if (
-        fighter.pet.stats.hp !== expectedHp ||
-        fighter.pet.stats.maxHp !== expectedHp ||
-        fighter.pet.stats.strength !== expectedStr ||
-        fighter.pet.stats.agility !== expectedAgi ||
-        fighter.pet.stats.speed !== expectedSpd
-      ) {
-        throw new Error('Pet stats not scaled correctly');
+      if (!fighter.pet) {
+        throw new Error(`Expected pet for ${fighter.stats.name}`);
       }
+      const data = petData.find(p => p.name === fighter.pet.type);
+      ['strength', 'agility', 'speed', 'hp'].forEach(stat => {
+        const expected = getPetStat(fighter.stats, data, stat);
+        if (stat === 'hp') {
+          if (fighter.pet.stats.maxHp !== expected || fighter.pet.stats.hp !== expected) {
+            throw new Error(`Pet ${fighter.pet.type} ${stat} mismatch: expected ${expected}, got ${fighter.pet.stats.maxHp}/${fighter.pet.stats.hp}`);
+          }
+        } else if (fighter.pet.stats[stat] !== expected) {
+          throw new Error(`Pet ${fighter.pet.type} ${stat} mismatch: expected ${expected}, got ${fighter.pet.stats[stat]}`);
+        }
+      });
     };
     verifyPet(engine.fighter1);
     verifyPet(engine.fighter2);

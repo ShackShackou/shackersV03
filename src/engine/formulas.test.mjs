@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeAccuracy } from './formulas.js';
-import { LABRUTE_WEAPONS } from './labrute-complete.js';
+import { computeAccuracy, computeBlockChance, computeDodgeChance, computeThrowDamage } from './formulas.js';
+import { LABRUTE_WEAPONS } from '../game/labrute-weapons.js';
 
 function officialAccuracy(weapon) {
   const base = 0.90;
@@ -10,11 +10,32 @@ function officialAccuracy(weapon) {
 }
 
 test('knife uses only base accuracy (90%)', () => {
-  const res = computeAccuracy({}, 'knife');
+  const res = computeAccuracy({}, {}, 'knife');
   assert.equal(res, officialAccuracy('knife'));
 });
 
-test('sai adds weapon accuracy bonus and caps at 98%', () => {
-  const res = computeAccuracy({}, 'sai');
-  assert.equal(res, officialAccuracy('sai'));
+test('leek adds weapon accuracy bonus', () => {
+  const res = computeAccuracy({}, {}, 'leek');
+  assert.equal(res, officialAccuracy('leek'));
+});
+
+test('block chance uses defender defense stat', () => {
+  const attacker = {};
+  const defender = { defense: 50 };
+  const res = computeBlockChance(attacker, defender);
+  assert.equal(res, 0.5);
+});
+
+test('dodge chance uses defender agility', () => {
+  const attacker = {};
+  const defender = { agility: 50 };
+  const res = computeDodgeChance(attacker, defender);
+  assert.equal(res, 0.4);
+});
+
+test('computeThrowDamage factors attacker stats', () => {
+  const attacker = { strength: 10, agility: 20 };
+  const rng = { float: () => 0 };
+  const res = computeThrowDamage(attacker, {}, rng, 5);
+  assert.equal(res, 9);
 });

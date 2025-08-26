@@ -6,24 +6,9 @@
  * server implementation is authoritative.
  */
 
-import constants from '../../server/engine/labrute-core/constants.js';
-const { SkillName, WeaponName, PetName, StepType } = constants;
-
-// Modificateurs de dégâts liés aux compétences
-const SkillDamageModifiers = [
-  { skill: SkillName.herculeanStrength, percent: 0.5, opponent: false },
-  { skill: SkillName.weaponsMaster, percent: 0.5, opponent: false, weaponType: 'any' },
-  { skill: SkillName.martialArts, percent: 1.0, opponent: false, weaponType: null },
-  { skill: SkillName.fierceBrute, percent: 0, opponent: false },
-  { skill: SkillName.hammer, percent: 0, opponent: false },
-  { skill: SkillName.armor, percent: -0.25, opponent: true },
-  { skill: SkillName.toughenedSkin, percent: -0.1, opponent: true },
-  { skill: SkillName.leadSkeleton, percent: -0.5, opponent: true, weaponType: 'melee' },
-  { skill: SkillName.resistant, percent: -0.15, opponent: true },
-  { skill: SkillName.saboteur, percent: 0.3, opponent: false, weaponType: 'thrown' },
-  { skill: SkillName.bodybuilder, percent: 0.4, opponent: false, weaponType: 'heavy' },
-  { skill: SkillName.relentless, percent: 0.35, opponent: false, weaponType: 'fast' },
-];
+import constants, { LABRUTE_SKILLS } from './labrute-core/constants.js';
+import Rand from 'rand-seed';
+const { SkillName, StepType } = constants;
 
 export class LaBruteAuthenticEngine {
   constructor() {
@@ -40,25 +25,12 @@ export class LaBruteAuthenticEngine {
    */
   initialize(seed = Date.now()) {
     this.seed = seed;
-    this.random = this.createSeededRandom(seed);
+    this.random = new Rand(seed);
     this.steps = [];
     this.initiative = 0;
     this.turn = 0;
   }
 
-  /**
-   * Générateur de nombres aléatoires avec seed (Mulberry32)
-   */
-  createSeededRandom(seed) {
-    let state = seed;
-    return () => {
-      state |= 0;
-      state = state + 0x6D2B79F5 | 0;
-      let t = Math.imul(state ^ state >>> 15, 1 | state);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
 
   /**
    * Configure les combattants
@@ -75,29 +47,23 @@ export class LaBruteAuthenticEngine {
    * Crée un combattant détaillé selon le format LaBrute
    */
   createDetailedFighter(stats, index, team) {
-    // Formule officielle: HP = 50 + (endurance × 6)
-    const maxHp = 50 + (stats.endurance || 10) * 6;
-    
-    return {
+    const fighter = {
       index,
       team,
       name: stats.name || `Fighter ${index + 1}`,
-      hp: maxHp,
-      maxHp,
-      currentHp: maxHp,
-      strength: stats.strength || 10,
-      agility: stats.agility || 10,
-      speed: stats.speed || 10,
-      endurance: stats.endurance || 10,
-      // Formule initiative: agility × 0.6 + speed × 0.4
-      initiative: (stats.agility || 10) * 0.6 + (stats.speed || 10) * 0.4,
+      strength: stats.strength ?? 10,
+      agility: stats.agility ?? 10,
+      speed: stats.speed ?? 10,
+      endurance: stats.endurance ?? 10,
       skills: stats.skills || [],
       weapons: stats.weapons || [],
       activeWeapon: null,
       pets: stats.pets || [],
-      armor: 0, // Calculé selon les compétences
-      damage: 5, // Dégâts de base sans arme
+      armor: 0,
+      block: 0,
+      damageReduction: 1,
       baseDamage: 5,
+      damage: 5,
       stunned: false,
       trapped: false,
       immune: false,
@@ -106,6 +72,63 @@ export class LaBruteAuthenticEngine {
       activeSkills: [],
       damagedWeapons: []
     };
+
+    this.applySkillModifiers(fighter);
+
+    const maxHpBase = 50 + fighter.endurance * 6;
+    const maxHp = Math.floor(maxHpBase * (fighter.hpMultiplier || 1) + (fighter.hpAdd || 0));
+    fighter.maxHp = maxHp;
+    fighter.currentHp = maxHp;
+    fighter.hp = maxHp;
+
+    fighter.baseDamage = Math.floor(fighter.baseDamage * (fighter.bareHandsDamageMultiplier || 1) + (fighter.bareHandsDamageAdd || 0));
+    fighter.damage = fighter.baseDamage;
+
+    fighter.initiative = fighter.agility * 0.6 + fighter.speed * 0.4;
+    if (fighter.initiativeMultiplier) fighter.initiative *= fighter.initiativeMultiplier;
+    if (fighter.initiativeAdd) fighter.initiative += fighter.initiativeAdd;
+
+    return fighter;
+  }
+
+  /**
+   * Applique les modificateurs des compétences
+   */
+  applySkillModifiers(fighter) {
+    fighter.skills.forEach((sk) => {
+      const skillName = typeof sk === 'string' ? sk : sk.name;
+      const data = LABRUTE_SKILLS[skillName];
+      if (!data || !data.modifiers) return;
+
+      Object.entries(data.modifiers).forEach(([key, mod]) => {
+        if (mod === undefined || mod === null) return;
+        if (typeof mod === 'object') {
+          if (['strength', 'agility', 'speed', 'endurance'].includes(key)) {
+            if (mod.multiply !== undefined) fighter[key] *= mod.multiply;
+            if (mod.add !== undefined) fighter[key] += mod.add;
+          } else if (key === 'hp') {
+            if (mod.multiply !== undefined) fighter.hpMultiplier = (fighter.hpMultiplier || 1) * mod.multiply;
+            if (mod.add !== undefined) fighter.hpAdd = (fighter.hpAdd || 0) + mod.add;
+          } else if (key === 'initiative') {
+            if (mod.multiply !== undefined) fighter.initiativeMultiplier = (fighter.initiativeMultiplier || 1) * mod.multiply;
+            if (mod.add !== undefined) fighter.initiativeAdd = (fighter.initiativeAdd || 0) + mod.add;
+          } else if (key === 'bareHandsDamage') {
+            if (mod.multiply !== undefined) fighter.bareHandsDamageMultiplier = (fighter.bareHandsDamageMultiplier || 1) * mod.multiply;
+            if (mod.add !== undefined) fighter.bareHandsDamageAdd = (fighter.bareHandsDamageAdd || 0) + mod.add;
+          } else if (key === 'weaponDamage') {
+            if (mod.multiply !== undefined) fighter.weaponDamageMultiplier = (fighter.weaponDamageMultiplier || 1) * mod.multiply;
+            if (mod.add !== undefined) fighter.weaponDamageAdd = (fighter.weaponDamageAdd || 0) + mod.add;
+          } else {
+            const isMultiplier = key.toLowerCase().includes('damage') || key.toLowerCase().includes('reduction') || key.toLowerCase().includes('multiplier');
+            if (fighter[key] === undefined) fighter[key] = isMultiplier ? 1 : 0;
+            if (mod.multiply !== undefined) fighter[key] *= mod.multiply;
+            if (mod.add !== undefined) fighter[key] += mod.add;
+          }
+        } else {
+          fighter[key] = mod;
+        }
+      });
+    });
   }
 
   /**
@@ -116,87 +139,35 @@ export class LaBruteAuthenticEngine {
       ? thrown.damage
       : (attacker.activeWeapon?.damage || attacker.baseDamage);
 
-    let skillsMultiplier = 1;
-
-    // Piledriver actif ?
     const piledriver = attacker.activeSkills?.find((sk) =>
       (typeof sk === 'string' ? sk === SkillName.hammer : sk.name === SkillName.hammer));
 
-    // Modificateurs des compétences du combattant
-    for (const modifier of SkillDamageModifiers) {
-      // Ignore si le combattant n'a pas la compétence
-      if (!attacker.skills.find((sk) =>
-        (typeof sk === 'string' ? sk === modifier.skill : sk.name === modifier.skill))) {
-        continue;
-      }
+    let skillsMultiplier = attacker.damageMultiplier || 1;
 
-      // Ignore si le modificateur est pour l'adversaire
-      if (modifier.opponent) {
-        continue;
-      }
+    if (thrown) {
+      skillsMultiplier *= attacker.thrownDamageMultiplier || 1;
+    } else if (attacker.activeWeapon) {
+      skillsMultiplier *= attacker.weaponDamageMultiplier || 1;
+      attacker.activeWeapon.types?.forEach((t) => {
+        const key = `${t}WeaponDamageMultiplier`;
+        if (attacker[key]) skillsMultiplier *= attacker[key];
+      });
+    } else {
+      skillsMultiplier *= attacker.bareHandsDamageMultiplier || 1;
+    }
 
-      // Ignore weaponsMaster et martialArts pour une arme lancée
-      if (thrown && (modifier.skill === SkillName.weaponsMaster || modifier.skill === SkillName.martialArts)) {
-        continue;
-      }
-
-      // Ignore martialArts si piledriver actif
-      if (piledriver && modifier.skill === SkillName.martialArts) {
-        continue;
-      }
-
-      // Modificateurs spécifiques aux armes
-      if (typeof modifier.weaponType !== 'undefined') {
-        if (modifier.weaponType === null) {
-          if (!attacker.activeWeapon || attacker.activeWeapon.name === WeaponName.mug) {
-            skillsMultiplier += modifier.percent ?? 0;
-          }
-        } else if (attacker.activeWeapon?.types?.includes(modifier.weaponType)) {
-          skillsMultiplier += modifier.percent ?? 0;
-        }
-      } else {
-        skillsMultiplier *= 1 + (modifier.percent ?? 0);
+    if (defender.damageReduction) skillsMultiplier *= defender.damageReduction;
+    if (!thrown && attacker.activeWeapon?.types && defender.heavyWeaponReduction) {
+      if (attacker.activeWeapon.types.includes('heavy') || attacker.activeWeapon.types.includes('melee')) {
+        skillsMultiplier *= defender.heavyWeaponReduction;
       }
     }
 
-    // Modificateurs de l'adversaire
-    for (const modifier of SkillDamageModifiers) {
-      // Ignore si l'adversaire n'a pas la compétence
-      if (!defender.skills.find((sk) =>
-        (typeof sk === 'string' ? sk === modifier.skill : sk.name === modifier.skill))) {
-        continue;
-      }
-
-      // Ignore si le modificateur n'est pas pour l'adversaire
-      if (!modifier.opponent) {
-        continue;
-      }
-
-      // Ignore leadSkeleton pour les armes lancées
-      if (thrown && modifier.skill === SkillName.leadSkeleton) {
-        continue;
-      }
-
-      if (typeof modifier.weaponType !== 'undefined') {
-        if (modifier.weaponType === null) {
-          if (!attacker.activeWeapon || attacker.activeWeapon.name === WeaponName.mug) {
-            skillsMultiplier += modifier.percent ?? 0;
-          }
-        } else if (attacker.activeWeapon?.types?.includes(modifier.weaponType)) {
-          skillsMultiplier += modifier.percent ?? 0;
-        }
-      } else {
-        skillsMultiplier *= 1 + (modifier.percent ?? 0);
-      }
-    }
-
-    // x2 pour fierceBrute actif
     if (attacker.activeSkills?.find((sk) =>
       (typeof sk === 'string' ? sk === SkillName.fierceBrute : sk.name === SkillName.fierceBrute))) {
       skillsMultiplier *= 2;
     }
 
-    // x4 pour piledriver
     if (piledriver) {
       skillsMultiplier *= 4;
     }
@@ -206,38 +177,34 @@ export class LaBruteAuthenticEngine {
     if (thrown) {
       damage = Math.floor(
         (base + attacker.strength * 0.1 + attacker.agility * 0.15)
-        * (1 + this.random() * 0.5) * skillsMultiplier
+        * (1 + this.random.next() * 0.5) * skillsMultiplier
       );
     } else if (piledriver) {
       damage = Math.floor(
         (10 + defender.strength * 0.6)
-        * (0.8 + this.random() * 0.4) * skillsMultiplier
+        * (0.8 + this.random.next() * 0.4) * skillsMultiplier
       );
     } else {
       damage = Math.floor(
         (base + attacker.strength * (0.2 + base * 0.05))
-        * (0.8 + this.random() * 0.4) * skillsMultiplier
+        * (0.8 + this.random.next() * 0.4) * skillsMultiplier
       );
     }
 
-    // Arme endommagée ? -25%
     if (attacker.activeWeapon && attacker.damagedWeapons?.includes(attacker.activeWeapon.name)) {
       damage = Math.floor(damage * 0.75);
     }
 
-    // Coup critique (5% de base)
-    const criticalChance = 0.05;
-    const criticalHit = this.random() < criticalChance;
+    const criticalChance = 0.05 + (attacker.critChance || 0) / 100;
+    const criticalHit = this.random.next() < criticalChance;
     if (criticalHit) {
       damage = Math.floor(damage * 2);
     }
 
-    // Réduction par l'armure (sauf pour les armes lancées)
     if (!thrown) {
-      damage = Math.ceil(damage * (1 - defender.armor));
+      damage = Math.ceil(damage - (defender.armor || 0));
     }
 
-    // Dégâts minimum de 1
     if (damage < 1) {
       damage = 1;
     }
@@ -249,8 +216,8 @@ export class LaBruteAuthenticEngine {
    * Détermine qui joue en premier
    */
   determineFirstFighter() {
-    const f1Initiative = this.fighters[0].initiative + this.random() * 10;
-    const f2Initiative = this.fighters[1].initiative + this.random() * 10;
+    const f1Initiative = this.fighters[0].initiative + this.random.next() * 10;
+    const f2Initiative = this.fighters[1].initiative + this.random.next() * 10;
     
     if (f1Initiative > f2Initiative) {
       this.fighters[0].initiative = 0;

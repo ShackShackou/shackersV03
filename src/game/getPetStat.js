@@ -20,7 +20,7 @@ export function getPetStat(bruteStats, petData, stat) {
   const bruteStatKey = petStatToBruteStat[stat];
   let bruteValue = bruteStats[bruteStatKey];
   if (bruteValue === undefined && stat === 'hp') {
-    bruteValue = bruteStats.health;
+    bruteValue = bruteStats.health || bruteStats.maxHealth;
   }
   if (typeof bruteValue !== 'number') bruteValue = 0;
   return base + Math.ceil(scaling * bruteValue);

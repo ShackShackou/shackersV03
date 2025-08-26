@@ -16,6 +16,7 @@ export {
   computeCritChance,
   computeComboChance,
   computeMaxCombo,
+  computeThrowDamage,
 } from './formulas.js';
 
 import base from './formulas.js';

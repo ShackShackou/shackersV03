@@ -20,6 +20,7 @@
         "build": "vite build --config vite/config.prod.mjs && phaser-asset-pack-hashing -j -r dist",
         "test": "npm run test:engine && npm run test:combat",
         "sync:labrute": "node scripts/sync-labrute-data.mjs",
+        "compare:labrute": "node scripts/compare-labrute-data.mjs",
         "test:engine": "node --test server/combat/LaBruteEngine.test.mjs src/engine/formulas.test.mjs src/game/pets.test.mjs",
         "test:combat": "node scripts/runCombatTest.mjs --pets",
         "test:combat:snap": "node scripts/runCombatTest.mjs --snapshot --seed=42",
@@ -45,6 +46,7 @@
         "@phaserjs/editor-scripts-base": "^1.0.0",
         "cors": "^2.8.5",
         "phaser": "3.80.1",
+        "rand-seed": "^3.0.0",
         "socket.io": "^4.8.1"
     }
 }
