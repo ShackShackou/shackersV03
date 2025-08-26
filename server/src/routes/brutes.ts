@@ -2,13 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth';
-import { 
-  LaBruteLevelSystem, 
-  LABRUTE_WEAPONS, 
+import {
+  LaBruteLevelSystem,
+  LABRUTE_WEAPONS,
   LABRUTE_SKILLS,
-  LABRUTE_PETS,
-  LABRUTE_CONFIG 
+  LABRUTE_PETS
 } from '../../../src/engine/labrute-complete.js';
+import { getRandomBonus, getLevelUpChoices } from '../../../src/game/leveling.js';
 
 const router = Router();
 
@@ -143,24 +143,37 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
   const userId = req.userId!;
   const { name, gender } = parse.data;
   try {
-    const shacker = await prisma.shacker.create({
-      data: {
-        name,
-        gender: gender as any,
-        userId,
-        level: 1,
-        xp: 0,
-        hp: 50,
-        strength: 3,
-        agility: 3,
-        speed: 3,
-        endurance: 3,
-        talentPoints: 0,
-        unlockedTalents: '[]',
-        weapons: '[]',
-        skills: '[]',
-      },
-    });
+    // Assign a random bonus on creation
+    const bonus = getRandomBonus({ level: 1, pets: [], skills: [], weapons: [] }, true);
+
+    const data: any = {
+      name,
+      gender: gender as any,
+      userId,
+      level: 1,
+      xp: 0,
+      hp: 50,
+      strength: 3,
+      agility: 3,
+      speed: 3,
+      endurance: 3,
+      talentPoints: 0,
+      unlockedTalents: '[]',
+      weapons: '[]',
+      skills: '[]',
+    };
+
+    if (bonus) {
+      if (bonus.type === 'weapon') {
+        data.weapons = JSON.stringify([bonus.name]);
+      } else if (bonus.type === 'skill') {
+        data.skills = JSON.stringify([bonus.name]);
+      } else if (bonus.type === 'pet') {
+        data.pet = bonus.name;
+      }
+    }
+
+    const shacker = await prisma.shacker.create({ data });
     return res.status(201).json(shacker);
   } catch (e: any) {
     if (e?.code === 'P2002') {
@@ -196,26 +209,35 @@ router.post('/:id/levelup', requireAuth, async (req: AuthRequest, res) => {
     }
     
     // Générer les choix disponibles
-    const choices = levelSystem.getLevelUpChoices(nextLevel);
-    
+    const [choice1, choice2] = getLevelUpChoices({
+      level: currentLevel,
+      pets: shacker.pet ? [shacker.pet] : [],
+      skills: JSON.parse(shacker.skills),
+      weapons: JSON.parse(shacker.weapons)
+    });
+    const validChoice = [choice1, choice2].find((c) => JSON.stringify(c) === JSON.stringify(choice));
+    if (!validChoice) {
+      return res.status(400).json({ error: 'Invalid choice' });
+    }
+
     // Appliquer le choix sélectionné
     const updateData: any = { level: nextLevel };
-    
-    if (choice.type === 'stat') {
-      updateData[choice.stat] = shacker[choice.stat as keyof typeof shacker] + choice.value;
-    } else if (choice.type === 'double_stat') {
-      updateData[choice.stat1] = shacker[choice.stat1 as keyof typeof shacker] + choice.value1;
-      updateData[choice.stat2] = shacker[choice.stat2 as keyof typeof shacker] + choice.value2;
-    } else if (choice.type === 'weapon') {
+
+    if (validChoice.type === 'stats') {
+      updateData[validChoice.stat1] = shacker[validChoice.stat1 as keyof typeof shacker] + validChoice.stat1Value;
+      if (validChoice.stat2) {
+        updateData[validChoice.stat2] = shacker[validChoice.stat2 as keyof typeof shacker] + validChoice.stat2Value;
+      }
+    } else if (validChoice.type === 'weapon') {
       const weapons = JSON.parse(shacker.weapons);
-      weapons.push(choice.weapon);
+      weapons.push(validChoice.weapon);
       updateData.weapons = JSON.stringify(weapons);
-    } else if (choice.type === 'skill') {
+    } else if (validChoice.type === 'skill') {
       const skills = JSON.parse(shacker.skills);
-      skills.push(choice.skill);
+      skills.push(validChoice.skill);
       updateData.skills = JSON.stringify(skills);
-    } else if (choice.type === 'pet') {
-      updateData.pet = choice.pet;
+    } else if (validChoice.type === 'pet') {
+      updateData.pet = validChoice.pet;
     }
     
     const updatedShacker = await prisma.shacker.update({
@@ -247,9 +269,14 @@ router.get('/:id/levelup-choices', requireAuth, async (req: AuthRequest, res) =>
     const levelSystem = new LaBruteLevelSystem();
     const currentLevel = levelSystem.getLevel(shacker.xp);
     const nextLevel = currentLevel + 1;
-    
-    const choices = levelSystem.getLevelUpChoices(nextLevel);
-    
+
+    const choices = getLevelUpChoices({
+      level: currentLevel,
+      pets: shacker.pet ? [shacker.pet] : [],
+      skills: JSON.parse(shacker.skills),
+      weapons: JSON.parse(shacker.weapons)
+    });
+
     return res.json({
       currentLevel,
       nextLevel,
