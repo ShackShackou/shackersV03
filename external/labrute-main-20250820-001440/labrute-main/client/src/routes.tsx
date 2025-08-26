@@ -19,6 +19,7 @@ import ClanView from './views/clan/ClanView';
 import ClanWarFightView from './views/clan/ClanWarFightView';
 import { ClanWarHistoryView } from './views/clan/ClanWarHistoryView';
 import { ClanWarView } from './views/clan/ClanWarView';
+import CreatorView from './views/CreatorView';
 import DestinyView from './views/DestinyView';
 import { EventHistoryView } from './views/event/EventHistoryView';
 import { EventView } from './views/event/EventView';
@@ -62,6 +63,7 @@ const routes: RouteObject[] = [
       { path: 'achievements/rankings', element: <AchievementRankingView /> },
       { path: 'unknown-brute', element: <BruteNotFoundView /> },
       { path: 'generating-tournaments', element: <GeneratingView /> },
+      { path: 'creator', element: <CreatorView /> },
       { path: 'hall', element: <HallView /> },
       { path: 'patch-notes', element: <PatchNotesView /> },
       { path: 'wiki', element: <WikiView /> },
