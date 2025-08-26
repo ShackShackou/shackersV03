@@ -1,8 +1,11 @@
 // MMO Matchmaking Service for LaBrute
 // Handles player matching, queue management, and tournament organization
 
-class MatchmakingService {
+const { EventEmitter } = require('events');
+
+class MatchmakingService extends EventEmitter {
   constructor() {
+    super();
     this.playerQueue = new Map(); // userId -> player data
     this.activeFights = new Map(); // fightId -> fight data
     this.playerStats = new Map(); // userId -> { wins, losses, rating }
@@ -120,7 +123,10 @@ class MatchmakingService {
     this.activeFights.set(matchId, match);
     
     console.log(`⚔️ Match created: ${player1.bruteData.name} vs ${player2.bruteData.name}`);
-    
+
+    // Notify listeners (e.g. MasterServer)
+    this.emit('matchCreated', match);
+
     return match;
   }
 
