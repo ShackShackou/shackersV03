@@ -21,6 +21,15 @@ An active subscription to Phaser Editor is required to load and use this templat
 | `npm install`   | Install project dependencies |
 | `npm start`     | Launch a development web server |
 | `npm run build` | Create a production build in the `dist` folder |
+| `npm test`      | Run server tests from the project root |
+
+## Running Tests
+
+Run the server test suite from the project root:
+
+```sh
+npm test
+```
 
 ## Writing Code
 
