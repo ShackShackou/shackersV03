@@ -2,14 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth';
-
-// Import matchmaking service
-const MatchmakingService = require('../../matchmaking/MatchmakingService');
-const FightManager = require('../../combat/FightManager');
+import masterServer from '../masterServer';
 
 const router = Router();
-const matchmakingService = new MatchmakingService();
-const fightManager = new FightManager();
+const matchmakingService = masterServer.matchmaking;
+const fightManager = masterServer.fightManager;
 
 // Schema validation
 const JoinQueueSchema = z.object({

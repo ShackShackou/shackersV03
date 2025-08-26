@@ -9,6 +9,7 @@ import fightsRouter from './routes/fights';
 import fightsTestRouter from './routes/fights-test';
 import fightsOfficialRouter from './routes/fights-official';
 import matchmakingRouter from './routes/matchmaking';
+import masterServer from './masterServer';
 
 const app = express();
 app.use(cors());
@@ -55,3 +56,5 @@ const PORT = parseInt(process.env.PORT || '4000', 10);
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
+
+export { masterServer };
