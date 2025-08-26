@@ -68,10 +68,13 @@ class FightManager {
         }
 
         // Execute fighter turn
-        this.playFighterTurn(fightData);
+        this.playFighterTurn(fightData, currentFighter);
 
         // Check for deaths
         this.checkDeaths(fightData);
+
+        // Update initiatives like the authentic engine
+        this.updateInitiatives(fightData, currentFighter);
 
         turn++;
       }
@@ -93,6 +96,7 @@ class FightManager {
         fighters: result.fighters,
         winner: result.winner,
         loser: result.loser,
+        stats: result.stats,
         seed: seed
       };
 
@@ -137,8 +141,11 @@ class FightManager {
       reversal: brute.reversal || 0,
       reach: brute.reach || 0,
       armor: brute.armor || 0,
-      tempo: 1.0,
+      tempo: 3.5,
       hitSpeed: 0,
+
+      // Stats tracking for achievements
+      stats: { hits: 0, blocks: 0, evades: 0, counters: 0 },
       
       // Combat state
       initiative: randomBetween(0, 100),
@@ -190,8 +197,7 @@ class FightManager {
   /**
    * Execute a single fighter turn (simplified version)
    */
-  playFighterTurn(fightData) {
-    const fighter = fightData.fighters[0];
+  playFighterTurn(fightData, fighter) {
     if (!fighter || fighter.hp <= 0) return;
 
     // Get random opponent
@@ -205,9 +211,6 @@ class FightManager {
     
     // Simple attack logic for MVP
     this.executeAttack(fightData, fighter, opponent);
-    
-    // Increase fighter initiative for next turn
-    fighter.initiative += 1 + Math.random() * 0.5;
   }
 
   /**
@@ -223,44 +226,39 @@ class FightManager {
       hp2: fightData.fighters[1].hp
     });
 
-    // Calculate damage
+    // Defensive checks
+    if (this.checkEvade(fightData, fighter, opponent)) return;
+    if (this.checkBlock(fightData, fighter, opponent)) return;
+    if (this.checkCounter(fightData, fighter, opponent)) return;
+
+    // Perform hit
+    this.performHit(fightData, fighter, opponent);
+  }
+
+  /**
+   * Apply damage and record hit step
+   */
+  performHit(fightData, fighter, opponent) {
     const damageResult = getDamage(fighter, opponent);
     const damage = damageResult.damage;
     const criticalHit = damageResult.criticalHit;
 
-    // Check evasion (simplified)
-    if (Math.random() < 0.1) {
-      fightData.steps.push({
-        a: StepType.Evade,
-        f: opponent.index
-      });
-      
-      // Move back without damage
-      fightData.steps.push({
-        a: StepType.MoveBack,
-        f: fighter.index
-      });
-      return;
-    }
-
-    // Apply damage
     opponent.hp = Math.max(0, opponent.hp - damage);
+    fighter.stats.hits += 1;
 
-    // Add hit step with HP values for synchronization
     const hitStep = {
       a: StepType.Hit,
       f: fighter.index,
       t: opponent.index,
       d: damage,
-      // Include current HP values to prevent desync
-      hp1: fighter.index === 0 ? fighter.hp : opponent.hp,
-      hp2: fighter.index === 1 ? fighter.hp : opponent.hp
+      hp1: fightData.fighters[0].hp,
+      hp2: fightData.fighters[1].hp
     };
-    
+
     if (criticalHit) {
       hitStep.c = 1;
     }
-    
+
     fightData.steps.push(hitStep);
 
     // Move back
@@ -268,6 +266,55 @@ class FightManager {
       a: StepType.MoveBack,
       f: fighter.index
     });
+  }
+
+  /**
+   * Check if opponent evades the attack
+   */
+  checkEvade(fightData, attacker, defender) {
+    if (Math.random() < defender.evasion) {
+      defender.stats.evades += 1;
+      fightData.steps.push({ a: StepType.Evade, f: defender.index });
+      fightData.steps.push({ a: StepType.MoveBack, f: attacker.index });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if opponent blocks the attack
+   */
+  checkBlock(fightData, attacker, defender) {
+    const chance = Math.min(defender.block, 0.40);
+    if (Math.random() < chance) {
+      defender.stats.blocks += 1;
+      fightData.steps.push({ a: StepType.Block, f: defender.index });
+      fightData.steps.push({ a: StepType.MoveBack, f: attacker.index });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if opponent counters the attack
+   */
+  checkCounter(fightData, attacker, defender) {
+    if (Math.random() < defender.counter) {
+      defender.stats.counters += 1;
+      fightData.steps.push({ a: StepType.Counter, f: defender.index, t: attacker.index });
+      this.performHit(fightData, defender, attacker);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Update initiatives for all fighters
+   */
+  updateInitiatives(fightData, fighter) {
+    if (fighter && fighter.hp > 0) {
+      fighter.initiative += fighter.tempo || 3.5;
+    }
   }
 
   /**
@@ -327,7 +374,11 @@ class FightManager {
       steps: fightData.steps,
       fighters: fightData.initialFighters,
       winner: winnerFighter.name,
-      loser: loserFighter.name
+      loser: loserFighter.name,
+      stats: fightData.fighters.reduce((acc, f) => {
+        acc[f.id] = f.stats;
+        return acc;
+      }, {})
     };
   }
 

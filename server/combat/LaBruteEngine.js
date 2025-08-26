@@ -335,7 +335,7 @@ class LaBruteEngine {
   
   // ===== CRÉATION D'UN FIGHTER DÉTAILLÉ =====
   createDetailedFighter(brute, index, team) {
-    const stats = getCombatStats(brute);
+    const stats = getCombatStats.call(this, brute);
     
     // Équiper une arme aléatoire si pas déjà équipée
     let activeWeapon = null;
@@ -450,7 +450,7 @@ class LaBruteEngine {
       fighter.usedTrap = true;
     } else if (fighter.skills.find(sk => sk.name === 'bomb') && !fighter.usedBomb) {
       // Bomb : dégâts directs
-      const { damage } = getDamage(fighter, target);
+      const { damage } = getDamage(this.random, fighter, target);
       target.hp -= damage;
       this.steps.push({
         a: StepType.Bomb,
@@ -461,7 +461,7 @@ class LaBruteEngine {
       fighter.usedBomb = true;
     } else if (fighter.skills.find(sk => sk.name === 'flashFlood') && !fighter.usedFlashFlood) {
       // Flash Flood : attaque spéciale basée sur l'arme
-      const { damage } = getDamage(fighter, target);
+      const { damage } = getDamage(this.random, fighter, target);
       target.hp -= damage;
       this.steps.push({
         a: StepType.FlashFlood,
@@ -486,7 +486,7 @@ class LaBruteEngine {
 
       // Armes jetables
       if (fighter.activeWeapon?.toss) {
-        const { damage } = getDamage(fighter, target, fighter.activeWeapon);
+        const { damage } = getDamage(this.random, fighter, target, fighter.activeWeapon);
         target.hp -= damage;
         this.steps.push({
           a: StepType.Throw,
