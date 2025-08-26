@@ -5,53 +5,69 @@
  */
 
 const { getDamage } = require('../../../server/engine/labrute-official/getDamage');
-const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
+const { getWeapon } = require('../../../server/engine/labrute-official/weapons');
 
 /**
  * Generate a complete fight using official LaBrute rules
  */
 async function generateOfficialFight(fighter1Data, fighter2Data) {
   console.log('🎯 Generating fight with OFFICIAL LaBrute engine');
-  
+
   // Initialize fighters with official stats
   const fighters = [
     createOfficialFighter(fighter1Data, 0),
     createOfficialFighter(fighter2Data, 1),
   ];
-  
+
   const steps = [];
+  let currentTime = 0;
   let turn = 0;
   const maxTurns = 500;
-  
-  // Add arrival steps
-  steps.push({ type: 'arrive', fighter: 0 });
-  steps.push({ type: 'arrive', fighter: 1 });
-  
+
+  // Helper to snapshot fighter states
+  const snapshot = () => fighters.map(f => ({
+    hp: f.hp,
+    stunned: f.stunned,
+    poisoned: f.poisoned,
+    trapped: f.trapped,
+  }));
+
+  // Helper to add a step with timing and state
+  const addStep = (step, actor = null) => {
+    if (actor) {
+      currentTime += actor.tempo;
+    }
+    steps.push({ time: currentTime, ...step, state: snapshot() });
+  };
+
+  // Add arrival steps at time 0
+  addStep({ type: 'arrive', fighter: 0 });
+  addStep({ type: 'arrive', fighter: 1 });
+
   // Main combat loop
   while (turn < maxTurns) {
     // Determine turn order based on initiative
     const turnOrder = determineTurnOrder(fighters);
-    
+
     for (const fighterIndex of turnOrder) {
       const fighter = fighters[fighterIndex];
       const opponent = fighters[1 - fighterIndex];
-      
+
       // Skip if fighter is dead
       if (fighter.hp <= 0) continue;
-      
+
       // Fighter turn
-      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
-      steps.push(...turnSteps);
-      
+      playFighterTurn(fighter, opponent, fighterIndex, addStep);
+
       // Check for death
       if (opponent.hp <= 0) {
-        steps.push({ type: 'death', fighter: 1 - fighterIndex });
-        steps.push({ 
-          type: 'end', 
+        addStep({ type: 'death', fighter: 1 - fighterIndex });
+        addStep({
+          type: 'end',
           winner: fighterIndex,
-          loser: 1 - fighterIndex 
+          loser: 1 - fighterIndex,
         });
-        
+
         return {
           steps,
           fighters,
@@ -60,18 +76,18 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
         };
       }
     }
-    
+
     turn++;
   }
-  
+
   // Time out - fighter with more HP wins
   const winner = fighters[0].hp > fighters[1].hp ? 0 : 1;
-  steps.push({ 
-    type: 'end', 
+  addStep({
+    type: 'end',
     winner: winner,
-    loser: 1 - winner 
+    loser: 1 - winner,
   });
-  
+
   return {
     steps,
     fighters,
@@ -120,7 +136,7 @@ function createOfficialFighter(data, index) {
     poisoned: false,
     trapped: false,
   };
-  
+
   // Set active weapon if available
   if (fighter.weapons.length > 0) {
     const weaponName = fighter.weapons[0];
@@ -129,7 +145,10 @@ function createOfficialFighter(data, index) {
   
   // Calculate armor from skills
   fighter.armor = calculateArmor(fighter);
-  
+
+  // Tempo determines how quickly a fighter's steps occur
+  fighter.tempo = Math.max(1, 100 / fighter.speed);
+
   return fighter;
 }
 
@@ -196,33 +215,32 @@ function calculateInitiative(fighter) {
 /**
  * Play a fighter's turn
  */
-function playFighterTurn(fighter, opponent, fighterIndex) {
-  const steps = [];
-  
+function playFighterTurn(fighter, opponent, fighterIndex, addStep) {
   // Check if stunned
   if (fighter.stunned) {
     fighter.stunned = false;
-    return steps;
+    addStep({ type: 'stunned', fighter: fighterIndex }, fighter);
+    return;
   }
-  
+
   // Move to opponent
-  steps.push({ 
-    type: 'move', 
+  addStep({
+    type: 'move',
     fighter: fighterIndex,
-    target: 1 - fighterIndex 
-  });
-  
+    target: 1 - fighterIndex,
+  }, fighter);
+
   // Attempt to hit
   const hitResult = attemptHit(fighter, opponent);
-  
+
   if (hitResult.hit) {
     // Calculate damage using official formula
     const damageResult = getDamage(fighter, opponent);
-    
+
     // Apply damage
     opponent.hp -= damageResult.damage;
-    
-    steps.push({
+
+    addStep({
       type: 'hit',
       fighter: fighterIndex,
       target: 1 - fighterIndex,
@@ -230,47 +248,45 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
       critical: damageResult.criticalHit,
       weapon: fighter.activeWeapon?.name,
       targetHP: Math.max(0, opponent.hp),
-    });
-    
+    }, fighter);
+
     // Check for counter attack
     if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
       const counterDamage = Math.floor(damageResult.damage * 0.5);
       fighter.hp -= counterDamage;
-      
-      steps.push({
+
+      addStep({
         type: 'counter',
         fighter: 1 - fighterIndex,
         target: fighterIndex,
         damage: counterDamage,
         targetHP: Math.max(0, fighter.hp),
-      });
+      }, opponent);
     }
   } else if (hitResult.evaded) {
-    steps.push({
+    addStep({
       type: 'evade',
       fighter: 1 - fighterIndex,
-    });
+    }, opponent);
   } else if (hitResult.blocked) {
-    steps.push({
+    addStep({
       type: 'block',
       fighter: 1 - fighterIndex,
       damage: 0,
-    });
+    }, opponent);
   } else {
-    steps.push({
+    addStep({
       type: 'miss',
       fighter: fighterIndex,
       target: 1 - fighterIndex,
-    });
+    }, fighter);
   }
-  
+
   // Move back
-  steps.push({
+  addStep({
     type: 'moveBack',
     fighter: fighterIndex,
-  });
-  
-  return steps;
+  }, fighter);
 }
 
 /**
