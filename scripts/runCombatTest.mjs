@@ -12,8 +12,8 @@ import { CombatEngine } from '../src/engine/CombatEngine.js';
 import { RNG } from '../src/engine/rng.js';
 import parityFormulas from '../src/engine/formulas.js';
 import labruteFormulas from '../src/engine/formulas.labrute.js';
-import { getPetStat } from '../src/game/getPetStat.js';
 import { pets as petData } from '../src/game/pets.js';
+import { getPetStat } from '../src/game/getPetStat.js';
 
 function parseArgs(argv) {
   const args = {};

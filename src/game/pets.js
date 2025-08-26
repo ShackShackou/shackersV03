@@ -127,9 +127,10 @@ export class Pet {
     this.name = petData.displayName;
     this.type = petData.name;
     this.owner = owner;
+    const hp = getPetStat(owner.stats, petData, 'hp');
     this.stats = {
-      hp: getPetStat(owner.stats, petData, 'hp'),
-      maxHp: getPetStat(owner.stats, petData, 'hp'),
+      hp,
+      maxHp: hp,
       strength: getPetStat(owner.stats, petData, 'strength'),
       agility: getPetStat(owner.stats, petData, 'agility'),
       speed: getPetStat(owner.stats, petData, 'speed'),
