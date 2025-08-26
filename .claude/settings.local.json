@@ -49,7 +49,11 @@
       "Bash(powershell:*)",
       "Bash(start https://github.com/ShackShackou/shackersV03/compare/main...codex/add-logic-for-remaining-combat-steps)",
       "WebFetch(domain:github.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
