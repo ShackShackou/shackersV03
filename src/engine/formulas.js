@@ -4,7 +4,7 @@
 
 import { weaponStats } from '../game/weapons.js';
 import { SkillModifiers, FightStat } from '../game/skills.js';
-import { LABRUTE_WEAPONS } from './labrute-complete.js';
+import { LABRUTE_WEAPONS } from '../game/labrute-weapons.js';
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
@@ -153,10 +153,8 @@ export function computeAccuracy(attackerStats, weaponType) {
 
 /**
  * Base damage from strength + weapon modifier (or fists boost)
- * Using official LaBrute weapon damage values
- * FORMULE OFFICIELLE LABRUTE:
- * - Avec arme: damage = (weapon_damage / 10) + strength
- * - Sans arme: damage = strength
+ * Using official LaBrute weapon damage values already normalized
+ * according to the official formula.
  */
 export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
   const adjusted = getAdjustedStats(attackerStats);

@@ -4,10 +4,10 @@ import prisma from '../lib/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import {
   LaBruteLevelSystem,
-  LABRUTE_WEAPONS,
   LABRUTE_SKILLS,
   LABRUTE_PETS
 } from '../../../src/engine/labrute-complete.js';
+import { LABRUTE_WEAPONS } from '../../../src/game/labrute-weapons.js';
 import { getRandomBonus, getLevelUpChoices } from '../../../src/game/leveling.js';
 
 const router = Router();
