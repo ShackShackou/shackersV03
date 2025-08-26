@@ -38,10 +38,10 @@ router.post('/queue/join', requireAuth, async (req: AuthRequest, res) => {
 
   try {
     // Get brute data from database
-    const brute = await prisma.shacker.findUnique({ 
+    const brute = await prisma.shacker.findUnique({
       where: { id: bruteId },
       include: {
-        owner: true // Include user data
+        user: true // Include user data
       }
     });
 
@@ -50,7 +50,7 @@ router.post('/queue/join', requireAuth, async (req: AuthRequest, res) => {
     }
 
     // Verify ownership
-    if (brute.ownerId !== userId) {
+    if (brute.userId !== userId) {
       return res.status(403).json({ error: 'Not your brute' });
     }
 
