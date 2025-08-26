@@ -7,7 +7,7 @@
  * - Les vraies formules de dégâts 
  * - Les systèmes d'initiative, counter, block, evade
  * - Les 28 armes avec leurs stats
- * - Les 55 skills avec leurs effets
+ * - Les 50 skills avec leurs effets
  * - Les 3 pets avec leurs capacités
  */
 
@@ -125,7 +125,26 @@ const SkillData = {
   cryOfTheDamned: { id: 29, name: 'cryOfTheDamned', type: 'super', stunAllOpponents: true },
   hypnosis: { id: 30, name: 'hypnosis', type: 'super', controlOpponents: true },
   flashFlood: { id: 31, name: 'flashFlood', type: 'super', weaponBasedAttack: true },
-  tamer: { id: 32, name: 'tamer', type: 'super', resurrectPet: true }
+  tamer: { id: 32, name: 'tamer', type: 'super', resurrectPet: true },
+
+  // Nouveaux skills
+  reconnaissance: { id: 33, name: 'reconnaissance', type: 'passive', initiativePenalty: 200, speedBonus: 5, critDamageBonus: 0.5 },
+  shock: { id: 34, name: 'shock', type: 'passive', disarmChance: 0.5 },
+  relentless: { id: 35, name: 'relentless', type: 'passive', accuracyBonus: 0.3 },
+  counterAttack: { id: 36, name: 'counterAttack', type: 'passive', blockChance: 0.1, reversalChance: 0.9 },
+  regeneration: { id: 37, name: 'regeneration', type: 'passive', regenPercent: 0.1 },
+  chef: { id: 38, name: 'chef', type: 'passive', cookTreat: true },
+  spy: { id: 39, name: 'spy', type: 'passive', revealOpponent: true },
+  saboteur: { id: 40, name: 'saboteur', type: 'passive', trapWeapon: true },
+  backup: { id: 41, name: 'backup', type: 'passive', callAlly: true },
+  hideaway: { id: 42, name: 'hideaway', type: 'passive', blockThrowsBonus: 0.25 },
+  monk: { id: 43, name: 'monk', type: 'passive', counterChance: 0.4, initiativePenalty: 200 },
+  vampirism: { id: 44, name: 'vampirism', type: 'super', lifeSteal: true },
+  chaining: { id: 45, name: 'chaining', type: 'passive', chainHit: true },
+  haste: { id: 46, name: 'haste', type: 'super', criticalChance: 0.05 },
+  treat: { id: 47, name: 'treat', type: 'super', healPet: true },
+  repulse: { id: 48, name: 'repulse', type: 'passive', deflectChance: 0.3, criticalChance: 0.05 },
+  fastMetabolism: { id: 49, name: 'fastMetabolism', type: 'passive', regenPercent: 0.01 }
 };
 
 // ===== PETS OFFICIELS =====
