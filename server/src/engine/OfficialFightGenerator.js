@@ -8,6 +8,22 @@ const { getDamage } = require('../../../server/engine/labrute-official/getDamage
 const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
 
 /**
+ * Get base tempo from speed (lower is faster)
+ */
+function getBaseTempo(speed) {
+  return 0.10 + (20 / (10 + (speed * 1.5))) * 0.90;
+}
+
+/**
+ * Compute action tempo using fighter speed and weapon tempo
+ */
+function getActionTempo(fighter) {
+  const base = fighter.tempo || getBaseTempo(fighter.speed);
+  const weaponTempo = fighter.activeWeapon?.tempo || 1;
+  return base * weaponTempo;
+}
+
+/**
  * Generate a complete fight using official LaBrute rules
  */
 async function generateOfficialFight(fighter1Data, fighter2Data) {
@@ -18,58 +34,75 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
     createOfficialFighter(fighter1Data, 0),
     createOfficialFighter(fighter2Data, 1),
   ];
-  
+
+  // Initialize next action time for each fighter
+  fighters.forEach((f) => {
+    f.nextAction = getActionTempo(f);
+  });
+
   const steps = [];
   let turn = 0;
   const maxTurns = 500;
-  
-  // Add arrival steps
-  steps.push({ type: 'arrive', fighter: 0 });
-  steps.push({ type: 'arrive', fighter: 1 });
-  
-  // Main combat loop
+  let fightTempo = 0;
+
+  // Add arrival steps at tempo 0
+  steps.push({ type: 'arrive', fighter: 0, tempo: 0 });
+  steps.push({ type: 'arrive', fighter: 1, tempo: 0 });
+
+  // Main combat loop using tempo
   while (turn < maxTurns) {
-    // Determine turn order based on initiative
-    const turnOrder = determineTurnOrder(fighters);
-    
-    for (const fighterIndex of turnOrder) {
-      const fighter = fighters[fighterIndex];
-      const opponent = fighters[1 - fighterIndex];
-      
-      // Skip if fighter is dead
-      if (fighter.hp <= 0) continue;
-      
-      // Fighter turn
-      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
-      steps.push(...turnSteps);
-      
-      // Check for death
-      if (opponent.hp <= 0) {
-        steps.push({ type: 'death', fighter: 1 - fighterIndex });
-        steps.push({ 
-          type: 'end', 
-          winner: fighterIndex,
-          loser: 1 - fighterIndex 
-        });
-        
-        return {
-          steps,
-          fighters,
-          winner: fighter,
-          loser: opponent,
-        };
-      }
+    // Select fighter with lowest next action tempo
+    let fighterIndex = fighters[0].nextAction <= fighters[1].nextAction ? 0 : 1;
+    if (fighters[0].nextAction === fighters[1].nextAction && Math.random() < 0.5) {
+      fighterIndex = 1;
     }
-    
+
+    const fighter = fighters[fighterIndex];
+    const opponent = fighters[1 - fighterIndex];
+
+    // Update current fight tempo
+    fightTempo = fighter.nextAction;
+
+    // Skip if fighter is dead
+    if (fighter.hp <= 0) {
+      fighter.nextAction += getActionTempo(fighter);
+      continue;
+    }
+
+    // Fighter turn
+    const turnSteps = playFighterTurn(fighter, opponent, fighterIndex, fightTempo);
+    steps.push(...turnSteps);
+
+    // Check for death
+    if (opponent.hp <= 0) {
+      steps.push({ type: 'death', fighter: 1 - fighterIndex, tempo: fightTempo });
+      steps.push({
+        type: 'end',
+        winner: fighterIndex,
+        loser: 1 - fighterIndex,
+        tempo: fightTempo,
+      });
+
+      return {
+        steps,
+        fighters,
+        winner: fighter,
+        loser: opponent,
+      };
+    }
+
+    // Schedule next action for fighter based on tempo
+    fighter.nextAction += getActionTempo(fighter);
     turn++;
   }
-  
+
   // Time out - fighter with more HP wins
   const winner = fighters[0].hp > fighters[1].hp ? 0 : 1;
-  steps.push({ 
-    type: 'end', 
+  steps.push({
+    type: 'end',
     winner: winner,
-    loser: 1 - winner 
+    loser: 1 - winner,
+    tempo: fightTempo,
   });
   
   return {
@@ -84,6 +117,7 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
  * Create a fighter with official stats
  */
 function createOfficialFighter(data, index) {
+  const speed = data.speed || 10;
   const fighter = {
     index,
     id: data.id,
@@ -93,15 +127,17 @@ function createOfficialFighter(data, index) {
     maxHp: data.hp || 100,
     strength: data.strength || 10,
     agility: data.agility || 10,
-    speed: data.speed || 10,
+    speed,
     endurance: data.endurance || 10,
     intelligence: data.intelligence || 10,
     willpower: data.willpower || 10,
-    
+
     // Combat stats
     baseDamage: 5, // Base damage without weapon
     armor: 0, // Damage reduction
     initiative: 0,
+    tempo: getBaseTempo(speed),
+    nextAction: 0,
     
     // Equipment
     weapons: data.weapons || [],
@@ -154,74 +190,33 @@ function calculateArmor(fighter) {
 /**
  * Determine turn order based on initiative
  */
-function determineTurnOrder(fighters) {
-  // Calculate initiative for each fighter
-  const initiatives = fighters.map((f, i) => ({
-    index: i,
-    initiative: calculateInitiative(f),
-  }));
-  
-  // Sort by initiative (higher goes first)
-  initiatives.sort((a, b) => b.initiative - a.initiative);
-  
-  // Return fighter indices in order
-  return initiatives.map(i => i.index);
-}
-
-/**
- * Calculate fighter initiative
- */
-function calculateInitiative(fighter) {
-  let initiative = fighter.speed;
-  
-  // Add weapon tempo bonus
-  if (fighter.activeWeapon) {
-    initiative += fighter.activeWeapon.tempo * 10;
-  }
-  
-  // Add skill bonuses
-  if (fighter.skills.includes('vitality')) {
-    initiative += 5;
-  }
-  if (fighter.skills.includes('flashFlood')) {
-    initiative += 10;
-  }
-  
-  // Add randomness
-  initiative += Math.random() * 20;
-  
-  return initiative;
-}
-
 /**
  * Play a fighter's turn
  */
-function playFighterTurn(fighter, opponent, fighterIndex) {
+function playFighterTurn(fighter, opponent, fighterIndex, tempo) {
   const steps = [];
-  
+
   // Check if stunned
   if (fighter.stunned) {
     fighter.stunned = false;
     return steps;
   }
-  
+
   // Move to opponent
-  steps.push({ 
-    type: 'move', 
+  steps.push({
+    type: 'move',
     fighter: fighterIndex,
-    target: 1 - fighterIndex 
+    target: 1 - fighterIndex,
+    tempo,
   });
-  
+
   // Attempt to hit
   const hitResult = attemptHit(fighter, opponent);
-  
+
   if (hitResult.hit) {
     // Calculate damage using official formula
     const damageResult = getDamage(fighter, opponent);
-    
-    // Apply damage
-    opponent.hp -= damageResult.damage;
-    
+
     steps.push({
       type: 'hit',
       fighter: fighterIndex,
@@ -229,47 +224,66 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
       damage: damageResult.damage,
       critical: damageResult.criticalHit,
       weapon: fighter.activeWeapon?.name,
-      targetHP: Math.max(0, opponent.hp),
+      tempo,
     });
-    
+
+    // Apply damage and record HP change
+    opponent.hp -= damageResult.damage;
+    steps.push({
+      type: 'hp',
+      fighter: 1 - fighterIndex,
+      hp: Math.max(0, opponent.hp),
+      tempo,
+    });
+
     // Check for counter attack
     if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
       const counterDamage = Math.floor(damageResult.damage * 0.5);
-      fighter.hp -= counterDamage;
-      
       steps.push({
         type: 'counter',
         fighter: 1 - fighterIndex,
         target: fighterIndex,
         damage: counterDamage,
-        targetHP: Math.max(0, fighter.hp),
+        tempo,
+      });
+
+      fighter.hp -= counterDamage;
+      steps.push({
+        type: 'hp',
+        fighter: fighterIndex,
+        hp: Math.max(0, fighter.hp),
+        tempo,
       });
     }
   } else if (hitResult.evaded) {
     steps.push({
       type: 'evade',
       fighter: 1 - fighterIndex,
+      tempo,
     });
   } else if (hitResult.blocked) {
     steps.push({
       type: 'block',
       fighter: 1 - fighterIndex,
       damage: 0,
+      tempo,
     });
   } else {
     steps.push({
       type: 'miss',
       fighter: fighterIndex,
       target: 1 - fighterIndex,
+      tempo,
     });
   }
-  
+
   // Move back
   steps.push({
     type: 'moveBack',
     fighter: fighterIndex,
+    tempo,
   });
-  
+
   return steps;
 }
 
