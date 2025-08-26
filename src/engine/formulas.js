@@ -46,7 +46,7 @@ function aggregateFromSkills(skills) {
     if (m[FightStat.BLOCK]) res.block += m[FightStat.BLOCK].percent || 0;
     if (m[FightStat.COUNTER]) res.counter += m[FightStat.COUNTER].percent || 0;
     if (m[FightStat.COMBO]) res.combo += m[FightStat.COMBO].percent || 0;
-    if (m[FightStat.INITIATIVE]) res.initiative += m[FightStat.INITIATIVE].flat || 0;
+    if (m[FightStat.INITIATIVE]) res.initiative += (m[FightStat.INITIATIVE].flat || 0) / 100;
   }
   return res;
 }

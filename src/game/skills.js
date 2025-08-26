@@ -1,10 +1,12 @@
+import { WeaponType } from './weapons.js';
+
 export const SkillName = {
   herculeanStrength: 'herculeanStrength',
   felineAgility: 'felineAgility',
   lightningBolt: 'lightningBolt',
   vitality: 'vitality',
   immortality: 'immortality',
-  weaponMaster: 'weaponMaster',
+  weaponsMaster: 'weaponsMaster',
   martialArts: 'martialArts',
   sixthSense: 'sixthSense',
   hostility: 'hostility',
@@ -40,10 +42,6 @@ export const SkillName = {
   chef: 'chef',
   spy: 'spy',
   saboteur: 'saboteur',
-  strongWill: 'strongWill',
-  potion: 'potion',
-  repulse: 'repulse',
-  trickster: 'trickster',
   backup: 'backup',
   hideaway: 'hideaway',
   monk: 'monk',
@@ -51,11 +49,13 @@ export const SkillName = {
   chaining: 'chaining',
   haste: 'haste',
   treat: 'treat',
+  repulse: 'repulse',
   fastMetabolism: 'fastMetabolism',
 };
 
 export const FightStat = {
   REVERSAL: 'reversal',
+  COUNTER: 'counter',
   EVASION: 'evasion',
   DEXTERITY: 'dexterity',
   BLOCK: 'block',
@@ -63,142 +63,110 @@ export const FightStat = {
   DISARM: 'disarm',
   COMBO: 'combo',
   DEFLECT: 'deflect',
-  TEMPO: 'tempo',
-  COUNTER: 'counter',
-  ENDURANCE: 'endurance',
+  ARMOR: 'armor',
+  DAMAGE: 'damage',
+  CRITICAL_CHANCE: 'criticalChance',
+  CRITICAL_DAMAGE: 'criticalDamage',
+  HIT_SPEED: 'hitSpeed',
+  INITIATIVE: 'initiative',
   STRENGTH: 'strength',
   AGILITY: 'agility',
   SPEED: 'speed',
-  INITIATIVE: 'initiative',
+  ENDURANCE: 'endurance',
+  REGENERATION: 'regeneration',
 };
 
 export const SkillModifiers = {
   [SkillName.herculeanStrength]: {
-    [FightStat.STRENGTH]: { percent: 0.5, flat: 3 },
-    [FightStat.DEXTERITY]: { percent: -0.3 },
+    [FightStat.STRENGTH]: { flat: 3, percent: 0.5 },
   },
   [SkillName.felineAgility]: {
-    [FightStat.AGILITY]: { percent: 0.5, flat: 3 },
-    [FightStat.ACCURACY]: { percent: -0.3 },
+    [FightStat.AGILITY]: { flat: 3, percent: 0.5 },
   },
   [SkillName.lightningBolt]: {
-    [FightStat.SPEED]: { percent: 0.5, flat: 3 },
-    [FightStat.INITIATIVE]: { flat: -0.3 },
+    [FightStat.SPEED]: { flat: 3, percent: 0.5 },
   },
   [SkillName.vitality]: {
-    [FightStat.ENDURANCE]: { percent: 0.5, flat: 3 },
-    [FightStat.STRENGTH]: { percent: -0.3 },
+    [FightStat.ENDURANCE]: { flat: 3, percent: 0.5 },
   },
   [SkillName.immortality]: {
-    [FightStat.ENDURANCE]: { flat: 250 },
-    [FightStat.STRENGTH]: { flat: -8 },
-    [FightStat.AGILITY]: { flat: -8 },
-    [FightStat.SPEED]: { flat: -8 },
+    [FightStat.ENDURANCE]: { percent: 2.5 },
+    [FightStat.STRENGTH]: { percent: -0.25 },
+    [FightStat.AGILITY]: { percent: -0.25 },
+    [FightStat.SPEED]: { percent: -0.25 },
   },
-  [SkillName.weaponMaster]: {
-    [FightStat.DEXTERITY]: { percent: 0.5 },
-    [FightStat.ACCURACY]: { percent: 0.1 },
+  [SkillName.weaponsMaster]: {
+    [FightStat.DAMAGE]: { percent: 0.5, weaponType: WeaponType.SHARP },
   },
   [SkillName.martialArts]: {
-    [FightStat.COUNTER]: { percent: 1 },
-    [FightStat.COMBO]: { percent: 0.5 },
-    [FightStat.BLOCK]: { percent: -0.2 },
+    [FightStat.DAMAGE]: { percent: 1, weaponType: null },
   },
   [SkillName.sixthSense]: {
-    [FightStat.COUNTER]: { percent: 0.5 },
-    [FightStat.BLOCK]: { percent: 0.25 },
-    [FightStat.EVASION]: { percent: 0.1 },
+    [FightStat.COUNTER]: { percent: 0.1 },
   },
   [SkillName.hostility]: {
-    [FightStat.REVERSAL]: { percent: 0.5 },
-    [FightStat.COUNTER]: { percent: 0.3 },
+    [FightStat.REVERSAL]: { percent: 0.3 },
   },
   [SkillName.fistsOfFury]: {
-    [FightStat.COMBO]: { percent: 0.5 },
-    [FightStat.DEXTERITY]: { percent: 0.2 },
+    [FightStat.COMBO]: { percent: 0.2 },
   },
   [SkillName.shield]: {
     [FightStat.BLOCK]: { percent: 0.45 },
+    [FightStat.DAMAGE]: { percent: -0.25 },
   },
   [SkillName.armor]: {
-    [FightStat.BLOCK]: { percent: 0.3 },
-    [FightStat.SPEED]: { flat: -2 },
+    [FightStat.ARMOR]: { percent: 0.25 },
+    [FightStat.SPEED]: { percent: -0.15 },
   },
   [SkillName.toughenedSkin]: {
-    [FightStat.BLOCK]: { percent: 0.15 },
+    [FightStat.ARMOR]: { percent: 0.1 },
   },
   [SkillName.untouchable]: {
-    [FightStat.EVASION]: { percent: 0.5 },
+    [FightStat.EVASION]: { percent: 0.3 },
   },
-  [SkillName.sabotage]: {
-    [FightStat.DISARM]: { percent: 2.5 },
-  },
+  [SkillName.sabotage]: {},
   [SkillName.shock]: {
     [FightStat.DISARM]: { percent: 0.5 },
-    [FightStat.INITIATIVE]: { flat: -0.1 },
   },
   [SkillName.bodybuilder]: {
-    [FightStat.STRENGTH]: { flat: 3 },
-    [FightStat.ENDURANCE]: { flat: 3 },
-    [FightStat.AGILITY]: { flat: 3 },
-    [FightStat.SPEED]: { flat: 3 },
+    [FightStat.HIT_SPEED]: { percent: 0.40, weaponType: WeaponType.HEAVY },
+    [FightStat.DEXTERITY]: { percent: 0.1, weaponType: WeaponType.HEAVY },
   },
   [SkillName.relentless]: {
-    [FightStat.ENDURANCE]: { flat: 4 },
-    [FightStat.ACCURACY]: { percent: -0.3 },
-  },
-  [SkillName.survival]: {
-    [FightStat.ENDURANCE]: { flat: 11 },
-  },
-  [SkillName.leadSkeleton]: {
-    [FightStat.ENDURANCE]: { flat: 5 },
-    [FightStat.SPEED]: { flat: -1 },
-  },
-  [SkillName.balletShoes]: {
-    [FightStat.EVASION]: { percent: 0.18 },
-    [FightStat.DEXTERITY]: { percent: 0.18 },
-  },
-  [SkillName.determination]: {
-    [FightStat.ENDURANCE]: { flat: 2 },
-    [FightStat.STRENGTH]: { flat: 2 },
-    [FightStat.AGILITY]: { flat: 2 },
-    [FightStat.SPEED]: { flat: 2 },
-  },
-  [SkillName.firstStrike]: {
-    [FightStat.INITIATIVE]: { flat: 2 },
-  },
-  [SkillName.resistant]: {
-    [FightStat.SPEED]: { flat: 4 },
-  },
-  [SkillName.reconnaissance]: {
-    [FightStat.SPEED]: { flat: 5 },
-    [FightStat.INITIATIVE]: { flat: 0.4 },
-    [FightStat.STRENGTH]: { flat: -2 },
-  },
-  [SkillName.counterAttack]: {
-    [FightStat.COUNTER]: { percent: 0.9 },
-    [FightStat.INITIATIVE]: { flat: -0.1 },
-  },
-  [SkillName.ironHead]: {
-    [FightStat.BLOCK]: { percent: -0.5 },
-    [FightStat.EVASION]: { percent: -0.5 },
     [FightStat.ACCURACY]: { percent: 0.3 },
   },
-  [SkillName.thief]: {
-    [FightStat.DISARM]: { percent: 0.5 },
-    [FightStat.INITIATIVE]: { flat: 0.2 },
+  [SkillName.survival]: {
+    [FightStat.BLOCK]: { percent: 0.2, details: 'atOneHp' },
+    [FightStat.EVASION]: { percent: 0.2, details: 'atOneHp' },
   },
+  [SkillName.leadSkeleton]: {
+    [FightStat.ARMOR]: { percent: 0.15 },
+    [FightStat.DAMAGE]: { percent: -0.15, weaponType: WeaponType.BLUNT, opponent: true },
+    [FightStat.EVASION]: { percent: -0.15 },
+  },
+  [SkillName.balletShoes]: {
+    [FightStat.EVASION]: { percent: 0.1 },
+  },
+  [SkillName.determination]: {},
+  [SkillName.firstStrike]: {
+    [FightStat.INITIATIVE]: { flat: 200 },
+  },
+  [SkillName.resistant]: {},
+  [SkillName.reconnaissance]: {
+    [FightStat.INITIATIVE]: { flat: -200 },
+    [FightStat.SPEED]: { flat: 5, percent: 1.5 },
+    [FightStat.CRITICAL_DAMAGE]: { percent: 0.5 },
+  },
+  [SkillName.counterAttack]: {
+    [FightStat.BLOCK]: { percent: 0.1 },
+    [FightStat.REVERSAL]: { percent: 0.9, details: 'afterBlock' },
+  },
+  [SkillName.ironHead]: {},
+  [SkillName.thief]: {},
   [SkillName.fierceBrute]: {
-    [FightStat.STRENGTH]: { flat: 4 },
-    [FightStat.BLOCK]: { percent: -0.3 },
+    [FightStat.CRITICAL_CHANCE]: { percent: 0.1 },
   },
-  [SkillName.tragicPotion]: {
-    [FightStat.STRENGTH]: { flat: -1 },
-    [FightStat.AGILITY]: { flat: -1 },
-    [FightStat.SPEED]: { flat: -1 },
-    [FightStat.ENDURANCE]: { flat: 5 },
-    [FightStat.INITIATIVE]: { flat: 0.1 },
-  },
+  [SkillName.tragicPotion]: {},
   [SkillName.net]: {},
   [SkillName.bomb]: {},
   [SkillName.hammer]: {},
@@ -210,55 +178,40 @@ export const SkillModifiers = {
   [SkillName.chef]: {},
   [SkillName.spy]: {},
   [SkillName.saboteur]: {},
-  [SkillName.strongWill]: {},
-  [SkillName.potion]: {},
-  [SkillName.repulse]: {},
-  [SkillName.trickster]: {
-    [FightStat.EVASION]: { percent: 0.2 },
-    [FightStat.DEXTERITY]: { percent: 0.2 },
-    [FightStat.COUNTER]: { percent: 0.2 },
-  },
-  [SkillName.backup]: {
-    // Backup doesn't modify stats, it's handled in combat
-  },
+  [SkillName.backup]: {},
   [SkillName.hideaway]: {
-    [FightStat.EVASION]: { percent: 0.25 },
-    [FightStat.INITIATIVE]: { flat: -0.2 },
+    [FightStat.BLOCK]: { percent: 0.25, details: 'againstThrows' },
   },
   [SkillName.monk]: {
     [FightStat.COUNTER]: { percent: 0.4 },
-    [FightStat.SPEED]: { flat: 6 },
-    [FightStat.STRENGTH]: { flat: -4 },
+    [FightStat.INITIATIVE]: { flat: -200 },
+    [FightStat.HIT_SPEED]: { percent: -1 },
   },
-  [SkillName.vampirism]: {
-    // Vampirism is handled in combat mechanics
-    [FightStat.ENDURANCE]: { flat: -3 },
-  },
-  [SkillName.chaining]: {
-    [FightStat.COMBO]: { percent: 0.3 },
-    [FightStat.DEXTERITY]: { percent: 0.15 },
-  },
+  [SkillName.vampirism]: {},
+  [SkillName.chaining]: {},
   [SkillName.haste]: {
-    [FightStat.SPEED]: { percent: 0.3 },
-    [FightStat.INITIATIVE]: { flat: -0.4 },
+    [FightStat.CRITICAL_CHANCE]: { percent: 0.05 },
   },
-  [SkillName.treat]: {
-    // Treat is a combat ability, no stat modifiers
+  [SkillName.treat]: {},
+  [SkillName.repulse]: {
+    [FightStat.DEFLECT]: { percent: 0.3 },
+    [FightStat.CRITICAL_CHANCE]: { percent: 0.05 },
   },
   [SkillName.fastMetabolism]: {
-    [FightStat.ENDURANCE]: { flat: 2 },
-    // Regeneration handled in combat
+    [FightStat.REGENERATION]: { percent: 0.01 },
+    [FightStat.HIT_SPEED]: { percent: -0.5 },
+    [FightStat.CRITICAL_CHANCE]: { percent: -0.05 },
   },
 };
 
 export function applySkillModifiers(fighter, skill) {
   const modifiers = SkillModifiers[skill];
   if (!modifiers) return fighter;
-  
+
   const updatedFighter = { ...fighter };
-  
+
   Object.entries(modifiers).forEach(([stat, modifier]) => {
-    switch(stat) {
+    switch (stat) {
       case FightStat.ENDURANCE:
         if (modifier.flat) updatedFighter.stats.maxHealth += modifier.flat * 2;
         if (modifier.percent) updatedFighter.stats.maxHealth *= (1 + modifier.percent);
@@ -300,7 +253,7 @@ export function applySkillModifiers(fighter, skill) {
         if (modifier.percent) updatedFighter.stats.disarmChance = (updatedFighter.stats.disarmChance || 0) + modifier.percent;
         break;
       case FightStat.INITIATIVE:
-        if (modifier.flat) updatedFighter.stats.initiative = (updatedFighter.stats.initiative || 0) + modifier.flat;
+        if (modifier.flat) updatedFighter.stats.initiative = (updatedFighter.stats.initiative || 0) - modifier.flat / 100;
         break;
       case FightStat.DEXTERITY:
         if (modifier.percent) updatedFighter.stats.dexterityBonus = (updatedFighter.stats.dexterityBonus || 0) + modifier.percent;
@@ -308,63 +261,21 @@ export function applySkillModifiers(fighter, skill) {
       case FightStat.REVERSAL:
         if (modifier.percent) updatedFighter.stats.reversalChance = (updatedFighter.stats.reversalChance || 0) + modifier.percent;
         break;
+      default:
+        break;
     }
   });
-  
-  // Ensure stats don't go below minimum values
+
   updatedFighter.stats.strength = Math.max(1, Math.floor(updatedFighter.stats.strength));
   updatedFighter.stats.agility = Math.max(0, Math.floor(updatedFighter.stats.agility));
   updatedFighter.stats.defense = Math.max(0, Math.floor(updatedFighter.stats.defense));
   updatedFighter.stats.health = Math.max(1, Math.floor(updatedFighter.stats.health));
   updatedFighter.stats.maxHealth = Math.max(1, Math.floor(updatedFighter.stats.maxHealth));
-  
+
   return updatedFighter;
 }
 
 export function getRandomSkill(excludeSkills = []) {
-  const availableSkills = Object.keys(SkillName).filter(skill => !excludeSkills.includes(skill));
-  const randomIndex = Math.floor(Math.random() * availableSkills.length);
-  return SkillName[availableSkills[randomIndex]];
+  const availableSkills = Object.keys(SkillModifiers).filter((skill) => !excludeSkills.includes(skill));
+  return availableSkills[Math.floor(Math.random() * availableSkills.length)];
 }
-
-export const skillDescriptions = {
-  [SkillName.herculeanStrength]: "Massive strength boost (+50% STR, +3 flat)",
-  [SkillName.felineAgility]: "Enhanced agility (+50% AGI, +3 flat)",
-  [SkillName.lightningBolt]: "Lightning speed (+50% SPD, +3 flat)",
-  [SkillName.vitality]: "Increased health (+50% END, +3 flat)",
-  [SkillName.immortality]: "Massive health boost (+250 HP) but weakens other stats",
-  [SkillName.weaponMaster]: "Better weapon handling (+50% dexterity)",
-  [SkillName.martialArts]: "Master of combos and counters",
-  [SkillName.sixthSense]: "Enhanced defensive awareness",
-  [SkillName.hostility]: "Increased aggression and reversals",
-  [SkillName.fistsOfFury]: "Combo specialist",
-  [SkillName.shield]: "Strong blocking ability (+45%)",
-  [SkillName.armor]: "Good protection but slower",
-  [SkillName.toughenedSkin]: "Natural armor (+15% block)",
-  [SkillName.untouchable]: "Hard to hit (+50% evasion)",
-  [SkillName.sabotage]: "Master of disarming",
-  [SkillName.shock]: "Disarms and stuns enemies",
-  [SkillName.bodybuilder]: "All stats increased (+3 each)",
-  [SkillName.relentless]: "Never gives up (+4 END)",
-  [SkillName.survival]: "Built to last (+11 END)",
-  [SkillName.leadSkeleton]: "Heavy but durable",
-  [SkillName.balletShoes]: "Graceful dodger",
-  [SkillName.determination]: "Well-rounded fighter (+2 all)",
-  [SkillName.firstStrike]: "Always attacks first",
-  [SkillName.resistant]: "Fast recovery (+4 SPD)",
-  [SkillName.reconnaissance]: "Scout: fast but weaker",
-  [SkillName.counterAttack]: "Counter specialist (+90%)",
-  [SkillName.ironHead]: "Can't dodge but always hits",
-  [SkillName.thief]: "Steals weapons easily",
-  [SkillName.fierceBrute]: "Strong but can't block well",
-  [SkillName.tragicPotion]: "Mixed blessing: tough but weak",
-  [SkillName.trickster]: "Unpredictable fighter",
-  [SkillName.backup]: "Can call backup brutes to help in combat",
-  [SkillName.hideaway]: "Can hide during combat (+25% evasion)",
-  [SkillName.monk]: "Martial arts master (+40% counter, +6 speed)",
-  [SkillName.vampirism]: "Heals by dealing damage",
-  [SkillName.chaining]: "Chain attacks together (+30% combo)",
-  [SkillName.haste]: "Super fast attacks (+30% speed)",
-  [SkillName.treat]: "Can heal during combat",
-  [SkillName.fastMetabolism]: "Regenerates health each turn",
-};
