@@ -7,6 +7,16 @@
 const { getDamage } = require('../../../server/engine/labrute-official/getDamage');
 const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
 
+// Default durations and bonuses for temporary skills
+const STATUS_DURATIONS = {
+  poison: 3,
+  regeneration: 3,
+  vampirism: 3,
+  haste: 2,
+};
+
+const HASTE_SPEED_BONUS = 10;
+
 /**
  * Generate a complete fight using official LaBrute rules
  */
@@ -26,40 +36,50 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
   // Add arrival steps
   steps.push({ type: 'arrive', fighter: 0 });
   steps.push({ type: 'arrive', fighter: 1 });
-  
+
+  // Activate any ongoing skills at the start of the fight
+  initializeStatuses(fighters, steps);
+
   // Main combat loop
   while (turn < maxTurns) {
     // Determine turn order based on initiative
     const turnOrder = determineTurnOrder(fighters);
     
-    for (const fighterIndex of turnOrder) {
-      const fighter = fighters[fighterIndex];
-      const opponent = fighters[1 - fighterIndex];
-      
-      // Skip if fighter is dead
-      if (fighter.hp <= 0) continue;
-      
-      // Fighter turn
-      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
-      steps.push(...turnSteps);
-      
-      // Check for death
-      if (opponent.hp <= 0) {
-        steps.push({ type: 'death', fighter: 1 - fighterIndex });
-        steps.push({ 
-          type: 'end', 
-          winner: fighterIndex,
-          loser: 1 - fighterIndex 
-        });
-        
-        return {
-          steps,
-          fighters,
-          winner: fighter,
-          loser: opponent,
-        };
+      for (const fighterIndex of turnOrder) {
+        const fighter = fighters[fighterIndex];
+        const opponent = fighters[1 - fighterIndex];
+
+        // Skip if fighter is dead
+        if (fighter.hp <= 0) continue;
+
+        // Fighter turn
+        const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
+        steps.push(...turnSteps);
+
+        // Check for deaths on both sides
+        if (fighter.hp <= 0 || opponent.hp <= 0) {
+          if (fighter.hp <= 0) {
+            steps.push({ type: 'death', fighter: fighterIndex });
+          }
+          if (opponent.hp <= 0) {
+            steps.push({ type: 'death', fighter: 1 - fighterIndex });
+          }
+
+          const winnerIndex = fighter.hp > opponent.hp ? fighterIndex : 1 - fighterIndex;
+          steps.push({
+            type: 'end',
+            winner: winnerIndex,
+            loser: 1 - winnerIndex
+          });
+
+          return {
+            steps,
+            fighters,
+            winner: fighters[winnerIndex],
+            loser: fighters[1 - winnerIndex],
+          };
+        }
       }
-    }
     
     turn++;
   }
@@ -117,8 +137,14 @@ function createOfficialFighter(data, index) {
     
     // Status
     stunned: false,
-    poisoned: false,
     trapped: false,
+    statuses: {
+      poison: 0,
+      regeneration: 0,
+      vampirism: 0,
+      haste: 0,
+      hasteBonus: 0,
+    },
   };
   
   // Set active weapon if available
@@ -193,12 +219,101 @@ function calculateInitiative(fighter) {
   return initiative;
 }
 
+// Activate starting statuses based on fighter skills
+function initializeStatuses(fighters, steps) {
+  fighters.forEach(f => {
+    if (f.skills.includes('regeneration')) {
+      applyStatus(f, 'regeneration', steps);
+    }
+    if (f.skills.includes('vampirism')) {
+      applyStatus(f, 'vampirism', steps);
+    }
+    if (f.skills.includes('haste')) {
+      applyStatus(f, 'haste', steps);
+    }
+  });
+}
+
+// Apply a status to a fighter
+function applyStatus(fighter, status, steps) {
+  const duration = STATUS_DURATIONS[status] || 0;
+  if (duration <= 0) return;
+
+  fighter.statuses[status] = duration;
+
+  if (status === 'haste') {
+    fighter.speed += HASTE_SPEED_BONUS;
+    fighter.statuses.hasteBonus = HASTE_SPEED_BONUS;
+  }
+
+  steps.push({ type: 'skillActivate', fighter: fighter.index, skill: status });
+}
+
+// Process ongoing status effects at the start of a fighter's turn
+function processStatuses(fighter, steps) {
+  // Poison damages the fighter
+  if (fighter.statuses.poison > 0) {
+    const damage = 5;
+    fighter.hp -= damage;
+    fighter.statuses.poison--;
+    steps.push({
+      type: 'poison',
+      fighter: fighter.index,
+      damage,
+      targetHP: Math.max(0, fighter.hp),
+    });
+    if (fighter.statuses.poison === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighter.index, skill: 'poison' });
+    }
+  }
+
+  // Regeneration heals the fighter
+  if (fighter.statuses.regeneration > 0) {
+    const heal = 5;
+    fighter.hp = Math.min(fighter.maxHp, fighter.hp + heal);
+    fighter.statuses.regeneration--;
+    steps.push({
+      type: 'regeneration',
+      fighter: fighter.index,
+      amount: heal,
+      targetHP: Math.min(fighter.maxHp, fighter.hp),
+    });
+    if (fighter.statuses.regeneration === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighter.index, skill: 'regeneration' });
+    }
+  }
+
+  // Vampirism just decrements its duration here
+  if (fighter.statuses.vampirism > 0) {
+    fighter.statuses.vampirism--;
+    if (fighter.statuses.vampirism === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighter.index, skill: 'vampirism' });
+    }
+  }
+
+  // Haste decreases duration and removes bonus when done
+  if (fighter.statuses.haste > 0) {
+    fighter.statuses.haste--;
+    if (fighter.statuses.haste === 0) {
+      fighter.speed -= fighter.statuses.hasteBonus || 0;
+      fighter.statuses.hasteBonus = 0;
+      steps.push({ type: 'skillExpire', fighter: fighter.index, skill: 'haste' });
+    }
+  }
+}
+
 /**
  * Play a fighter's turn
  */
 function playFighterTurn(fighter, opponent, fighterIndex) {
   const steps = [];
-  
+
+  // Apply ongoing status effects
+  processStatuses(fighter, steps);
+  if (fighter.hp <= 0) {
+    return steps;
+  }
+
   // Check if stunned
   if (fighter.stunned) {
     fighter.stunned = false;
@@ -231,7 +346,24 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
       weapon: fighter.activeWeapon?.name,
       targetHP: Math.max(0, opponent.hp),
     });
-    
+
+    // Apply poison on hit if fighter has the skill
+    if (fighter.skills.includes('poison') && opponent.statuses.poison === 0) {
+      applyStatus(opponent, 'poison', steps);
+    }
+
+    // Vampirism heals the attacker based on damage dealt
+    if (fighter.statuses.vampirism > 0) {
+      const heal = Math.floor(damageResult.damage * 0.5);
+      fighter.hp = Math.min(fighter.maxHp, fighter.hp + heal);
+      steps.push({
+        type: 'vampirism',
+        fighter: fighterIndex,
+        amount: heal,
+        targetHP: Math.min(fighter.maxHp, fighter.hp),
+      });
+    }
+
     // Check for counter attack
     if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
       const counterDamage = Math.floor(damageResult.damage * 0.5);
