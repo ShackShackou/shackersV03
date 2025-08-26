@@ -12,6 +12,8 @@ import { CombatEngine } from '../src/engine/CombatEngine.js';
 import { RNG } from '../src/engine/rng.js';
 import parityFormulas from '../src/engine/formulas.js';
 import labruteFormulas from '../src/engine/formulas.labrute.js';
+import { getPetStat } from '../src/game/getPetStat.js';
+import { pets as petData } from '../src/game/pets.js';
 
 function parseArgs(argv) {
   const args = {};
@@ -156,7 +158,28 @@ async function main() {
   });
 
   const rng = new RNG(seed);
-  const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas });
+  const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas, useLaBrute: false });
+
+  if (enablePets) {
+    const verifyPet = (fighter) => {
+      if (!fighter.pet) {
+        throw new Error(`Expected pet for ${fighter.stats.name}`);
+      }
+      const data = petData.find(p => p.name === fighter.pet.type);
+      ['strength', 'agility', 'speed', 'hp'].forEach(stat => {
+        const expected = getPetStat(fighter.stats, data, stat);
+        if (stat === 'hp') {
+          if (fighter.pet.stats.maxHp !== expected || fighter.pet.stats.hp !== expected) {
+            throw new Error(`Pet ${fighter.pet.type} ${stat} mismatch: expected ${expected}, got ${fighter.pet.stats.maxHp}/${fighter.pet.stats.hp}`);
+          }
+        } else if (fighter.pet.stats[stat] !== expected) {
+          throw new Error(`Pet ${fighter.pet.type} ${stat} mismatch: expected ${expected}, got ${fighter.pet.stats[stat]}`);
+        }
+      });
+    };
+    verifyPet(engine.fighter1);
+    verifyPet(engine.fighter2);
+  }
 
   const steps = [];
   let turns = 0;

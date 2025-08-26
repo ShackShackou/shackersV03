@@ -1,3 +1,5 @@
+import { getPetStat } from './getPetStat.js';
+
 export const PetName = {
   bear: 'bear',
   panther: 'panther',
@@ -126,11 +128,11 @@ export class Pet {
     this.type = petData.name;
     this.owner = owner;
     this.stats = {
-      hp: petData.hp,
-      maxHp: petData.hp,
-      strength: petData.strength,
-      agility: petData.agility,
-      speed: petData.speed,
+      hp: getPetStat(owner.stats, petData, 'hp'),
+      maxHp: getPetStat(owner.stats, petData, 'hp'),
+      strength: getPetStat(owner.stats, petData, 'strength'),
+      agility: getPetStat(owner.stats, petData, 'agility'),
+      speed: getPetStat(owner.stats, petData, 'speed'),
       initiative: petData.initiative,
       accuracy: petData.accuracy,
       evasion: petData.evasion,
@@ -230,7 +232,12 @@ export class Pet {
 }
 
 export function createPet(petType, owner, rng) {
-  const resolved = petType === PetName.dog ? PetName.dog1 : petType;
+  let resolved = petType;
+  if (petType === PetName.dog) {
+    const variants = [PetName.dog1, PetName.dog2, PetName.dog3];
+    const index = rng ? rng.int(0, variants.length - 1) : Math.floor(Math.random() * variants.length);
+    resolved = variants[index];
+  }
   const petData = pets.find(p => p.name === resolved);
   if (!petData) {
     console.error(`Pet type ${petType} not found`);
@@ -243,20 +250,18 @@ export function getRandomPet(rng) {
   const weights = [
     { pet: PetName.bear, weight: 1 },
     { pet: PetName.panther, weight: 1 },
-    { pet: PetName.dog3, weight: 2 },
-    { pet: PetName.dog2, weight: 8 },
-    { pet: PetName.dog1, weight: 20 },
+    { pet: PetName.dog, weight: 30 },
   ];
-  
+
   const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
   let random = (rng ? rng.float() : Math.random()) * totalWeight;
-  
+
   for (const item of weights) {
     random -= item.weight;
     if (random <= 0) {
       return item.pet;
     }
   }
-  
-  return PetName.dog1;
+
+  return PetName.dog;
 }
