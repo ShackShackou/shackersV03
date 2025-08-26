@@ -1,3 +1,5 @@
+import { getPetStat } from './getPetStat.js';
+
 export const PetName = {
   bear: 'bear',
   panther: 'panther',
@@ -78,12 +80,13 @@ export class Pet {
     this.name = petData.displayName;
     this.type = petData.name;
     this.owner = owner;
+    const hp = getPetStat(owner.stats, petData, 'hp');
     this.stats = {
-      hp: petData.hp,
-      maxHp: petData.hp,
-      strength: petData.strength,
-      agility: petData.agility,
-      speed: petData.speed,
+      hp,
+      maxHp: hp,
+      strength: getPetStat(owner.stats, petData, 'strength'),
+      agility: getPetStat(owner.stats, petData, 'agility'),
+      speed: getPetStat(owner.stats, petData, 'speed'),
       initiative: petData.initiative,
       accuracy: petData.accuracy,
       evasion: petData.evasion,

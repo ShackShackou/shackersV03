@@ -12,6 +12,8 @@ import { CombatEngine } from '../src/engine/CombatEngine.js';
 import { RNG } from '../src/engine/rng.js';
 import parityFormulas from '../src/engine/formulas.js';
 import labruteFormulas from '../src/engine/formulas.labrute.js';
+import { pets as petData } from '../src/game/pets.js';
+import { getPetStat } from '../src/game/getPetStat.js';
 
 function parseArgs(argv) {
   const args = {};
@@ -157,6 +159,28 @@ async function main() {
 
   const rng = new RNG(seed);
   const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas });
+
+  if (enablePets) {
+    const verifyPet = (fighter) => {
+      if (!fighter.pet) return;
+      const data = petData.find(p => p.name === fighter.pet.type);
+      const expectedHp = getPetStat(fighter.stats, data, 'hp');
+      const expectedStr = getPetStat(fighter.stats, data, 'strength');
+      const expectedAgi = getPetStat(fighter.stats, data, 'agility');
+      const expectedSpd = getPetStat(fighter.stats, data, 'speed');
+      if (
+        fighter.pet.stats.hp !== expectedHp ||
+        fighter.pet.stats.maxHp !== expectedHp ||
+        fighter.pet.stats.strength !== expectedStr ||
+        fighter.pet.stats.agility !== expectedAgi ||
+        fighter.pet.stats.speed !== expectedSpd
+      ) {
+        throw new Error('Pet stats not scaled correctly');
+      }
+    };
+    verifyPet(engine.fighter1);
+    verifyPet(engine.fighter2);
+  }
 
   const steps = [];
   let turns = 0;
