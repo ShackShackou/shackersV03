@@ -164,12 +164,14 @@
                 logMessage('🔥 Testing server-side combat generation...');
 
                 // Request REAL combat from server
+                const seed = Date.now();
                 const response = await fetch(`${SERVER_URL}/api/fights/test`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         profile1: 'tank',
-                        profile2: 'agile'
+                        profile2: 'agile',
+                        seed
                     })
                 });
                 

@@ -229,10 +229,11 @@
                 const profile2 = document.getElementById('profile2').value;
 
                 // Request REAL combat from server
+                const seed = Date.now();
                 const response = await fetch(`${SERVER_URL}/api/fights/test`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ profile1, profile2 })
+                    body: JSON.stringify({ profile1, profile2, seed })
                 });
                 
                 if (!response.ok) throw new Error('Fight generation failed');
@@ -245,7 +246,7 @@
                 const fighter1 = fighters[0];
                 const fighter2 = fighters[1];
                 
-                logMessage(`⚔️ COMBAT: ${fighter1.name} (${fighter1.maxHp} HP) vs ${fighter2.name} (${fighter2.maxHp} HP)`);
+                logMessage(`⚔️ COMBAT (seed ${fightData.fight.seed}): ${fighter1.name} (${fighter1.maxHp} HP) vs ${fighter2.name} (${fighter2.maxHp} HP)`);
                 
                 // Initialize HP tracking
                 fighterHP[0] = fighter1.maxHp;

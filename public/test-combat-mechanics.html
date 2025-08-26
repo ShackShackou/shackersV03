@@ -336,12 +336,14 @@
             console.log('Requesting combat from server...');
             
             try {
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         profile1: 'tank',
-                        profile2: 'agile'
+                        profile2: 'agile',
+                        seed
                     })
                 });
                 
