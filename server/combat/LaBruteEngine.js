@@ -136,16 +136,16 @@ const PetData = {
 };
 
 // ===== FONCTIONS UTILITAIRES =====
-function randomBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function randomBetween(random, min, max) {
+  return Math.floor(random() * (max - min + 1)) + min;
 }
 
-function randomItem(array) {
-  return array[Math.floor(Math.random() * array.length)];
+function randomItem(random, array) {
+  return array[Math.floor(random() * array.length)];
 }
 
 // ===== CALCUL DES DÉGÂTS AUTHENTIQUE =====
-function getDamage(fighter, opponent, thrown = null) {
+function getDamage(random, fighter, opponent, thrown = null) {
   const base = thrown 
     ? thrown.damage 
     : (fighter.activeWeapon?.damage || fighter.baseDamage || 5);
@@ -184,21 +184,21 @@ function getDamage(fighter, opponent, thrown = null) {
   
   if (thrown) {
     damage = Math.floor(
-      (base + fighter.strength * 0.1 + fighter.agility * 0.15) * 
-      (1 + Math.random() * 0.5) * 
+      (base + fighter.strength * 0.1 + fighter.agility * 0.15) *
+      (1 + random() * 0.5) *
       skillsMultiplier
     );
   } else if (fighter.activeSkills?.find(sk => sk.name === 'hammer')) {
     // Piledriver utilise la force de l'opponent
     damage = Math.floor(
-      (10 + opponent.strength * 0.6) * 
-      (0.8 + Math.random() * 0.4) * 
+      (10 + opponent.strength * 0.6) *
+      (0.8 + random() * 0.4) *
       skillsMultiplier
     );
   } else {
     damage = Math.floor(
-      (base + fighter.strength * (0.2 + base * 0.05)) * 
-      (0.8 + Math.random() * 0.4) * 
+      (base + fighter.strength * (0.2 + base * 0.05)) *
+      (0.8 + random() * 0.4) *
       skillsMultiplier
     );
   }
@@ -210,7 +210,7 @@ function getDamage(fighter, opponent, thrown = null) {
   
   // Critical hit
   const criticalChance = fighter.criticalChance || 0;
-  const criticalHit = Math.random() < criticalChance;
+  const criticalHit = random() < criticalChance;
   if (criticalHit) {
     damage = Math.floor(damage * (fighter.criticalDamage || 1.5));
   }
@@ -263,7 +263,7 @@ function getCombatStats(fighter) {
     maxHp: stats.hp,
     baseDamage: 5, // Dégâts à mains nues
     tempo: fighter.activeWeapon?.tempo || 3.5,
-    initiative: Math.random() * 100,
+    initiative: this.random() * 100,
     criticalChance: Math.min(stats.agility / 400, 0.5),
     criticalDamage: 1.5,
     accuracy: 0.90,  // 90% de chance de toucher TOUJOURS
@@ -277,7 +277,8 @@ function getCombatStats(fighter) {
 
 // ===== CLASSE PRINCIPALE DU MOTEUR =====
 class LaBruteEngine {
-  constructor() {
+  constructor(random = Math.random) {
+    this.random = random;
     this.steps = [];
     this.fighters = [];
     this.turn = 0;
@@ -339,7 +340,7 @@ class LaBruteEngine {
     // Équiper une arme aléatoire si pas déjà équipée
     let activeWeapon = null;
     if (brute.weapons && brute.weapons.length > 0) {
-      const weaponName = randomItem(brute.weapons);
+      const weaponName = randomItem(this.random, brute.weapons);
       activeWeapon = WeaponData[weaponName] || WeaponData.fan;
     }
     
@@ -429,7 +430,7 @@ class LaBruteEngine {
     const opponents = this.fighters.filter(f => f.team !== fighter.team && f.hp > 0);
     if (opponents.length === 0) return;
     
-    const target = randomItem(opponents);
+    const target = randomItem(this.random, opponents);
     
     // Tentative d'attaque
     this.attemptHit(fighter, target);
@@ -451,7 +452,7 @@ class LaBruteEngine {
       hitChance += fighter.activeWeapon.accuracy * 0.01; // Weapon accuracy bonus
     }
     hitChance = Math.min(hitChance, 0.98); // Slightly higher cap
-    const roll = Math.random();
+    const roll = this.random();
     const hit = roll < hitChance;
     
     console.log(`🎯 Hit Check: ${fighter.name} (acc: ${Math.round(hitChance*100)}%) vs ${target.name} - Roll: ${Math.round(roll*100)} - ${hit ? 'HIT' : 'MISS'}`);
@@ -483,7 +484,7 @@ class LaBruteEngine {
     }
     
     const evadeChance = target.evasion;
-    const evadeRoll = Math.random();
+    const evadeRoll = this.random();
     const evaded = evadeRoll < evadeChance;
     
     console.log(`🤸 Evade Check: ${target.name} (evade: ${Math.round(evadeChance*100)}%) - Roll: ${Math.round(evadeRoll*100)} - ${evaded ? 'EVADED' : 'NO EVADE'}`);
@@ -495,7 +496,7 @@ class LaBruteEngine {
       });
       
       // Determination: 70% chance de re-attaquer après esquive
-      if (fighter.determination && Math.random() < 0.7) {
+      if (fighter.determination && this.random() < 0.7) {
         this.attemptHit(fighter, target);
       }
       
@@ -508,7 +509,7 @@ class LaBruteEngine {
   // ===== VÉRIFICATION DE BLOCAGE =====
   checkBlock(fighter, target) {
     const blockChance = Math.min(target.block, 0.40); // Cap block at 40%
-    const blockRoll = Math.random();
+    const blockRoll = this.random();
     const blocked = blockRoll < blockChance;
     
     console.log(`🛡️ Block Check: ${target.name} (block: ${Math.round(blockChance*100)}%) - Roll: ${Math.round(blockRoll*100)} - ${blocked ? 'BLOCKED' : 'NO BLOCK'}`);
@@ -520,7 +521,7 @@ class LaBruteEngine {
       });
       
       // Determination: 70% chance de re-attaquer après blocage
-      if (fighter.determination && Math.random() < 0.7) {
+      if (fighter.determination && this.random() < 0.7) {
         fighter.retryAttack = true;
         this.attemptHit(fighter, target);
       }
@@ -534,7 +535,7 @@ class LaBruteEngine {
   // ===== VÉRIFICATION DE CONTRE-ATTAQUE =====
   checkCounter(fighter, target) {
     const counterChance = target.counter;
-    if (Math.random() < counterChance) {
+    if (this.random() < counterChance) {
       // Counter step + hit en retour
       this.steps.push({
         a: StepType.Counter,
@@ -552,7 +553,7 @@ class LaBruteEngine {
   
   // ===== EXÉCUTION D'UN HIT =====
   performHit(fighter, target) {
-    const { damage, criticalHit } = getDamage(fighter, target);
+    const { damage, criticalHit } = getDamage(this.random, fighter, target);
     
     // Appliquer les dégâts
     target.hp -= damage;
@@ -578,7 +579,7 @@ class LaBruteEngine {
     
     // Sabotage: casser une arme
     if (fighter.sabotage && target.weapons.length > 0) {
-      const weaponToBreak = randomItem(target.weapons);
+      const weaponToBreak = randomItem(this.random, target.weapons);
       if (!target.damagedWeapons.includes(weaponToBreak.name)) {
         target.damagedWeapons.push(weaponToBreak.name);
         this.steps.push({
@@ -591,7 +592,7 @@ class LaBruteEngine {
     }
     
     // Iron Head: 30% chance de desarmer quand touché
-    if (target.ironHead && fighter.activeWeapon && Math.random() < 0.3) {
+    if (target.ironHead && fighter.activeWeapon && this.random() < 0.3) {
       this.steps.push({
         a: StepType.Disarm,
         f: target.index,
