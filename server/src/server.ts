@@ -10,6 +10,10 @@ import fightsTestRouter from './routes/fights-test';
 import fightsOfficialRouter from './routes/fights-official';
 import matchmakingRouter from './routes/matchmaking';
 
+// Master server instance will be initialized after creating the HTTP server
+// eslint-disable-next-line import/no-mutable-exports
+export let masterServer: any;
+
 const app = express();
 app.use(cors());
 // Accept JSON, urlencoded and plain text bodies
@@ -52,6 +56,11 @@ app.get('/', (_req, res) => {
 });
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
+
+// Initialize the master server with the HTTP server
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const MasterServer = require('../master/MasterServer');
+masterServer = new MasterServer(httpServer);

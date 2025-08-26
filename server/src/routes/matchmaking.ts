@@ -2,13 +2,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { masterServer } from '../server';
 
-// Import matchmaking service
-const MatchmakingService = require('../../matchmaking/MatchmakingService');
+// Use matchmaking from the master server
 const FightManager = require('../../combat/FightManager');
 
 const router = Router();
-const matchmakingService = new MatchmakingService();
 const fightManager = new FightManager();
 
 // Schema validation
@@ -53,6 +52,8 @@ router.post('/queue/join', requireAuth, async (req: AuthRequest, res) => {
     if (brute.ownerId !== userId) {
       return res.status(403).json({ error: 'Not your brute' });
     }
+
+    const matchmakingService = masterServer.matchmaking;
 
     // Join queue
     const queueStatus = matchmakingService.joinQueue(userId, brute, preferences);
@@ -105,6 +106,7 @@ router.post('/queue/leave', requireAuth, async (req: AuthRequest, res) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  const matchmakingService = masterServer.matchmaking;
   const removed = matchmakingService.leaveQueue(userId);
   
   return res.json({
@@ -122,6 +124,7 @@ router.get('/queue/status', requireAuth, async (req: AuthRequest, res) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  const matchmakingService = masterServer.matchmaking;
   const status = matchmakingService.getQueueStatus();
   const playerInQueue = matchmakingService.playerQueue.has(userId);
 
@@ -137,8 +140,9 @@ router.get('/queue/status', requireAuth, async (req: AuthRequest, res) => {
  */
 router.post('/match/force', requireAuth, async (req: AuthRequest, res) => {
   const { player1Id, player2Id } = req.body;
-  
+
   try {
+    const matchmakingService = masterServer.matchmaking;
     const match = matchmakingService.forceMatch(player1Id, player2Id);
     
     // Generate fight immediately
@@ -162,7 +166,7 @@ router.post('/match/force', requireAuth, async (req: AuthRequest, res) => {
  */
 router.get('/stats/:userId', requireAuth, async (req: AuthRequest, res) => {
   const { userId } = req.params;
-  
+  const matchmakingService = masterServer.matchmaking;
   const stats = matchmakingService.playerStats.get(userId) || {
     wins: 0,
     losses: 0,
@@ -189,6 +193,7 @@ router.get('/history', requireAuth, async (req: AuthRequest, res) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  const matchmakingService = masterServer.matchmaking;
   const userMatches = matchmakingService.matchHistory
     .filter(match => 
       match.player1.userId === userId || match.player2.userId === userId
@@ -209,7 +214,7 @@ router.get('/history', requireAuth, async (req: AuthRequest, res) => {
 
 // Cleanup task - run periodically
 setInterval(() => {
-  matchmakingService.cleanup();
+  masterServer.matchmaking.cleanup();
 }, 60000); // Every minute
 
 export default router;
