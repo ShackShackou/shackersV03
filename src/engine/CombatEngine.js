@@ -19,7 +19,11 @@ export class CombatEngine {
       console.log('[CombatEngine] Utilisation du système LaBrute complet');
       // LaBruteCombatEngine attend un RNG, pas un objet options
       const rng = options.rng || new RNG();
-      const labEngine = new LaBruteCombatEngine(fighter1, fighter2, rng.random ? rng.random.bind(rng) : rng);
+      const labEngine = new LaBruteCombatEngine(
+        fighter1,
+        fighter2,
+        rng.next ? rng.next.bind(rng) : rng
+      );
       // Copier la propriété turnInProgress pour la compatibilité
       labEngine.turnInProgress = false;
       return labEngine;
@@ -586,7 +590,7 @@ export class CombatEngine {
     // Block check based on defender's defense stat
     const blockChance = this.formulas.computeBlockChance(defender.stats);
     const hasStaminaForBlock = defender.stats.stamina >= 15;
-    const blockSuccess = hasStaminaForBlock && this.rng.float() < blockChance;
+    const blockSuccess = hasStaminaForBlock && this.rng.next() < blockChance;
     this.logDebug('block_check', { attacker: attacker.stats.name, defender: defender.stats.name, blockChance, hasStaminaForBlock, blockSuccess });
     
     // Show debug indicator for block calculation (guarded)
@@ -618,7 +622,7 @@ export class CombatEngine {
     // Dodge check based on defender's agility
     // AGI provides a 0.8% chance to dodge per point.
     const dodgeChance = this.formulas.computeDodgeChance(defender.stats);
-    const dodgeSuccess = this.rng.float() < dodgeChance;
+    const dodgeSuccess = this.rng.next() < dodgeChance;
     this.logDebug('dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
     
     // Show debug indicator for dodge calculation (guarded)
@@ -645,7 +649,7 @@ export class CombatEngine {
     let accuracy = this.formulas.computeAccuracy(attacker.stats, attacker.weaponType);
     
     // RNG hit check
-    const hit = this.rng.float() < accuracy;
+    const hit = this.rng.next() < accuracy;
     this.logDebug('hit_check', { attacker: attacker.stats.name, defender: defender.stats.name, accuracy, hit, weaponType: attacker.weaponType });
     
     if (!hit) {
@@ -685,7 +689,7 @@ export class CombatEngine {
     
     // Weapon-specific critical hit chances via formulas adapter
     const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
-    const critical = this.rng.float() < criticalChance;
+    const critical = this.rng.next() < criticalChance;
     if (critical) {
       finalDamage *= 2;
     }
@@ -912,7 +916,7 @@ export class CombatEngine {
     
     // Defender can try to dodge the throw
     const dodgeChance = defender.stats.agility * 0.006; // Lower dodge chance vs throws
-    const dodgeSuccess = this.rng.float() < dodgeChance;
+    const dodgeSuccess = this.rng.next() < dodgeChance;
     this.logDebug('throw_dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
     
     // Show debug indicator for weapon throw dodge calculation (guarded)
@@ -1009,7 +1013,7 @@ export class CombatEngine {
     // }
     
     // RNG damage variation
-    const damageVariation = 0.8 + (this.rng.float() * 0.4); // Less variation for throws
+    const damageVariation = 0.8 + (this.rng.next() * 0.4); // Less variation for throws
     let finalDamage = Math.floor(baseDamage * damageVariation);
     
     // Apply defense (reduced effectiveness against thrown weapons)
@@ -1394,7 +1398,7 @@ export class CombatEngine {
         const target = this.getRandomTarget(backup);
         if (target) {
           // Backup performs a simple attack
-          const damage = Math.floor(backup.stats.strength * 0.8 + this.rng.float() * 10);
+          const damage = Math.floor(backup.stats.strength * 0.8 + this.rng.next() * 10);
           
           if (target.isBackup) {
             this.handleBackupDamage(target, damage);

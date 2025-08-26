@@ -69,7 +69,7 @@ function getAdjustedStats(stats) {
  * Mirrors existing engine: baseInitiative - speed*0.01 + rand(0..0.1)
  */
 export function computeInitiative(stats, rng) {
-  const jitter = rng.float() * 0.1; // [0, 0.1)
+  const jitter = rng.next() * 0.1; // [0, 0.1)
   const agg = aggregateFromSkills(stats && stats.skills);
   const adjustedSpeed = getAdjustedStats(stats).speed;
   // Lower is earlier. Positive initiative bonuses reduce final value.
@@ -90,7 +90,7 @@ export function computeCounterChance(stats) {
  */
 export function computeCounterDamage(stats, rng) {
   const adjusted = getAdjustedStats(stats);
-  return Math.floor(adjusted.strength * 0.5 * (0.8 + rng.float() * 0.4));
+  return Math.floor(adjusted.strength * 0.5 * (0.8 + rng.next() * 0.4));
 }
 
 /**
@@ -110,7 +110,7 @@ export function computeBlockChance(stats) {
  */
 export function computeBlockDamage(attackerStats, rng, damageReduction = 0.75) {
   const adjusted = getAdjustedStats(attackerStats);
-  const potentialDamage = Math.floor(adjusted.strength * (0.75 + (rng.float() * 0.5)));
+  const potentialDamage = Math.floor(adjusted.strength * (0.75 + (rng.next() * 0.5)));
   const blockedDamage = Math.floor(potentialDamage * damageReduction);
   return potentialDamage - blockedDamage;
 }
@@ -187,7 +187,7 @@ export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
  * Donne une variation entre 0.8 et 1.2 (±20%)
  */
 export function computeDamageVariation(rng) {
-  return 0.8 + (rng.float() * 0.4);
+  return 0.8 + (rng.next() * 0.4);
 }
 
 /**

@@ -136,7 +136,7 @@ export class WeaponSystem {
     const throwChance = WeaponSystem.calculateThrowChance(fighter.weaponType, labruteWeapons);
     
     // Décision basée sur les probabilités officielles
-    const roll = rng.float();
+    const roll = rng.next();
     
     if (roll < throwChance) {
       return 'throw';
