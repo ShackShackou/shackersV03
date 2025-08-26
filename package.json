@@ -24,11 +24,17 @@
         "test:combat:debug": "node scripts/runCombatTest.mjs --debug --seed=42",
         "test:combat:debug:pets": "node scripts/runCombatTest.mjs --debug --pets --petA=panther --petB=dog1 --seed=42 --snapshot --output=.snapshots/fights/seed-42-debug-pets.json",
         "test:combat:exact": "node scripts/runCombatTest.mjs --formulas=exact",
-        "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42"
+        "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42",
+        "export:meta": "tsx scripts/export-meta.ts",
+        "build:sheets": "tsx scripts/build-sheets.ts"
     },
     "devDependencies": {
+        "fast-csv": "^5.0.5",
         "phaser-asset-pack-hashing": "^1.0.6",
+        "sharp": "^0.34.3",
+        "spritesmith": "^3.5.1",
         "terser": "^5.28.1",
+        "tsx": "^4.20.5",
         "typescript": "^5.3.3",
         "vite": "^5.1.4"
     },
