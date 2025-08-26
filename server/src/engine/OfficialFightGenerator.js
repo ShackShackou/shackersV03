@@ -119,6 +119,14 @@ function createOfficialFighter(data, index) {
     stunned: false,
     poisoned: false,
     trapped: false,
+    // Extended status effects
+    poison: { damage: 0, turns: 0 },
+    hypnotised: false,
+    hasteTurns: 0,
+    regeneration: { turns: 0, amount: 0 },
+    shieldTurns: 0,
+    surviveUsed: false,
+    vampirism: data.skills?.includes('vampirism'),
   };
   
   // Set active weapon if available
@@ -194,11 +202,113 @@ function calculateInitiative(fighter) {
 }
 
 /**
+ * Handle status effects at the start of a fighter's turn
+ * Returns object { skip: boolean, extra: boolean, dead: boolean }
+ */
+function processStatusEffects(fighter, fighterIndex, steps) {
+  let skip = false;
+  let extra = false;
+  let dead = false;
+
+  // Poison tick
+  if (fighter.poison.turns > 0) {
+    fighter.hp -= fighter.poison.damage;
+    fighter.poison.turns--;
+    steps.push({
+      type: 'poison',
+      fighter: fighterIndex,
+      damage: fighter.poison.damage,
+      targetHP: Math.max(0, fighter.hp),
+    });
+
+    if (fighter.poison.turns === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighterIndex, skill: 'poison' });
+    }
+
+    if (fighter.hp <= 0) {
+      if (fighter.skills.includes('survive') && !fighter.surviveUsed) {
+        fighter.hp = 1;
+        fighter.surviveUsed = true;
+        steps.push({ type: 'survive', fighter: fighterIndex, targetHP: 1 });
+      } else {
+        dead = true;
+      }
+    }
+  }
+
+  // Regeneration tick
+  if (fighter.regeneration.turns > 0 && !dead) {
+    const heal = fighter.regeneration.amount;
+    fighter.hp = Math.min(fighter.maxHp, fighter.hp + heal);
+    fighter.regeneration.turns--;
+    steps.push({
+      type: 'regeneration',
+      fighter: fighterIndex,
+      heal,
+      targetHP: fighter.hp,
+    });
+    if (fighter.regeneration.turns === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighterIndex, skill: 'regeneration' });
+    }
+  }
+
+  // Haste tick
+  if (fighter.hasteTurns > 0 && !dead) {
+    fighter.hasteTurns--;
+    extra = true;
+    steps.push({ type: 'haste', fighter: fighterIndex });
+    if (fighter.hasteTurns === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighterIndex, skill: 'haste' });
+    }
+  }
+
+  // Shield expiration
+  if (fighter.shieldTurns > 0 && !dead) {
+    fighter.shieldTurns--;
+    if (fighter.shieldTurns === 0) {
+      steps.push({ type: 'skillExpire', fighter: fighterIndex, skill: 'shield' });
+    }
+  }
+
+  // Hypnotised state makes fighter skip turn
+  if (fighter.hypnotised && !dead) {
+    fighter.hypnotised = false;
+    steps.push({ type: 'hypnotise', fighter: fighterIndex, skipped: true });
+    skip = true;
+  }
+
+  return { skip, extra, dead };
+}
+
+/**
  * Play a fighter's turn
  */
 function playFighterTurn(fighter, opponent, fighterIndex) {
   const steps = [];
-  
+
+  // Status effects and auto activations
+  // Some skills activate automatically if available
+  if (fighter.skills.includes('haste') && fighter.hasteTurns <= 0 && Math.random() < 0.1) {
+    fighter.hasteTurns = 2;
+    steps.push({ type: 'skillActivate', fighter: fighterIndex, skill: 'haste' });
+  }
+  if (fighter.skills.includes('regeneration') && fighter.regeneration.turns <= 0 && Math.random() < 0.1) {
+    fighter.regeneration = { turns: 3, amount: 2 };
+    steps.push({ type: 'skillActivate', fighter: fighterIndex, skill: 'regeneration' });
+  }
+  if (fighter.skills.includes('shield') && fighter.shieldTurns <= 0 && Math.random() < 0.1) {
+    fighter.shieldTurns = 3;
+    steps.push({ type: 'skillActivate', fighter: fighterIndex, skill: 'shield' });
+  }
+
+  const status = processStatusEffects(fighter, fighterIndex, steps);
+  if (status.dead) {
+    return steps;
+  }
+  if (status.skip) {
+    return steps;
+  }
+
   // Check if stunned
   if (fighter.stunned) {
     fighter.stunned = false;
@@ -212,64 +322,104 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
     target: 1 - fighterIndex 
   });
   
-  // Attempt to hit
-  const hitResult = attemptHit(fighter, opponent);
-  
-  if (hitResult.hit) {
-    // Calculate damage using official formula
-    const damageResult = getDamage(fighter, opponent);
-    
-    // Apply damage
-    opponent.hp -= damageResult.damage;
-    
-    steps.push({
-      type: 'hit',
-      fighter: fighterIndex,
-      target: 1 - fighterIndex,
-      damage: damageResult.damage,
-      critical: damageResult.criticalHit,
-      weapon: fighter.activeWeapon?.name,
-      targetHP: Math.max(0, opponent.hp),
-    });
-    
-    // Check for counter attack
-    if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
-      const counterDamage = Math.floor(damageResult.damage * 0.5);
-      fighter.hp -= counterDamage;
-      
-      steps.push({
-        type: 'counter',
-        fighter: 1 - fighterIndex,
-        target: fighterIndex,
-        damage: counterDamage,
-        targetHP: Math.max(0, fighter.hp),
-      });
+  // Attempt special actions before attack
+  if (fighter.skills.includes('hypnotise') && Math.random() < 0.1) {
+    const resisted = opponent.skills.includes('resist') && Math.random() < 0.5;
+    if (resisted) {
+      steps.push({ type: 'resist', fighter: 1 - fighterIndex, effect: 'hypnotise' });
+    } else {
+      opponent.hypnotised = true;
+      steps.push({ type: 'hypnotise', fighter: fighterIndex, target: 1 - fighterIndex });
+      return steps;
     }
-  } else if (hitResult.evaded) {
-    steps.push({
-      type: 'evade',
-      fighter: 1 - fighterIndex,
-    });
-  } else if (hitResult.blocked) {
-    steps.push({
-      type: 'block',
-      fighter: 1 - fighterIndex,
-      damage: 0,
-    });
-  } else {
-    steps.push({
-      type: 'miss',
-      fighter: fighterIndex,
-      target: 1 - fighterIndex,
-    });
   }
-  
+
+  const performAttack = () => {
+    const hitResult = attemptHit(fighter, opponent);
+
+    if (hitResult.hit) {
+      const damageResult = getDamage(fighter, opponent);
+      let damage = damageResult.damage;
+      if (opponent.shieldTurns > 0) {
+        damage = Math.floor(damage / 2);
+      }
+      opponent.hp -= damage;
+
+      steps.push({
+        type: 'hit',
+        fighter: fighterIndex,
+        target: 1 - fighterIndex,
+        damage,
+        critical: damageResult.criticalHit,
+        weapon: fighter.activeWeapon?.name,
+        targetHP: Math.max(0, opponent.hp),
+      });
+
+      if (fighter.vampirism) {
+        const heal = Math.floor(damage * 0.5);
+        fighter.hp = Math.min(fighter.maxHp, fighter.hp + heal);
+        steps.push({ type: 'vampirism', fighter: fighterIndex, heal, targetHP: fighter.hp });
+      }
+
+      // Apply poison if available
+      if ((fighter.skills.includes('poison') || fighter.activeWeapon?.poison) && opponent.poison.turns <= 0) {
+        const resisted = opponent.skills.includes('resist') && Math.random() < 0.5;
+        if (resisted) {
+          steps.push({ type: 'resist', fighter: 1 - fighterIndex, effect: 'poison' });
+        } else {
+          opponent.poison = { damage: 2, turns: 3 };
+          steps.push({ type: 'skillActivate', fighter: 1 - fighterIndex, skill: 'poison' });
+        }
+      }
+
+      // Counter attack
+      if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
+        const counterDamage = Math.floor(damage * 0.5);
+        fighter.hp -= counterDamage;
+
+        steps.push({
+          type: 'counter',
+          fighter: 1 - fighterIndex,
+          target: fighterIndex,
+          damage: counterDamage,
+          targetHP: Math.max(0, fighter.hp),
+        });
+      }
+    } else if (hitResult.evaded) {
+      steps.push({ type: 'evade', fighter: 1 - fighterIndex });
+    } else if (hitResult.blocked) {
+      steps.push({ type: 'block', fighter: 1 - fighterIndex, damage: 0 });
+    } else {
+      steps.push({ type: 'miss', fighter: fighterIndex, target: 1 - fighterIndex });
+    }
+  };
+
+  // Throw weapon
+  if (fighter.skills.includes('throw') && fighter.activeWeapon && Math.random() < 0.1) {
+    steps.push({ type: 'throw', fighter: fighterIndex, target: 1 - fighterIndex, weapon: fighter.activeWeapon.name });
+    performAttack();
+    fighter.damagedWeapons.push(fighter.activeWeapon);
+    fighter.activeWeapon = null;
+  } else {
+    performAttack();
+    if (status.extra) {
+      performAttack();
+    }
+  }
+
+  // Survive check for opponent
+  if (opponent.hp <= 0 && opponent.skills.includes('survive') && !opponent.surviveUsed) {
+    opponent.hp = 1;
+    opponent.surviveUsed = true;
+    steps.push({ type: 'survive', fighter: 1 - fighterIndex, targetHP: 1 });
+  }
+
   // Move back
   steps.push({
     type: 'moveBack',
     fighter: fighterIndex,
   });
-  
+
   return steps;
 }
 
