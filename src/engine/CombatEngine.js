@@ -684,7 +684,7 @@ export class CombatEngine {
     finalDamage = Math.max(1, finalDamage - Math.floor(effectiveDefense * 0.5));
     
     // Weapon-specific critical hit chances via formulas adapter
-    const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
+    const criticalChance = this.formulas.computeCritChance(attacker.stats, attacker.hasWeapon, attacker.weaponType);
     const critical = this.rng.float() < criticalChance;
     if (critical) {
       finalDamage *= 2;

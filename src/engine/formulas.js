@@ -2,9 +2,41 @@
 // Purpose: centralize combat formulas so we can later map to official LaBrute mechanics
 // Current implementation mirrors existing in-engine behavior for parity.
 
-import { weaponStats, getWeaponDamageModifier } from '../game/weapons.js';
-import { SkillModifiers, FightStat } from '../game/skills.js';
+import { weaponStats, getWeaponDamageModifier, WeaponName, WeaponType } from '../game/weapons.js';
+import { SkillModifiers, FightStat, SkillName } from '../game/skills.js';
 import { LABRUTE_WEAPONS } from './labrute-complete.js';
+
+// Base stats when no weapon is equipped
+const BASE_FIGHTER_STATS = {
+  accuracy: 0,
+  block: 0,
+  combo: 0,
+  counter: 0,
+  criticalChance: 0.1,
+  criticalDamage: 1.5,
+  deflect: 0,
+  disarm: 0.05,
+  evasion: 0,
+  reversal: 0,
+  tempo: 1.2,
+  dexterity: 0.2,
+};
+
+// Skill damage modifiers adapted from official LaBrute formulas
+const SkillDamageModifiers = [
+  { skill: SkillName.herculeanStrength, percent: 0.5, opponent: false },
+  { skill: SkillName.weaponMaster, percent: 0.5, opponent: false, weaponType: WeaponType.SHARP },
+  { skill: SkillName.martialArts, percent: 1.0, opponent: false, weaponType: null },
+  { skill: SkillName.fierceBrute, percent: 0, opponent: false },
+  { skill: SkillName.hammer, percent: 0, opponent: false },
+  { skill: SkillName.armor, percent: -0.25, opponent: true },
+  { skill: SkillName.toughenedSkin, percent: -0.1, opponent: true },
+  { skill: SkillName.leadSkeleton, percent: -0.5, opponent: true },
+  { skill: SkillName.resistant, percent: -0.15, opponent: true },
+  { skill: SkillName.saboteur, percent: 0.3, opponent: false, weaponType: WeaponType.THROWN },
+  { skill: SkillName.bodybuilder, percent: 0.4, opponent: false, weaponType: WeaponType.HEAVY },
+  { skill: SkillName.relentless, percent: 0.35, opponent: false, weaponType: WeaponType.FAST },
+];
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
@@ -24,6 +56,8 @@ function aggregateFromSkills(skills) {
     counter: 0,  // additive to counter chance
     combo: 0,    // additive combo points
     initiative: 0, // flat bonus reducing final initiative score (earlier)
+    criticalChance: 0, // additive to critical chance
+    criticalDamage: 0, // additive to critical damage
   };
   if (!Array.isArray(skills) || skills.length === 0) return res;
   for (const s of skills) {
@@ -47,6 +81,8 @@ function aggregateFromSkills(skills) {
     if (m[FightStat.COUNTER]) res.counter += m[FightStat.COUNTER].percent || 0;
     if (m[FightStat.COMBO]) res.combo += m[FightStat.COMBO].percent || 0;
     if (m[FightStat.INITIATIVE]) res.initiative += m[FightStat.INITIATIVE].flat || 0;
+    if (m.criticalChance) res.criticalChance += m.criticalChance.percent || 0;
+    if (m.criticalDamage) res.criticalDamage += m.criticalDamage.percent || 0;
   }
   return res;
 }
@@ -190,15 +226,139 @@ export function computeDamageVariation(rng) {
   return 0.8 + (rng.float() * 0.4);
 }
 
-/**
- * Critical chance: base 10%, overridable by weapon stats
- */
-export function computeCritChance(weaponType) {
-  let criticalChance = 0.10;
-  if (weaponType && weaponStats[weaponType]) {
-    criticalChance = weaponStats[weaponType].critChance || 0.10;
+// === Official LaBrute helpers ===
+// Get a fighter stat with weapon and base modifiers
+export function getFighterStat(fighter, stat, onlyStat) {
+  if (stat === 'dexterity') {
+    if (onlyStat === 'fighter') return 0;
+    if (fighter.activeWeapon) {
+      const weaponStat = fighter.activeWeapon[stat];
+      if (fighter.bodybuilder && fighter.activeWeapon.types?.includes(WeaponType.HEAVY)) {
+        return weaponStat + (SkillModifiers[SkillName.bodybuilder]?.[FightStat.DEXTERITY]?.percent ?? 0);
+      }
+      return weaponStat ?? 0;
+    }
+    return fighter.type === 'brute' ? BASE_FIGHTER_STATS[stat] : 0;
   }
-  return criticalChance;
+
+  if (stat === 'tempo') {
+    if (fighter.activeWeapon) {
+      return fighter.activeWeapon[stat];
+    }
+    return BASE_FIGHTER_STATS[stat];
+  }
+
+  let total = onlyStat === 'weapon' ? 0 : (fighter[stat] ?? 0);
+
+  if (onlyStat !== 'fighter') {
+    if (fighter.activeWeapon) {
+      total += fighter.activeWeapon[stat] ?? 0;
+    } else if (stat !== 'criticalDamage' && stat !== 'criticalChance') {
+      total += fighter.type === 'brute' ? BASE_FIGHTER_STATS[stat] ?? 0 : fighter.type === 'boss' ? fighter[stat] ?? 0 : 0;
+    }
+  }
+
+  return total;
+}
+
+// Compute damage using official LaBrute formulas
+export function getDamage(fighter, opponent, rng, thrown) {
+  const base = thrown ? thrown.damage : (fighter.activeWeapon?.damage || fighter.baseDamage);
+  let skillsMultiplier = 1;
+
+  const piledriver = fighter.activeSkills?.find(sk => (sk.name || sk) === SkillName.hammer);
+
+  for (const modifier of SkillDamageModifiers) {
+    const hasSkill = fighter.skills?.some(sk => (typeof sk === 'string' ? sk : sk.name) === modifier.skill);
+    if (!hasSkill) continue;
+    if (modifier.opponent) continue;
+    if (thrown && (modifier.skill === SkillName.weaponsMaster || modifier.skill === SkillName.martialArts)) continue;
+    if (piledriver && modifier.skill === SkillName.martialArts) continue;
+
+    if (typeof modifier.weaponType !== 'undefined') {
+      if (modifier.weaponType === null) {
+        if (!fighter.activeWeapon || fighter.activeWeapon.name === WeaponName.mug) {
+          skillsMultiplier += modifier.percent ?? 0;
+        }
+      } else if (fighter.activeWeapon?.types?.includes(modifier.weaponType)) {
+        skillsMultiplier += modifier.percent ?? 0;
+      }
+    } else {
+      skillsMultiplier *= 1 + (modifier.percent ?? 0);
+    }
+  }
+
+  for (const modifier of SkillDamageModifiers) {
+    const hasSkill = opponent.skills?.some(sk => (typeof sk === 'string' ? sk : sk.name) === modifier.skill);
+    if (!hasSkill) continue;
+    if (!modifier.opponent) continue;
+    if (thrown && modifier.skill === SkillName.leadSkeleton) continue;
+
+    if (typeof modifier.weaponType !== 'undefined') {
+      if (modifier.weaponType === null) {
+        if (!fighter.activeWeapon || fighter.activeWeapon.name === WeaponName.mug) {
+          skillsMultiplier += modifier.percent ?? 0;
+        }
+      } else if (fighter.activeWeapon?.types?.includes(modifier.weaponType)) {
+        skillsMultiplier += modifier.percent ?? 0;
+      }
+    } else {
+      skillsMultiplier *= 1 + (modifier.percent ?? 0);
+    }
+  }
+
+  if (fighter.activeSkills?.find(sk => (sk.name || sk) === SkillName.fierceBrute)) {
+    skillsMultiplier *= 2;
+  }
+
+  if (piledriver) {
+    skillsMultiplier *= 4;
+  }
+
+  let damage;
+  if (thrown) {
+    damage = Math.floor((base + fighter.strength * 0.1 + fighter.agility * 0.15) * (1 + rng.float() * 0.5) * skillsMultiplier);
+  } else if (piledriver) {
+    damage = Math.floor((10 + opponent.strength * 0.6) * (0.8 + rng.float() * 0.4) * skillsMultiplier);
+  } else {
+    damage = Math.floor((base + fighter.strength * (0.2 + base * 0.05)) * (0.8 + rng.float() * 0.4) * skillsMultiplier);
+  }
+
+  if (fighter.activeWeapon && fighter.damagedWeapons?.includes(fighter.activeWeapon.name)) {
+    damage = Math.floor(damage * 0.75);
+  }
+
+  const criticalChance = getFighterStat(fighter, 'criticalChance');
+  const criticalHit = !!criticalChance && rng.float() < criticalChance;
+  if (criticalHit) {
+    damage = Math.floor(damage * getFighterStat(fighter, 'criticalDamage'));
+  }
+
+  if (!thrown) {
+    damage = Math.ceil(damage * (1 - opponent.armor));
+  }
+
+  if (damage < 1) {
+    damage = 1;
+  }
+
+  return { damage, criticalHit };
+}
+
+/**
+ * Critical chance using cumulative stats (base + skills + weapon)
+ */
+export function computeCritChance(stats, hasWeapon, weaponType) {
+  const agg = aggregateFromSkills(stats && stats.skills);
+  let chance = (stats.criticalChance ?? BASE_FIGHTER_STATS.criticalChance) + (agg.criticalChance || 0);
+  if (hasWeapon && weaponType) {
+    if (weaponStats[weaponType]) {
+      chance += weaponStats[weaponType].critChance || 0;
+    } else if (LABRUTE_WEAPONS[weaponType]) {
+      chance += (LABRUTE_WEAPONS[weaponType].criticalChance || 0) / 100;
+    }
+  }
+  return clamp01(chance);
 }
 
 /**
@@ -227,6 +387,8 @@ export default {
   computeBaseDamage,
   computeDamageVariation,
   computeCritChance,
+  getFighterStat,
+  getDamage,
   computeComboChance,
   computeMaxCombo,
 };
