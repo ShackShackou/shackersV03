@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import EngineModule from './LaBruteEngine.js';
-const { LaBruteEngine, StepType } = EngineModule;
+import constants from '../engine/labrute-core/constants.js';
+const { LaBruteEngine } = EngineModule;
+const { StepType } = constants;
 
 function baseBrute(overrides = {}) {
   return {
