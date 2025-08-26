@@ -142,7 +142,7 @@ async function main() {
     combo: 1,
     counter: 1,
     weaponType: 'spear',
-    petType: enablePets ? (args.petA || 'dog1') : undefined,
+    petType: enablePets ? (args.petA || 'dog') : undefined,
   });
   const fighterB = buildFighter('Bravo', {
     strength: 26,
@@ -152,7 +152,7 @@ async function main() {
     combo: 0,
     counter: 2,
     weaponType: 'hammer',
-    petType: enablePets ? (args.petB || 'dog1') : undefined,
+    petType: enablePets ? (args.petB || 'dog') : undefined,
   });
 
   const rng = new RNG(seed);

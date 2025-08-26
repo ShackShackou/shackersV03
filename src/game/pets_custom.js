@@ -2,6 +2,9 @@ export const PetName = {
   bear: 'bear',
   panther: 'panther',
   dog: 'dog',
+  dog1: 'dog1',
+  dog2: 'dog2',
+  dog3: 'dog3',
 };
 
 export const pets = [
@@ -50,8 +53,8 @@ export const pets = [
     description: 'An agile panther that strikes with speed and precision'
   },
   {
-    name: PetName.dog,
-    displayName: 'Dog',
+    name: PetName.dog1,
+    displayName: 'Wolf',
     enduranceMalus: 1,
     initiative: -0.3,
     strength: 8,
@@ -69,7 +72,51 @@ export const pets = [
     scale: 0.8,
     assistChance: 0.5,
     ability: 'bite',
-    description: 'A loyal dog companion that fights alongside its master'
+    description: 'A loyal wolf companion that fights alongside its master'
+  },
+  {
+    name: PetName.dog2,
+    displayName: 'Hound',
+    enduranceMalus: 1,
+    initiative: -0.3,
+    strength: 10,
+    agility: 4,
+    speed: 10,
+    counter: 0,
+    combo: 0,
+    block: 0,
+    evasion: 0,
+    accuracy: 0.5,
+    disarm: 0,
+    damage: 2,
+    hp: 14,
+    reach: 1,
+    scale: 0.9,
+    assistChance: 0.45,
+    ability: 'bite',
+    description: 'A fierce hound that tracks and attacks enemies'
+  },
+  {
+    name: PetName.dog3,
+    displayName: 'Mastiff',
+    enduranceMalus: 2,
+    initiative: -0.3,
+    strength: 12,
+    agility: 3,
+    speed: 6,
+    counter: 0,
+    combo: 0,
+    block: 0,
+    evasion: -0.1,
+    accuracy: 0.5,
+    disarm: 0,
+    damage: 3,
+    hp: 18,
+    reach: 1,
+    scale: 1.0,
+    assistChance: 0.4,
+    ability: 'guard',
+    description: 'A protective mastiff that guards its master from harm'
   },
 ];
 
@@ -179,7 +226,8 @@ export class Pet {
 }
 
 export function createPet(petType, owner, rng) {
-  const petData = pets.find(p => p.name === petType);
+  const resolved = petType === PetName.dog ? PetName.dog1 : petType;
+  const petData = pets.find(p => p.name === resolved);
   if (!petData) {
     console.error(`Pet type ${petType} not found`);
     return null;
@@ -191,7 +239,9 @@ export function getRandomPet(rng) {
   const weights = [
     { pet: PetName.bear, weight: 10 },
     { pet: PetName.panther, weight: 15 },
-    { pet: PetName.dog, weight: 75 },
+    { pet: PetName.dog1, weight: 30 },
+    { pet: PetName.dog2, weight: 25 },
+    { pet: PetName.dog3, weight: 20 },
   ];
   
   const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
@@ -204,5 +254,5 @@ export function getRandomPet(rng) {
     }
   }
   
-  return PetName.dog;
+  return PetName.dog1;
 }
