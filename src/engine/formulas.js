@@ -24,6 +24,8 @@ function aggregateFromSkills(skills) {
     counter: 0,  // additive to counter chance
     combo: 0,    // additive combo points
     initiative: 0, // flat bonus reducing final initiative score (earlier)
+    critChance: 0,
+    critDamage: 0,
   };
   if (!Array.isArray(skills) || skills.length === 0) return res;
   for (const s of skills) {
@@ -47,6 +49,8 @@ function aggregateFromSkills(skills) {
     if (m[FightStat.COUNTER]) res.counter += m[FightStat.COUNTER].percent || 0;
     if (m[FightStat.COMBO]) res.combo += m[FightStat.COMBO].percent || 0;
     if (m[FightStat.INITIATIVE]) res.initiative += m[FightStat.INITIATIVE].flat || 0;
+    if (m[FightStat.CRITICAL_CHANCE]) res.critChance += m[FightStat.CRITICAL_CHANCE].percent || 0;
+    if (m[FightStat.CRITICAL_DAMAGE]) res.critDamage += m[FightStat.CRITICAL_DAMAGE].percent || 0;
   }
   return res;
 }
@@ -191,14 +195,24 @@ export function computeDamageVariation(rng) {
 }
 
 /**
- * Critical chance: base 10%, overridable by weapon stats
+ * Critical chance: base 10% plus skill bonuses and weapon overrides
  */
-export function computeCritChance(weaponType) {
+export function computeCritChance(attackerStats, weaponType) {
   let criticalChance = 0.10;
   if (weaponType && weaponStats[weaponType]) {
     criticalChance = weaponStats[weaponType].critChance || 0.10;
   }
-  return criticalChance;
+  const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
+  criticalChance += agg.critChance || 0;
+  return clamp01(criticalChance);
+}
+
+/**
+ * Critical damage multiplier. Base 2x with skill bonuses applied multiplicatively.
+ */
+export function computeCritDamageMultiplier(attackerStats) {
+  const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
+  return 2 * (1 + (agg.critDamage || 0));
 }
 
 /**
@@ -227,6 +241,7 @@ export default {
   computeBaseDamage,
   computeDamageVariation,
   computeCritChance,
+  computeCritDamageMultiplier,
   computeComboChance,
   computeMaxCombo,
 };

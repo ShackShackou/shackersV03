@@ -14,6 +14,7 @@ export {
   computeBaseDamage,
   computeDamageVariation,
   computeCritChance,
+  computeCritDamageMultiplier,
   computeComboChance,
   computeMaxCombo,
 } from './formulas.js';
