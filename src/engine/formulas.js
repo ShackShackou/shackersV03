@@ -4,6 +4,7 @@
 
 import { weaponStats } from '../game/weapons.js';
 import { SkillModifiers, FightStat } from '../game/skills.js';
+import { LABRUTE_WEAPONS } from './labrute-complete.js';
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
@@ -129,16 +130,25 @@ export function computeDodgeChance(stats) {
  * Accuracy base and weapon modifiers
  */
 export function computeAccuracy(attackerStats, weaponType) {
-  let weaponAcc = 0.75; // Default accuracy
+  // Official LaBrute logic:
+  // - Fighters have a base 90% chance to hit
+  // - Each weapon adds its accuracy as a percentage bonus
+  // - Missing accuracy data on a weapon means no additional bonus (0)
+  // - Final hit chance is capped at 98%
+  let acc = 0.90; // base 90%
 
-  const weapon = weaponStats[weaponType];
-  if (weapon && typeof weapon.accuracy === 'number') {
-    weaponAcc = weapon.accuracy > 0 ? weapon.accuracy : 0.85;
+  // Try LaBrute weapons first for official accuracy bonuses
+  const labruteWeapon = LABRUTE_WEAPONS[weaponType];
+  if (labruteWeapon && typeof labruteWeapon.accuracy === 'number') {
+    acc += labruteWeapon.accuracy * 0.01; // convert bonus from 0-100 to 0-1
+  } else if (weaponType && weaponStats[weaponType] && typeof weaponStats[weaponType].accuracy === 'number') {
+    // Our custom weapons use direct accuracy values
+    acc = weaponStats[weaponType].accuracy;
   }
 
   const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
   const bonus = (attackerStats.accuracyBonus || 0) + (agg.accuracy || 0);
-  return clamp01(weaponAcc + bonus);
+  return Math.min(0.98, acc + bonus); // official cap
 }
 
 /**
@@ -150,24 +160,24 @@ export function computeAccuracy(attackerStats, weaponType) {
  */
 export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
   const adjusted = getAdjustedStats(attackerStats);
-
+  
   // VRAIE FORMULE OFFICIELLE LABRUTE (vérifiée dans getDamage.ts)
   // damage = (base + strength * (0.2 + base * 0.05)) * variation * skillMultiplier
-
+  
   let base = 5; // Dégâts de base mains nues
-
+  
   if (hasWeapon && weaponType) {
-    const weapon = weaponStats[weaponType];
-    if (weapon && weapon.damage) {
+    const labruteWeapon = LABRUTE_WEAPONS[weaponType];
+    if (labruteWeapon && labruteWeapon.damage) {
       // NE PAS diviser par 10 ! Les valeurs sont déjà correctes
-      base = weapon.damage;
+      base = labruteWeapon.damage;
     }
   }
-
+  
   // FORMULE OFFICIELLE: base + strength * (0.2 + base * 0.05)
   // Cette partie calcule les dégâts de base AVANT variation et skills
   const baseDamage = base + adjusted.strength * (0.2 + base * 0.05);
-
+  
   return Math.floor(baseDamage);
 }
 
