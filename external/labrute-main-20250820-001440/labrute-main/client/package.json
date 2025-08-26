@@ -33,6 +33,7 @@
     "@pixi/filter-glow": "^4.2.0",
     "@pixi/filter-motion-blur": "^4.2.0",
     "@pixi/filter-outline": "^4.2.0",
+    "@pixi/react": "^7.4.0",
     "@pixi/sound": "^4.4.1",
     "dayjs": "^1.11.13",
     "i18next": "^21.9.0",
