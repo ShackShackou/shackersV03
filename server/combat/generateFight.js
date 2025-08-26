@@ -1,8 +1,10 @@
 const FightManager = require('./FightManager');
 const { randomItem } = require('../engine/labrute-core/constants');
+const { selectBoss } = require('./bosses');
 
-// Simple constant for boss gold reward
-const BOSS_GOLD_REWARD = 1000;
+// Boss rewards constants
+const BOSS_GOLD_REWARD = 500;
+const BOSS_XP_REWARD = 500;
 
 // Select a single backup from a list
 const selectBackup = (backups) => {
@@ -51,6 +53,14 @@ const generateFight = ({
   const team1Backups = backups ? selectBackup(team1.backups) : null;
   const team2Backups = backups ? selectBackup(team2.backups) : null;
 
+  // Boss selection
+  if (team1.bosses === true) {
+    team1.bosses = [selectBoss()];
+  }
+  if (team2.bosses === true) {
+    team2.bosses = [selectBoss()];
+  }
+
   // Bosses
   const team1Bosses = expandBosses(team1.bosses);
   const team2Bosses = expandBosses(team2.bosses);
@@ -85,10 +95,17 @@ const generateFight = ({
   let bossReward;
 
   if (team1Bosses.length || team2Bosses.length) {
-    const bossDefeated = fightResult.winner === brute1.name && team2Bosses.length > 0;
-    const gold = bossDefeated ? BOSS_GOLD_REWARD : 0;
-    bossReward = { defeated: bossDefeated, xp: 0, gold };
+    const bossSide = team1Bosses.length ? 'team1' : 'team2';
+    const boss = team1Bosses.length ? team1.bosses[0] : team2.bosses[0];
+    const bossDefeated = bossSide === 'team2'
+      ? fightResult.winner === brute1.name
+      : fightResult.winner === brute2.name;
+    const rewardMultiplier = boss && boss.reward ? boss.reward : 1;
+    const gold = bossDefeated ? Math.floor(rewardMultiplier * BOSS_GOLD_REWARD) : 0;
+    const xp = bossDefeated ? Math.floor(rewardMultiplier * BOSS_XP_REWARD) : 0;
+    bossReward = { defeated: bossDefeated, xp, gold };
     rewards.gold += gold;
+    rewards.xp += xp;
   }
 
   if (clanWar && fightResult.winner === brute1.name) {
@@ -114,4 +131,4 @@ const generateFight = ({
   };
 };
 
-module.exports = { generateFight, BOSS_GOLD_REWARD };
+module.exports = { generateFight, BOSS_GOLD_REWARD, BOSS_XP_REWARD };
