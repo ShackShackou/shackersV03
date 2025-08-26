@@ -40,7 +40,14 @@
       "Bash(start http://localhost:5174/placeholder-game.html)",
       "Bash(grep:*)",
       "Bash(git pull:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(winget:*)",
+      "Bash(gh auth:*)",
+      "Bash(where gh)",
+      "Bash(powershell:*)",
+      "Bash(start https://github.com/ShackShackou/shackersV03/compare/main...codex/add-logic-for-remaining-combat-steps)"
     ],
     "deny": [],
     "ask": []
