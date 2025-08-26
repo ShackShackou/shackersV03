@@ -1,7 +1,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import vm from 'vm';
-import { LABRUTE_WEAPONS, LABRUTE_PETS } from '../src/engine/labrute-complete.js';
+import { LABRUTE_PETS } from '../src/engine/labrute-complete.js';
+// @ts-ignore - JSON module without types
+import LABRUTE_WEAPONS from '../src/game/labrute-weapons.js';
 
 async function findOfficialRoot() {
   const base = path.resolve('external');
