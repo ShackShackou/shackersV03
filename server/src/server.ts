@@ -41,7 +41,6 @@ app.use('/api/shackers', shackersRouter);
 app.use('/api/fights', fightsTestRouter); // Use test router for now
 app.use('/api/fights', fightsOfficialRouter); // OFFICIAL LABRUTE ENGINE
 // app.use('/api/fights', fightsRouter); // Original with DB
-app.use('/api/matchmaking', matchmakingRouter);
 
 // Serve static public/ from project root
 const rootDir = path.resolve(__dirname, '..', '..');
@@ -52,6 +51,11 @@ app.get('/', (_req, res) => {
 });
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
+
+const MasterServer = require('../master/MasterServer');
+const masterServer = new MasterServer(httpServer);
+
+app.use('/api/matchmaking', matchmakingRouter(masterServer));
