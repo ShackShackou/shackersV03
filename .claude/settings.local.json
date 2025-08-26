@@ -38,7 +38,9 @@
       "Bash(start http://localhost:5174/test-spine-anims-list.html)",
       "Bash(start http://localhost:5174/test-combat-mechanics.html)",
       "Bash(start http://localhost:5174/placeholder-game.html)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
