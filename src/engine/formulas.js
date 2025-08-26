@@ -160,17 +160,22 @@ export function computeAccuracy(attackerStats, weaponType) {
  */
 export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
   const adjusted = getAdjustedStats(attackerStats);
-  
+
   // VRAIE FORMULE OFFICIELLE LABRUTE (vérifiée dans getDamage.ts)
   // damage = (base + strength * (0.2 + base * 0.05)) * variation * skillMultiplier
-  
+
   let base = 5; // Dégâts de base mains nues
-  
+
   if (hasWeapon && weaponType) {
     const labruteWeapon = LABRUTE_WEAPONS[weaponType];
     if (labruteWeapon && labruteWeapon.damage) {
-      // NE PAS diviser par 10 ! Les valeurs sont déjà correctes
+      // Official weapons use the LaBrute dataset
       base = labruteWeapon.damage;
+    } else {
+      const w = weaponStats[weaponType];
+      if (w && w.damage) {
+        base = w.damage;
+      }
     }
   }
   
