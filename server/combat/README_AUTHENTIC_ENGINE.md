@@ -48,10 +48,12 @@ hammer: { damageMultiplier: 4.0, useOpponentStrength: true }
 ## 🚀 TESTS RÉUSSIS
 
 ### Combat Tank vs Assassin
+L'endpoint accepte un paramètre `seed` optionnel pour des combats déterministes :
+
 ```bash
 curl -X POST http://localhost:4000/api/fights/test \
   -H "Content-Type: application/json" \
-  -d '{"profile1": "tank", "profile2": "assassin"}'
+  -d '{"profile1": "tank", "profile2": "assassin", "seed": 12345}'
 ```
 
 **Résultat** : Combat authentique avec 35 steps valides
@@ -63,7 +65,7 @@ curl -X POST http://localhost:4000/api/fights/test \
 ```bash
 curl -X POST http://localhost:4000/api/fights/test \
   -H "Content-Type: application/json" \
-  -d '{"profile1": "berserker", "profile2": "agile"}'
+  -d '{"profile1": "berserker", "profile2": "agile", "seed": 67890}'
 ```
 
 **Résultat** : Combat authentique avec 29 steps valides

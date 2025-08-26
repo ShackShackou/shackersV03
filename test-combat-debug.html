@@ -19,10 +19,11 @@
 
     <script>
         async function testCombat() {
+            const seed = Date.now();
             const response = await fetch('http://localhost:4000/api/fights/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ profile1: 'tank', profile2: 'agile' })
+                body: JSON.stringify({ profile1: 'tank', profile2: 'agile', seed })
             });
             
             const data = await response.json();
@@ -62,7 +63,7 @@
                 }
             }
             
-            log.innerHTML += `<p><b>Winner: ${data.fight.winner}</b></p>`;
+            log.innerHTML += `<p><b>Winner: ${data.fight.winner} (seed ${data.fight.seed})</b></p>`;
         }
     </script>
 </body>

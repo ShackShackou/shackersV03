@@ -16,10 +16,10 @@ class LaBruteClientEngine {
    * @param {string} brute2Id - Second brute ID
    * @returns {Promise} Fight data from server
    */
-  async requestFight(brute1Id, brute2Id) {
+  async requestFight(brute1Id, brute2Id, seed = Date.now()) {
     try {
-      console.log(`🔥 Requesting fight from server: ${brute1Id} vs ${brute2Id}`);
-      
+      console.log(`🔥 Requesting fight from server: ${brute1Id} vs ${brute2Id} (seed ${seed})`);
+
       const response = await fetch(`${this.serverUrl}/api/fights/test`, {
         method: 'POST',
         headers: {
@@ -28,7 +28,8 @@ class LaBruteClientEngine {
         },
         body: JSON.stringify({
           shackerAId: brute1Id,
-          shackerBId: brute2Id
+          shackerBId: brute2Id,
+          seed
         })
       });
 
@@ -41,7 +42,8 @@ class LaBruteClientEngine {
       console.log('✅ Fight data received from server:', {
         fightId: fightData.fight.fightId,
         winner: fightData.fight.winner,
-        stepsCount: fightData.steps.length
+        stepsCount: fightData.steps.length,
+        seed: fightData.fight.seed
       });
 
       this.currentFight = fightData;

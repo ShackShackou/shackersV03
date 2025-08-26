@@ -129,17 +129,19 @@
             
             try {
                 // Request combat from server
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         profile1: 'tank',
-                        profile2: 'agile'
+                        profile2: 'agile',
+                        seed
                     })
                 });
                 
                 const fightData = await response.json();
-                log(`✅ Received ${fightData.steps.length} combat steps from server`);
+                log(`✅ Received ${fightData.steps.length} combat steps from server (seed ${fightData.fight.seed})`);
                 
                 // Start the scene with combat data
                 if (scene) {

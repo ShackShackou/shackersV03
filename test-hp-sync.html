@@ -120,12 +120,14 @@
             
             try {
                 // Simuler un combat entre deux Shackers
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         shackerAId: 'shacker1',
-                        shackerBId: 'shacker2'
+                        shackerBId: 'shacker2',
+                        seed
                     })
                 });
 
@@ -180,12 +182,14 @@
             
             try {
                 // Test avec un Shacker ayant le skill survival
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         shackerAId: 'shacker3', // Doit avoir survival
-                        shackerBId: 'shacker4'
+                        shackerBId: 'shacker4',
+                        seed
                     })
                 });
 
@@ -219,12 +223,14 @@
             
             try {
                 // Test avec un Shacker ayant régénération
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         shackerAId: 'shacker5', // Doit avoir regeneration
-                        shackerBId: 'shacker6'
+                        shackerBId: 'shacker6',
+                        seed
                     })
                 });
 
@@ -267,12 +273,14 @@
             setStatus('Test Overkill en cours...', 'warning');
             
             try {
+                const seed = Date.now();
                 const response = await fetch('http://localhost:4000/api/fights/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         shackerAId: 'shacker7',
-                        shackerBId: 'shacker8'
+                        shackerBId: 'shacker8',
+                        seed
                     })
                 });
 
