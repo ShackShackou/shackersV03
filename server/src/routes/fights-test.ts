@@ -1,17 +1,6 @@
 import { Router } from 'express';
 import { LaBruteEngine } from '../../combat/LaBruteEngine.js';
-
-// Simple deterministic RNG (Mulberry32)
-function createSeededRandom(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a += 0x6D2B79F5;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import Rand from 'rand-seed';
 
 const router = Router();
 
@@ -98,7 +87,8 @@ router.post('/test', async (req: any, res) => {
     console.log(`   - Seed utilisé: ${seed}`);
 
     // UTILISATION DU VRAI MOTEUR LABRUTE avec RNG seedé
-    const engine = new LaBruteEngine(createSeededRandom(seed));
+    const rand = new Rand(seed);
+    const engine = new LaBruteEngine(rand.next.bind(rand));
     const combatResult = engine.generateFight(brute1, brute2);
     
     // Structure de réponse compatible avec le client
