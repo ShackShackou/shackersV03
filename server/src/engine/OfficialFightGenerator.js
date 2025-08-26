@@ -6,6 +6,7 @@
 
 const { getDamage } = require('../../../server/engine/labrute-official/getDamage');
 const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
+const { StepType } = require('../../../server/engine/labrute-core/constants');
 
 /**
  * Generate a complete fight using official LaBrute rules
@@ -114,11 +115,26 @@ function createOfficialFighter(data, index) {
     
     // Pets
     pets: data.pets || [],
-    
+
     // Status
     stunned: false,
     poisoned: false,
+    poisonCounter: 0,
+    poisoner: null,
     trapped: false,
+    hypnotized: false,
+    shield: data.skills?.includes('shield') || false,
+    survival: data.skills?.includes('survival') || false,
+    resistant: data.skills?.includes('resistant') || false,
+    vampirism: data.skills?.includes('vampirism') || false,
+    haste: data.skills?.includes('haste') || false,
+    flashFlood: data.skills?.includes('flashFlood') || false,
+    hammer: data.skills?.includes('hammer') || false,
+    hypnosis: data.skills?.includes('hypnosis') || false,
+    treat: data.skills?.includes('treat') || false,
+    regeneration: data.skills?.includes('regeneration') || false,
+    spy: data.skills?.includes('spy') || false,
+    skillUses: {},
   };
   
   // Set active weapon if available
@@ -198,47 +214,144 @@ function calculateInitiative(fighter) {
  */
 function playFighterTurn(fighter, opponent, fighterIndex) {
   const steps = [];
-  
-  // Check if stunned
-  if (fighter.stunned) {
-    fighter.stunned = false;
+
+  // Apply poison damage at the start of the turn
+  applyPoisonTick(fighter, steps);
+  if (fighter.hp <= 0) {
+    steps.push({ type: StepType.Death, fighter: fighterIndex });
     return steps;
   }
-  
+
+  // Regeneration
+  if (fighter.regeneration && fighter.hp < fighter.maxHp) {
+    const heal = Math.max(1, Math.floor(fighter.maxHp / 20));
+    healFighter(fighter, heal, steps, StepType.Regeneration);
+  }
+
+  // Skip if stunned or hypnotized
+  if (fighter.stunned || fighter.hypnotized) {
+    fighter.stunned = false;
+    fighter.hypnotized = false;
+    return steps;
+  }
+
+  // Spy skill : swap weapons once
+  if (fighter.spy && !fighter.skillUses.spy && opponent.activeWeapon) {
+    fighter.skillUses.spy = true;
+    const temp = fighter.activeWeapon;
+    fighter.activeWeapon = opponent.activeWeapon;
+    opponent.activeWeapon = temp;
+    steps.push({ type: StepType.Spy, fighter: fighterIndex, target: 1 - fighterIndex });
+  }
+
+  // Treat skill : heal instead of attacking
+  if (fighter.treat && !fighter.skillUses.treat && fighter.hp < fighter.maxHp * 0.7) {
+    fighter.skillUses.treat = true;
+    activateSkill(fighter, 'treat', steps);
+    const heal = Math.ceil(fighter.maxHp * 0.2);
+    healFighter(fighter, heal, steps, StepType.Treat);
+    expireSkill(fighter, 'treat', steps);
+    return steps;
+  }
+
+  // Hypnosis : skip opponent next turn
+  if (fighter.hypnosis && !fighter.skillUses.hypnosis && Math.random() < 0.2) {
+    fighter.skillUses.hypnosis = true;
+    activateSkill(fighter, 'hypnosis', steps);
+    opponent.hypnotized = true;
+    steps.push({ type: StepType.Hypnotise, fighter: fighterIndex, target: 1 - fighterIndex });
+    expireSkill(fighter, 'hypnosis', steps);
+    return steps;
+  }
+
   // Move to opponent
-  steps.push({ 
-    type: 'move', 
+  steps.push({
+    type: StepType.Move,
     fighter: fighterIndex,
-    target: 1 - fighterIndex 
+    target: 1 - fighterIndex
   });
-  
+
+  // Determine attack type
+  let attackType = StepType.Hit;
+  let usedSkill = null;
+  if (fighter.flashFlood && !fighter.skillUses.flashFlood && Math.random() < 0.2) {
+    attackType = StepType.FlashFlood;
+    fighter.skillUses.flashFlood = true;
+    usedSkill = 'flashFlood';
+  } else if (fighter.hammer && Math.random() < 0.2) {
+    attackType = StepType.Hammer;
+    usedSkill = 'hammer';
+  } else if (fighter.haste && !fighter.skillUses.haste && Math.random() < 0.2) {
+    attackType = StepType.Haste;
+    fighter.skillUses.haste = true;
+    usedSkill = 'haste';
+  } else if (fighter.vampirism && !fighter.skillUses.vampirism && Math.random() < 0.2) {
+    attackType = StepType.Vampirism;
+    fighter.skillUses.vampirism = true;
+    usedSkill = 'vampirism';
+  } else if (fighter.activeWeapon && fighter.activeWeapon.types?.includes('thrown') && Math.random() < 0.2) {
+    attackType = StepType.Throw;
+  }
+
+  if (usedSkill) {
+    activateSkill(fighter, usedSkill, steps);
+  }
+
   // Attempt to hit
   const hitResult = attemptHit(fighter, opponent);
-  
+
   if (hitResult.hit) {
     // Calculate damage using official formula
     const damageResult = getDamage(fighter, opponent);
-    
-    // Apply damage
-    opponent.hp -= damageResult.damage;
-    
-    steps.push({
-      type: 'hit',
+
+    // Apply damage with resist/survive logic
+    const actualDamage = applyDamage(opponent, damageResult.damage, steps, fighterIndex, attackType);
+
+    const hitStep = {
+      type: attackType,
       fighter: fighterIndex,
       target: 1 - fighterIndex,
-      damage: damageResult.damage,
+      damage: actualDamage,
       critical: damageResult.criticalHit,
       weapon: fighter.activeWeapon?.name,
       targetHP: Math.max(0, opponent.hp),
-    });
-    
-    // Check for counter attack
+    };
+
+    // Special cases
+    if (attackType === StepType.Vampirism) {
+      const heal = Math.min(actualDamage, fighter.maxHp - fighter.hp);
+      if (heal > 0) {
+        fighter.hp += heal;
+      }
+      hitStep.heal = heal;
+    }
+
+    steps.push(hitStep);
+
+    // Hammer stuns
+    if (attackType === StepType.Hammer) {
+      opponent.stunned = true;
+    }
+
+    // Apply poison on hit if skill
+    if ((fighter.skills.includes('tragicPotion') || fighter.activeWeapon?.name === 'sai') && opponent.poisonCounter === 0) {
+      opponent.poisonCounter = 3;
+      opponent.poisonDamage = Math.max(1, Math.floor(opponent.maxHp / 20));
+      opponent.poisoned = true;
+      opponent.poisoner = fighterIndex;
+    }
+
+    // Remove weapon if thrown
+    if (attackType === StepType.Throw && fighter.activeWeapon) {
+      fighter.activeWeapon = null;
+    }
+
+    // Counter attack
     if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
-      const counterDamage = Math.floor(damageResult.damage * 0.5);
-      fighter.hp -= counterDamage;
-      
+      const counterDamage = Math.floor(actualDamage * 0.5);
+      applyDamage(fighter, counterDamage, steps, 1 - fighterIndex, StepType.Counter);
       steps.push({
-        type: 'counter',
+        type: StepType.Counter,
         fighter: 1 - fighterIndex,
         target: fighterIndex,
         damage: counterDamage,
@@ -247,12 +360,12 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
     }
   } else if (hitResult.evaded) {
     steps.push({
-      type: 'evade',
+      type: StepType.Evade,
       fighter: 1 - fighterIndex,
     });
   } else if (hitResult.blocked) {
     steps.push({
-      type: 'block',
+      type: StepType.Block,
       fighter: 1 - fighterIndex,
       damage: 0,
     });
@@ -263,14 +376,87 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
       target: 1 - fighterIndex,
     });
   }
-  
+
   // Move back
   steps.push({
-    type: 'moveBack',
+    type: StepType.MoveBack,
     fighter: fighterIndex,
   });
-  
+
+  if (usedSkill) {
+    expireSkill(fighter, usedSkill, steps);
+  }
+
   return steps;
+}
+
+// Helper functions
+function activateSkill(fighter, skill, steps) {
+  steps.push({ type: StepType.SkillActivate, fighter: fighter.index, skill });
+  fighter.activeSkills.push(skill);
+}
+
+function expireSkill(fighter, skill, steps) {
+  steps.push({ type: StepType.SkillExpire, fighter: fighter.index, skill });
+  fighter.activeSkills = fighter.activeSkills.filter((s) => s !== skill);
+}
+
+function healFighter(fighter, amount, steps, stepType) {
+  const heal = Math.min(amount, fighter.maxHp - fighter.hp);
+  if (heal <= 0) return;
+  fighter.hp += heal;
+  steps.push({ type: stepType, fighter: fighter.index, heal, targetHP: fighter.hp });
+}
+
+function dropShield(target, steps) {
+  if (!target.shield) return;
+  target.shield = false;
+  steps.push({ type: StepType.DropShield, fighter: target.index });
+}
+
+function applyDamage(target, damage, steps, attackerIndex, stepType) {
+  let actual = damage;
+  if (target.resistant) {
+    const cap = Math.floor(target.maxHp * 0.2);
+    if (actual > cap) {
+      actual = cap;
+      steps.push({ type: StepType.Resist, fighter: target.index });
+    }
+  }
+  target.hp -= actual;
+
+  if (target.shield && (stepType === StepType.Hammer || stepType === StepType.FlashFlood)) {
+    dropShield(target, steps);
+  }
+
+  if (target.survival && target.hp <= 0) {
+    target.survival = false;
+    target.hp = 1;
+    steps.push({ type: StepType.Survive, fighter: target.index });
+  }
+
+  if (target.hp < 0) target.hp = 0;
+
+  return actual;
+}
+
+function applyPoisonTick(fighter, steps) {
+  if (fighter.poisonCounter > 0 && fighter.hp > 0) {
+    const dmg = fighter.poisonDamage || Math.max(1, Math.floor(fighter.maxHp / 20));
+    fighter.poisonCounter--;
+    if (fighter.poisonCounter <= 0) {
+      fighter.poisoned = false;
+      fighter.poisoner = null;
+    }
+    const actual = applyDamage(fighter, dmg, steps, fighter.poisoner, StepType.Poison);
+    steps.push({
+      type: StepType.Poison,
+      fighter: fighter.poisoner,
+      target: fighter.index,
+      damage: actual,
+      targetHP: Math.max(0, fighter.hp),
+    });
+  }
 }
 
 /**
