@@ -7,6 +7,47 @@
 const { getDamage } = require('../../../server/engine/labrute-official/getDamage');
 const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
 
+// StepType enum copied from official LaBrute server (labrute/server/src/utils/fight)
+// Numeric values are important as they are used by the client to interpret steps
+const StepType = {
+  Saboteur: 0,
+  Leave: 1,
+  Arrive: 2,
+  Trash: 3,
+  Steal: 4,
+  Trap: 5,
+  Heal: 6,
+  Resist: 7,
+  Survive: 8,
+  Hit: 9,
+  FlashFlood: 10,
+  Hammer: 11,
+  Poison: 12,
+  Bomb: 13,
+  Hypnotise: 14,
+  Move: 15,
+  Eat: 16,
+  MoveBack: 17,
+  Equip: 18,
+  AttemptHit: 19,
+  Block: 20,
+  Evade: 21,
+  Sabotage: 22,
+  Disarm: 23,
+  Death: 24,
+  Throw: 25,
+  End: 26,
+  Counter: 27,
+  SkillActivate: 28,
+  SkillExpire: 29,
+  Spy: 30,
+  Vampirism: 31,
+  Haste: 32,
+  Treat: 33,
+  DropShield: 34,
+  Regeneration: 35,
+};
+
 /**
  * Generate a complete fight using official LaBrute rules
  */
@@ -24,8 +65,8 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
   const maxTurns = 500;
   
   // Add arrival steps
-  steps.push({ type: 'arrive', fighter: 0 });
-  steps.push({ type: 'arrive', fighter: 1 });
+  steps.push({ a: StepType.Arrive, f: 0 });
+  steps.push({ a: StepType.Arrive, f: 1 });
   
   // Main combat loop
   while (turn < maxTurns) {
@@ -45,12 +86,8 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
       
       // Check for death
       if (opponent.hp <= 0) {
-        steps.push({ type: 'death', fighter: 1 - fighterIndex });
-        steps.push({ 
-          type: 'end', 
-          winner: fighterIndex,
-          loser: 1 - fighterIndex 
-        });
+        steps.push({ a: StepType.Death, f: 1 - fighterIndex });
+        steps.push({ a: StepType.End, w: fighterIndex, l: 1 - fighterIndex });
         
         return {
           steps,
@@ -66,11 +103,7 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
   
   // Time out - fighter with more HP wins
   const winner = fighters[0].hp > fighters[1].hp ? 0 : 1;
-  steps.push({ 
-    type: 'end', 
-    winner: winner,
-    loser: 1 - winner 
-  });
+  steps.push({ a: StepType.End, w: winner, l: 1 - winner });
   
   return {
     steps,
@@ -198,79 +231,88 @@ function calculateInitiative(fighter) {
  */
 function playFighterTurn(fighter, opponent, fighterIndex) {
   const steps = [];
-  
-  // Check if stunned
+
+  // Skip turn if stunned
   if (fighter.stunned) {
     fighter.stunned = false;
     return steps;
   }
-  
-  // Move to opponent
-  steps.push({ 
-    type: 'move', 
-    fighter: fighterIndex,
-    target: 1 - fighterIndex 
-  });
-  
-  // Attempt to hit
+
+  // Equip a weapon if needed
+  if (!fighter.activeWeapon || fighter.damagedWeapons.includes(fighter.activeWeapon.name)) {
+    fighter.activeWeapon = chooseWeapon(fighter);
+    if (fighter.activeWeapon) {
+      steps.push({ a: StepType.Equip, f: fighterIndex, w: fighter.activeWeapon.name });
+    }
+  }
+
+  // Trap skill
+  if (fighter.skills.includes('net') && !opponent.trapped && Math.random() < 0.2) {
+    opponent.trapped = true;
+    steps.push({ a: StepType.Trap, f: fighterIndex, t: opponent.index });
+  }
+
+  // Move towards opponent
+  steps.push({ a: StepType.Move, f: fighterIndex, t: opponent.index });
+
+  // Attempt hit
+  steps.push({ a: StepType.AttemptHit, f: fighterIndex, t: opponent.index, w: fighter.activeWeapon?.name });
   const hitResult = attemptHit(fighter, opponent);
-  
+
   if (hitResult.hit) {
-    // Calculate damage using official formula
     const damageResult = getDamage(fighter, opponent);
-    
-    // Apply damage
     opponent.hp -= damageResult.damage;
-    
     steps.push({
-      type: 'hit',
-      fighter: fighterIndex,
-      target: 1 - fighterIndex,
-      damage: damageResult.damage,
-      critical: damageResult.criticalHit,
-      weapon: fighter.activeWeapon?.name,
-      targetHP: Math.max(0, opponent.hp),
+      a: StepType.Hit,
+      f: fighterIndex,
+      t: opponent.index,
+      d: damageResult.damage,
+      w: fighter.activeWeapon?.name,
+      c: damageResult.criticalHit ? 1 : 0,
+      h: Math.max(0, opponent.hp),
     });
-    
-    // Check for counter attack
+
+    // Bomb skill
+    if (fighter.skills.includes('bomb') && !fighter.bombUsed) {
+      fighter.bombUsed = true;
+      const bombDamage = Math.floor(damageResult.damage * 0.5);
+      opponent.hp -= bombDamage;
+      steps.push({ a: StepType.Bomb, f: fighterIndex, t: opponent.index, d: bombDamage, h: Math.max(0, opponent.hp) });
+    }
+
+    // Saboteur skill: break opponent weapon
+    if (fighter.skills.includes('saboteur') && opponent.activeWeapon && !opponent.damagedWeapons.includes(opponent.activeWeapon.name) && Math.random() < 0.25) {
+      opponent.damagedWeapons.push(opponent.activeWeapon.name);
+      steps.push({ a: StepType.Sabotage, f: fighterIndex, t: opponent.index, w: opponent.activeWeapon.name });
+      opponent.activeWeapon = null;
+    }
+
+    // Counter attack
     if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
       const counterDamage = Math.floor(damageResult.damage * 0.5);
       fighter.hp -= counterDamage;
-      
-      steps.push({
-        type: 'counter',
-        fighter: 1 - fighterIndex,
-        target: fighterIndex,
-        damage: counterDamage,
-        targetHP: Math.max(0, fighter.hp),
-      });
+      steps.push({ a: StepType.Counter, f: opponent.index, t: fighterIndex, d: counterDamage, h: Math.max(0, fighter.hp) });
     }
   } else if (hitResult.evaded) {
-    steps.push({
-      type: 'evade',
-      fighter: 1 - fighterIndex,
-    });
+    steps.push({ a: StepType.Evade, f: opponent.index });
   } else if (hitResult.blocked) {
-    steps.push({
-      type: 'block',
-      fighter: 1 - fighterIndex,
-      damage: 0,
-    });
-  } else {
-    steps.push({
-      type: 'miss',
-      fighter: fighterIndex,
-      target: 1 - fighterIndex,
-    });
+    steps.push({ a: StepType.Block, f: opponent.index });
   }
-  
-  // Move back
-  steps.push({
-    type: 'moveBack',
-    fighter: fighterIndex,
-  });
-  
+
+  // Move back after action
+  steps.push({ a: StepType.MoveBack, f: fighterIndex });
+
   return steps;
+}
+
+// Choose first available weapon that isn't broken
+function chooseWeapon(fighter) {
+  const available = fighter.weapons.filter((w) => !fighter.damagedWeapons.includes(w));
+  if (available.length === 0) {
+    return null;
+  }
+  const name = available[Math.floor(Math.random() * available.length)];
+  return getWeapon(name);
 }
 
 /**
@@ -321,5 +363,6 @@ function attemptHit(fighter, opponent) {
 }
 
 module.exports = {
+  StepType,
   generateOfficialFight,
 };
