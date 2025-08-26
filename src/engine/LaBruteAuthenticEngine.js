@@ -6,7 +6,8 @@
  * server implementation is authoritative.
  */
 
-import { SkillName, WeaponName, PetName, StepType } from '../config/enums.js';
+import constants from '../../server/engine/labrute-core/constants.js';
+const { SkillName, WeaponName, PetName, StepType } = constants;
 
 export class LaBruteAuthenticEngine {
   constructor() {
