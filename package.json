@@ -19,6 +19,7 @@
         "dev": "vite --config vite/config.dev.mjs",
         "build": "vite build --config vite/config.prod.mjs && phaser-asset-pack-hashing -j -r dist",
         "test": "npm run test:combat",
+        "sync:labrute": "node scripts/sync-labrute-data.mjs",
         "test:combat": "node scripts/runCombatTest.mjs",
         "test:combat:snap": "node scripts/runCombatTest.mjs --snapshot --seed=42",
         "test:combat:debug": "node scripts/runCombatTest.mjs --debug --seed=42",

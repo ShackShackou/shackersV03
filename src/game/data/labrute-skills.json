@@ -1,0 +1,278 @@
+{
+  "herculeanStrength": {
+    "name": "herculeanStrength",
+    "odds": 60,
+    "type": "booster"
+  },
+  "felineAgility": {
+    "name": "felineAgility",
+    "odds": 60,
+    "type": "booster"
+  },
+  "lightningBolt": {
+    "name": "lightningBolt",
+    "odds": 60,
+    "type": "booster"
+  },
+  "vitality": {
+    "name": "vitality",
+    "odds": 60,
+    "type": "booster"
+  },
+  "immortality": {
+    "name": "immortality",
+    "odds": 0.14,
+    "type": "booster"
+  },
+  "weaponsMaster": {
+    "name": "weaponsMaster",
+    "odds": 10,
+    "type": "passive"
+  },
+  "martialArts": {
+    "name": "martialArts",
+    "odds": 10,
+    "type": "passive"
+  },
+  "sixthSense": {
+    "name": "sixthSense",
+    "odds": 20,
+    "type": "passive"
+  },
+  "hostility": {
+    "name": "hostility",
+    "odds": 4,
+    "type": "passive"
+  },
+  "fistsOfFury": {
+    "name": "fistsOfFury",
+    "odds": 10,
+    "type": "passive"
+  },
+  "shield": {
+    "name": "shield",
+    "odds": 10,
+    "type": "passive"
+  },
+  "armor": {
+    "name": "armor",
+    "odds": 4,
+    "type": "passive"
+  },
+  "toughenedSkin": {
+    "name": "toughenedSkin",
+    "odds": 30,
+    "type": "passive"
+  },
+  "untouchable": {
+    "name": "untouchable",
+    "odds": 1,
+    "type": "passive"
+  },
+  "sabotage": {
+    "name": "sabotage",
+    "odds": 3,
+    "type": "passive"
+  },
+  "shock": {
+    "name": "shock",
+    "odds": 4,
+    "type": "passive"
+  },
+  "bodybuilder": {
+    "name": "bodybuilder",
+    "odds": 5,
+    "type": "passive"
+  },
+  "relentless": {
+    "name": "relentless",
+    "odds": 4,
+    "type": "passive"
+  },
+  "survival": {
+    "name": "survival",
+    "odds": 4,
+    "type": "passive"
+  },
+  "leadSkeleton": {
+    "name": "leadSkeleton",
+    "odds": 4,
+    "type": "passive"
+  },
+  "balletShoes": {
+    "name": "balletShoes",
+    "odds": 4,
+    "type": "passive"
+  },
+  "determination": {
+    "name": "determination",
+    "odds": 4,
+    "type": "passive"
+  },
+  "firstStrike": {
+    "name": "firstStrike",
+    "odds": 8,
+    "type": "passive"
+  },
+  "resistant": {
+    "name": "resistant",
+    "odds": 3,
+    "type": "passive"
+  },
+  "reconnaissance": {
+    "name": "reconnaissance",
+    "odds": 1,
+    "type": "booster"
+  },
+  "counterAttack": {
+    "name": "counterAttack",
+    "odds": 10,
+    "type": "passive"
+  },
+  "ironHead": {
+    "name": "ironHead",
+    "odds": 4,
+    "type": "passive"
+  },
+  "thief": {
+    "name": "thief",
+    "odds": 2.5,
+    "type": "super",
+    "toss": 8,
+    "uses": 2
+  },
+  "fierceBrute": {
+    "name": "fierceBrute",
+    "odds": 20,
+    "type": "super",
+    "toss": 5,
+    "uses": 1
+  },
+  "tragicPotion": {
+    "name": "tragicPotion",
+    "odds": 8,
+    "type": "super",
+    "toss": 10,
+    "uses": 1
+  },
+  "net": {
+    "name": "net",
+    "odds": 16,
+    "type": "super",
+    "toss": 10,
+    "uses": 1
+  },
+  "bomb": {
+    "name": "bomb",
+    "odds": 6,
+    "type": "super",
+    "toss": 2,
+    "uses": 2
+  },
+  "hammer": {
+    "name": "hammer",
+    "odds": 1,
+    "type": "super",
+    "toss": 2,
+    "uses": 1
+  },
+  "cryOfTheDamned": {
+    "name": "cryOfTheDamned",
+    "odds": 4,
+    "type": "super",
+    "toss": 8,
+    "uses": 2
+  },
+  "hypnosis": {
+    "name": "hypnosis",
+    "odds": 0.5,
+    "type": "super",
+    "toss": 6,
+    "uses": 1
+  },
+  "flashFlood": {
+    "name": "flashFlood",
+    "odds": 0.5,
+    "type": "super",
+    "toss": 2,
+    "uses": 3
+  },
+  "tamer": {
+    "name": "tamer",
+    "odds": 4,
+    "type": "super",
+    "toss": 20,
+    "uses": 4
+  },
+  "regeneration": {
+    "name": "regeneration",
+    "odds": 3,
+    "type": "talent"
+  },
+  "chef": {
+    "name": "chef",
+    "odds": 1,
+    "type": "talent"
+  },
+  "spy": {
+    "name": "spy",
+    "odds": 3,
+    "type": "talent"
+  },
+  "saboteur": {
+    "name": "saboteur",
+    "odds": 3,
+    "type": "talent"
+  },
+  "backup": {
+    "name": "backup",
+    "odds": 5,
+    "type": "talent"
+  },
+  "hideaway": {
+    "name": "hideaway",
+    "odds": 5,
+    "type": "talent"
+  },
+  "monk": {
+    "name": "monk",
+    "odds": 5,
+    "type": "talent"
+  },
+  "vampirism": {
+    "name": "vampirism",
+    "odds": 10,
+    "type": "super",
+    "uses": 1,
+    "toss": 5
+  },
+  "chaining": {
+    "name": "chaining",
+    "odds": 5,
+    "type": "passive"
+  },
+  "haste": {
+    "name": "haste",
+    "odds": 5,
+    "type": "super",
+    "uses": 1,
+    "toss": 3
+  },
+  "treat": {
+    "name": "treat",
+    "odds": 20,
+    "type": "super",
+    "uses": 4,
+    "toss": 5
+  },
+  "repulse": {
+    "name": "repulse",
+    "odds": 10,
+    "type": "passive"
+  },
+  "fastMetabolism": {
+    "name": "fastMetabolism",
+    "odds": 5,
+    "type": "passive"
+  }
+}
