@@ -3,8 +3,29 @@
 // Current implementation mirrors existing in-engine behavior for parity.
 
 import { weaponStats, getWeaponDamageModifier } from '../game/weapons.js';
-import { SkillModifiers, FightStat } from '../game/skills.js';
+import { SkillModifiers, FightStat, SkillName } from '../game/skills.js';
 import { LABRUTE_WEAPONS } from './labrute-complete.js';
+
+// Simplified critical stat helpers (subset of getFighterStat)
+const CoreFightStat = {
+  CRITICAL_CHANCE: 'critical',
+  CRITICAL_DAMAGE: 'criticalDamage',
+};
+
+const BASE_FIGHTER_CRIT = {
+  [CoreFightStat.CRITICAL_CHANCE]: 0,
+  [CoreFightStat.CRITICAL_DAMAGE]: 1.5,
+};
+
+function getFighterStat(fighter, stat) {
+  let total = fighter[stat] || 0;
+  if (fighter.activeWeapon && typeof fighter.activeWeapon[stat] === 'number') {
+    total += fighter.activeWeapon[stat];
+  } else if (stat in BASE_FIGHTER_CRIT) {
+    total += BASE_FIGHTER_CRIT[stat];
+  }
+  return total;
+}
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
@@ -201,6 +222,65 @@ export function computeCritChance(weaponType) {
   return criticalChance;
 }
 
+// Comprehensive damage calculation inspired by official getDamage.ts
+export function calculateDamage(attacker, defender, rng, opts = {}) {
+  const { damageModifier = 1, thrown = false } = opts;
+  const attackerStats = attacker.stats || attacker;
+  const defenderStats = defender.stats || defender;
+  const weaponType = attacker.weaponType;
+  const weapon = weaponType ? (LABRUTE_WEAPONS[weaponType] || weaponStats[weaponType]) : null;
+  const skills = attackerStats.skills || [];
+
+  let skillsMultiplier = 1;
+  const piledriver = skills.includes(SkillName.hammer) && !thrown;
+  if (skills.includes(SkillName.fierceBrute)) {
+    skillsMultiplier *= 2;
+  }
+  if (piledriver) {
+    skillsMultiplier *= 4;
+  }
+
+  let damage;
+  if (thrown) {
+    const base = weapon?.damage ?? 5;
+    damage = (base + (attackerStats.strength || 0) * 0.1 + (attackerStats.agility || 0) * 0.15)
+      * (1 + rng.float() * 0.5);
+  } else if (piledriver) {
+    damage = (10 + (defenderStats.strength || 0) * 0.6)
+      * (0.8 + rng.float() * 0.4);
+  } else {
+    const baseDamage = computeBaseDamage(attackerStats, attacker.hasWeapon, weaponType);
+    damage = baseDamage * computeDamageVariation(rng);
+  }
+
+  damage = Math.floor(damage * skillsMultiplier * damageModifier);
+
+  if (!thrown && attacker.damagedWeapons && weaponType && attacker.damagedWeapons.includes(weaponType)) {
+    damage = Math.floor(damage * 0.75);
+  }
+
+  const critContext = {
+    ...attackerStats,
+    activeWeapon: weapon ? { critical: weapon.critChance || weapon.critical || 0, criticalDamage: weapon.critDamage || 2 } : null,
+  };
+  const critChance = getFighterStat(critContext, CoreFightStat.CRITICAL_CHANCE);
+  let critical = false;
+  if (critChance && rng.float() < critChance) {
+    const critMult = getFighterStat(critContext, CoreFightStat.CRITICAL_DAMAGE);
+    damage = Math.floor(damage * (critMult || 2));
+    critical = true;
+  }
+
+  let finalDamage;
+  if (thrown) {
+    finalDamage = Math.max(2, damage - Math.floor((defenderStats.defense || 0) * 0.7));
+  } else {
+    finalDamage = Math.max(1, damage - Math.floor((defenderStats.defense || 0) * 0.5));
+  }
+
+  return { damage: finalDamage, critical };
+}
+
 /**
  * Combo chance and length helpers
  */
@@ -227,6 +307,7 @@ export default {
   computeBaseDamage,
   computeDamageVariation,
   computeCritChance,
+  calculateDamage,
   computeComboChance,
   computeMaxCombo,
 };

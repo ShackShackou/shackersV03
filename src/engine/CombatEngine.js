@@ -659,45 +659,13 @@ export class CombatEngine {
       };
     }
     
-    // Calculate base damage via formulas adapter
-    let baseDamage = this.formulas.computeBaseDamage(attacker.stats, attacker.hasWeapon, attacker.weaponType);
-    
-    // Berserker rage DISABLED for faster combat
-    // if (attacker.specialMoves.active.berserkerRage) {
-    //   baseDamage *= this.specialMoves.berserkerRage.multiplier;
-    // }
-    
-    // RNG damage variation (±25%)
-    const damageVariation = this.formulas.computeDamageVariation(this.rng);
-    let finalDamage = Math.floor(baseDamage * damageVariation * damageModifier);
-    
-    // Apply defense
-    let effectiveDefense = defender.stats.defense;
-    
-    // Defensive shield DISABLED for faster combat
-    // if (defender.specialMoves.active.defensiveShield) {
-    //   finalDamage *= this.specialMoves.defensiveShield.multiplier;
-    // }
-    
-    // La défense réduit les dégâts mais ne peut pas les annuler complètement
-    // Minimum 1 dégât si l'attaque touche
-    finalDamage = Math.max(1, finalDamage - Math.floor(effectiveDefense * 0.5));
-    
-    // Weapon-specific critical hit chances via formulas adapter
-    const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
-    const critical = this.rng.float() < criticalChance;
-    if (critical) {
-      finalDamage *= 2;
-    }
+    // Calculate final damage via formulas adapter
+    const { damage: finalDamage, critical } = this.formulas.calculateDamage(attacker, defender, this.rng, { damageModifier });
     this.logDebug('damage_calc', {
       attacker: attacker.stats.name,
       defender: defender.stats.name,
-      baseDamage,
-      damageVariation,
-      effectiveDefense,
-      criticalChance,
-      critical,
       finalDamage,
+      critical,
       damageModifier
     });
     
@@ -981,68 +949,21 @@ export class CombatEngine {
       };
     }
     
-    // Calculate throw damage (higher than normal attack due to momentum)
-    let baseDamage = attacker.stats.strength * 1.4; // Throwing bonus
-    
-    // Weapon-specific throw damage modifiers
-    switch (attacker.weaponType) {
-      case 'hammer':
-        baseDamage *= 1.5; // Heavy weapons hit very hard when thrown
-        break;
-      case 'axe':
-        baseDamage *= 1.4; // Axes are devastating when thrown
-        break;
-      case 'spear':
-        baseDamage *= 1.3; // Spears are designed for throwing
-        break;
-      case 'sword':
-        baseDamage *= 1.2; // Swords aren't ideal for throwing
-        break;
-      case 'dagger':
-        baseDamage *= 1.1; // Daggers are light but precise
-        break;
-    }
-    
-    // Berserker rage DISABLED for faster combat
-    // if (attacker.specialMoves.active.berserkerRage) {
-    //   baseDamage *= this.specialMoves.berserkerRage.multiplier;
-    // }
-    
-    // RNG damage variation
-    const damageVariation = 0.8 + (this.rng.float() * 0.4); // Less variation for throws
-    let finalDamage = Math.floor(baseDamage * damageVariation);
-    
-    // Apply defense (reduced effectiveness against thrown weapons)
-    let effectiveDefense = Math.floor(defender.stats.defense * 0.7);
-    
-    // Defensive shield DISABLED for faster combat
-    // if (defender.specialMoves.active.defensiveShield) {
-    //   finalDamage *= this.specialMoves.defensiveShield.multiplier;
-    // }
-    
-    finalDamage = Math.max(2, finalDamage - effectiveDefense); // Minimum 2 damage for throws
-    
-    // Higher critical hit chance for throws (15%)
-    const critical = this.rng.chance(0.15);
-    if (critical) {
-      finalDamage *= 2.2; // Slightly higher crit multiplier
-    }
+    // Calculate throw damage via formulas adapter
+    const { damage: finalDamage, critical } = this.formulas.calculateDamage(attacker, defender, this.rng, { thrown: true });
     this.logDebug('throw_damage_calc', {
       attacker: attacker.stats.name,
       defender: defender.stats.name,
-      baseDamage,
-      damageVariation,
-      effectiveDefense,
+      finalDamage,
       critical,
-      finalDamage
     });
-    
+
     // Vampiric healing (if active)
     if (attacker.specialMoves.active.vampiricStrike) {
       const healing = Math.floor(finalDamage * this.specialMoves.vampiricStrike.multiplier);
       attacker.stats.health = Math.min(attacker.stats.maxHealth, attacker.stats.health + healing);
     }
-    
+
     // Apply damage
     defender.stats.health = Math.max(0, defender.stats.health - finalDamage);
     
