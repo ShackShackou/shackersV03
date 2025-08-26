@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 import { CombatEngine } from '../src/engine/CombatEngine.js';
-import { RNG } from '../src/engine/rng.js';
+import { Rand } from '../src/engine/rand.js';
 import parityFormulas from '../src/engine/formulas.js';
 import labruteFormulas from '../src/engine/formulas.labrute.js';
 
@@ -155,7 +155,7 @@ async function main() {
     petType: enablePets ? (args.petB || 'dog1') : undefined,
   });
 
-  const rng = new RNG(seed);
+  const rng = new Rand(seed);
   const engine = new CombatEngine(fighterA, fighterB, { rng, formulasAdapter: selectedFormulas, debug, instrumentFormulas });
 
   const steps = [];

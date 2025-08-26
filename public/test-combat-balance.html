@@ -187,6 +187,7 @@
 
     <script type="module">
         import { LaBruteCombatEngine } from '/src/engine/labrute-complete.js';
+        import Rand from 'rand-seed';
         
         let engine = null;
         let autoMode = false;
@@ -222,18 +223,13 @@
             2: { attacks: 0, hits: 0, misses: 0, damage: 0 }
         };
         
-        function seedRandom(seed) {
-            let counter = 0;
-            return function() {
-                counter++;
-                const x = Math.sin(seed + counter * 1.234) * 10000;
-                return x - Math.floor(x);
-            };
-        }
-        
         function initCombat() {
-            const rng = seedRandom(Date.now());
-            engine = new LaBruteCombatEngine(fighters.fighter1, fighters.fighter2, rng);
+            const rng = new Rand(Date.now());
+            engine = new LaBruteCombatEngine(
+                fighters.fighter1,
+                fighters.fighter2,
+                () => rng.next()
+            );
             
             // Afficher les stats initiales
             updateDisplay();

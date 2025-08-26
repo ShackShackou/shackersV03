@@ -1,5 +1,5 @@
 import { createPet } from '../game/pets.js';
-import { RNG } from './rng.js';
+import { Rand } from './rand.js';
 import formulas from './formulas.js';
 
 // Import du système LaBrute complet
@@ -17,9 +17,13 @@ export class CombatEngine {
     // Utiliser le moteur LaBrute si spécifié
     if (options.useLaBrute !== false) {
       console.log('[CombatEngine] Utilisation du système LaBrute complet');
-      // LaBruteCombatEngine attend un RNG, pas un objet options
-      const rng = options.rng || new RNG();
-      const labEngine = new LaBruteCombatEngine(fighter1, fighter2, rng.random ? rng.random.bind(rng) : rng);
+      // LaBruteCombatEngine attend une fonction RNG
+      const rng = options.rng || new Rand();
+      const labEngine = new LaBruteCombatEngine(
+        fighter1,
+        fighter2,
+        rng.next ? rng.next.bind(rng) : rng
+      );
       // Copier la propriété turnInProgress pour la compatibilité
       labEngine.turnInProgress = false;
       return labEngine;
@@ -43,7 +47,7 @@ export class CombatEngine {
     
     // Injectables: seedable RNG and formulas adapter (parity by default)
     const { rng, formulasAdapter } = options || {};
-    this.rng = rng || new RNG();
+    this.rng = rng || new Rand();
     this.formulas = formulasAdapter || formulas;
     // Debug instrumentation
     this.debug = Boolean(options && options.debug);

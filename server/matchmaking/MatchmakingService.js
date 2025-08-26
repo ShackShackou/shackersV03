@@ -1,8 +1,11 @@
 // MMO Matchmaking Service for LaBrute
 // Handles player matching, queue management, and tournament organization
 
+const Rand = require('../utils/Rand');
+
 class MatchmakingService {
-  constructor() {
+  constructor(rng = new Rand()) {
+    this.rng = rng;
     this.playerQueue = new Map(); // userId -> player data
     this.activeFights = new Map(); // fightId -> fight data
     this.playerStats = new Map(); // userId -> { wins, losses, rating }
@@ -107,7 +110,7 @@ class MatchmakingService {
     this.playerQueue.delete(player1.userId);
     this.playerQueue.delete(player2.userId);
 
-    const matchId = `match_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const matchId = `match_${Date.now()}_${this.rng.next().toString(36).substr(2, 9)}`;
     const match = {
       matchId,
       player1,

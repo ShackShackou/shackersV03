@@ -11,6 +11,7 @@
 // ============================================================================
 
 import { hpManager } from './HPManager.js';
+import { Rand } from './rand.js';
 
 // ================================================
 // PARTIE 1 : CONFIGURATION GLOBALE
@@ -1581,17 +1582,13 @@ export class LaBruteCombatEngine {
         this.fighter2 = fighter2;
         
         // Initialiser le RNG
-        if (typeof rng === 'function') {
+        if (rng && typeof rng.next === 'function') {
+            this.rng = () => rng.next();
+        } else if (typeof rng === 'function') {
             this.rng = rng;
         } else {
-            // RNG interne avec seed
-            this.rngSeed = rng || Date.now();
-            this.rngCounter = 0;
-            this.rng = () => {
-                this.rngCounter++;
-                const x = Math.sin(this.rngSeed + this.rngCounter * 1.234) * 10000;
-                return x - Math.floor(x);
-            };
+            const rand = new Rand(rng);
+            this.rng = () => rand.next();
         }
         
         this.activeIndex = 0;

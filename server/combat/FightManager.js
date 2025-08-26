@@ -5,6 +5,7 @@
 const { StepType, randomBetween, randomItem } = require('../engine/labrute-core/constants');
 const { getDamage } = require('../engine/labrute-core/getDamage');
 const { getFighterStat } = require('../engine/labrute-core/getFighterStat');
+const Rand = require('../utils/Rand');
 
 class FightManager {
   constructor() {
@@ -19,8 +20,9 @@ class FightManager {
    * @returns {Object} Fight result with steps for client animation
    */
   generateFight(brute1, brute2, seed = Date.now()) {
-    // Set deterministic seed for reproducible fights
-    Math.seedrandom = this.seedRandom(seed);
+    const rng = new Rand(seed);
+    const originalRandom = Math.random;
+    Math.random = rng.next.bind(rng);
 
     try {
       // Convert brute data to fighter format
@@ -98,6 +100,8 @@ class FightManager {
     } catch (error) {
       console.error('Fight generation error:', error);
       throw new Error('Combat calculation failed');
+    } finally {
+      Math.random = originalRandom;
     }
   }
 
@@ -362,15 +366,6 @@ class FightManager {
     }
   }
 
-  /**
-   * Simple seeded random number generator for deterministic fights
-   */
-  seedRandom(seed) {
-    return function() {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280;
-    };
-  }
 }
 
 module.exports = FightManager;
