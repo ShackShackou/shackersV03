@@ -22,6 +22,18 @@ An active subscription to Phaser Editor is required to load and use this templat
 | `npm start`     | Launch a development web server |
 | `npm run build` | Create a production build in the `dist` folder |
 
+## Backend Server (PostgreSQL)
+
+The backend located in the `server/` directory now uses PostgreSQL through Prisma.
+To get started:
+
+1. Install PostgreSQL and create a database named `shackers`.
+2. Create `server/.env` with a connection string like\
+   `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shackers?schema=public"`.
+3. Inside `server/`, run `npm install`, `npx prisma generate` and `npm run db:migrate`.
+
+See `server/setup.md` for more details.
+
 ## Writing Code
 
 After cloning the repo, run `npm install` from your project directory.
