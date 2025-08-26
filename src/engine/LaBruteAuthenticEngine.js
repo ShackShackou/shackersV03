@@ -8,6 +8,22 @@
 
 import { SkillName, WeaponName, PetName, StepType } from '../config/enums.js';
 
+// Modificateurs de dégâts liés aux compétences
+const SkillDamageModifiers = [
+  { skill: SkillName.herculeanStrength, percent: 0.5, opponent: false },
+  { skill: SkillName.weaponsMaster, percent: 0.5, opponent: false, weaponType: 'any' },
+  { skill: SkillName.martialArts, percent: 1.0, opponent: false, weaponType: null },
+  { skill: SkillName.fierceBrute, percent: 0, opponent: false },
+  { skill: SkillName.hammer, percent: 0, opponent: false },
+  { skill: SkillName.armor, percent: -0.25, opponent: true },
+  { skill: SkillName.toughenedSkin, percent: -0.1, opponent: true },
+  { skill: SkillName.leadSkeleton, percent: -0.5, opponent: true, weaponType: 'melee' },
+  { skill: SkillName.resistant, percent: -0.15, opponent: true },
+  { skill: SkillName.saboteur, percent: 0.3, opponent: false, weaponType: 'thrown' },
+  { skill: SkillName.bodybuilder, percent: 0.4, opponent: false, weaponType: 'heavy' },
+  { skill: SkillName.relentless, percent: 0.35, opponent: false, weaponType: 'fast' },
+];
+
 export class LaBruteAuthenticEngine {
   constructor() {
     this.fighters = [];
@@ -95,59 +111,136 @@ export class LaBruteAuthenticEngine {
    * Calcule les dégâts selon les formules officielles LaBrute
    */
   getDamage(attacker, defender, thrown = null) {
-    const base = thrown 
-      ? thrown.damage 
+    const base = thrown
+      ? thrown.damage
       : (attacker.activeWeapon?.damage || attacker.baseDamage);
-    
+
     let skillsMultiplier = 1;
-    
-    // Modificateurs de compétences (weaponsMaster, martialArts, etc.)
-    if (attacker.skills.includes(SkillName.weaponsMaster) && attacker.activeWeapon) {
-      skillsMultiplier += 0.5; // +50% avec arme
+
+    // Piledriver actif ?
+    const piledriver = attacker.activeSkills?.find((sk) =>
+      (typeof sk === 'string' ? sk === SkillName.hammer : sk.name === SkillName.hammer));
+
+    // Modificateurs des compétences du combattant
+    for (const modifier of SkillDamageModifiers) {
+      // Ignore si le combattant n'a pas la compétence
+      if (!attacker.skills.find((sk) =>
+        (typeof sk === 'string' ? sk === modifier.skill : sk.name === modifier.skill))) {
+        continue;
+      }
+
+      // Ignore si le modificateur est pour l'adversaire
+      if (modifier.opponent) {
+        continue;
+      }
+
+      // Ignore weaponsMaster et martialArts pour une arme lancée
+      if (thrown && (modifier.skill === SkillName.weaponsMaster || modifier.skill === SkillName.martialArts)) {
+        continue;
+      }
+
+      // Ignore martialArts si piledriver actif
+      if (piledriver && modifier.skill === SkillName.martialArts) {
+        continue;
+      }
+
+      // Modificateurs spécifiques aux armes
+      if (typeof modifier.weaponType !== 'undefined') {
+        if (modifier.weaponType === null) {
+          if (!attacker.activeWeapon || attacker.activeWeapon.name === WeaponName.mug) {
+            skillsMultiplier += modifier.percent ?? 0;
+          }
+        } else if (attacker.activeWeapon?.types?.includes(modifier.weaponType)) {
+          skillsMultiplier += modifier.percent ?? 0;
+        }
+      } else {
+        skillsMultiplier *= 1 + (modifier.percent ?? 0);
+      }
     }
-    
-    if (attacker.skills.includes(SkillName.martialArts) && !attacker.activeWeapon) {
-      skillsMultiplier += 1.0; // +100% à mains nues
+
+    // Modificateurs de l'adversaire
+    for (const modifier of SkillDamageModifiers) {
+      // Ignore si l'adversaire n'a pas la compétence
+      if (!defender.skills.find((sk) =>
+        (typeof sk === 'string' ? sk === modifier.skill : sk.name === modifier.skill))) {
+        continue;
+      }
+
+      // Ignore si le modificateur n'est pas pour l'adversaire
+      if (!modifier.opponent) {
+        continue;
+      }
+
+      // Ignore leadSkeleton pour les armes lancées
+      if (thrown && modifier.skill === SkillName.leadSkeleton) {
+        continue;
+      }
+
+      if (typeof modifier.weaponType !== 'undefined') {
+        if (modifier.weaponType === null) {
+          if (!attacker.activeWeapon || attacker.activeWeapon.name === WeaponName.mug) {
+            skillsMultiplier += modifier.percent ?? 0;
+          }
+        } else if (attacker.activeWeapon?.types?.includes(modifier.weaponType)) {
+          skillsMultiplier += modifier.percent ?? 0;
+        }
+      } else {
+        skillsMultiplier *= 1 + (modifier.percent ?? 0);
+      }
     }
-    
-    if (attacker.skills.includes(SkillName.fierceBrute)) {
-      skillsMultiplier *= 2; // x2 si fierceBrute actif
+
+    // x2 pour fierceBrute actif
+    if (attacker.activeSkills?.find((sk) =>
+      (typeof sk === 'string' ? sk === SkillName.fierceBrute : sk.name === SkillName.fierceBrute))) {
+      skillsMultiplier *= 2;
     }
-    
-    // Formule de dégâts officielle
+
+    // x4 pour piledriver
+    if (piledriver) {
+      skillsMultiplier *= 4;
+    }
+
     let damage = 0;
-    
+
     if (thrown) {
-      // Formule pour armes lancées
       damage = Math.floor(
         (base + attacker.strength * 0.1 + attacker.agility * 0.15)
         * (1 + this.random() * 0.5) * skillsMultiplier
       );
+    } else if (piledriver) {
+      damage = Math.floor(
+        (10 + defender.strength * 0.6)
+        * (0.8 + this.random() * 0.4) * skillsMultiplier
+      );
     } else {
-      // Formule standard
       damage = Math.floor(
         (base + attacker.strength * (0.2 + base * 0.05))
         * (0.8 + this.random() * 0.4) * skillsMultiplier
       );
     }
-    
+
+    // Arme endommagée ? -25%
+    if (attacker.activeWeapon && attacker.damagedWeapons?.includes(attacker.activeWeapon.name)) {
+      damage = Math.floor(damage * 0.75);
+    }
+
     // Coup critique (5% de base)
     const criticalChance = 0.05;
     const criticalHit = this.random() < criticalChance;
     if (criticalHit) {
-      damage = Math.floor(damage * 2); // x2 pour coup critique
+      damage = Math.floor(damage * 2);
     }
-    
+
     // Réduction par l'armure (sauf pour les armes lancées)
     if (!thrown) {
       damage = Math.ceil(damage * (1 - defender.armor));
     }
-    
+
     // Dégâts minimum de 1
     if (damage < 1) {
       damage = 1;
     }
-    
+
     return { damage, criticalHit };
   }
 

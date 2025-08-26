@@ -4,6 +4,8 @@ import EngineModule from './LaBruteEngine.js';
 import constants from '../engine/labrute-core/constants.js';
 const { LaBruteEngine } = EngineModule;
 const { StepType } = constants;
+import { LaBruteAuthenticEngine } from '../../src/engine/LaBruteAuthenticEngine.js';
+import { SkillName } from '../../src/config/enums.js';
 
 function baseBrute(overrides = {}) {
   return {
@@ -68,4 +70,33 @@ test('generates trap step with skill', () => {
   const bruteB = baseBrute({ id: 'b', name: 'B' });
   const res = engine.generateFight(bruteA, bruteB);
   assert(res.steps.some(s => s.a === StepType.Trap));
+});
+
+test('getDamage applies piledriver multiplier', () => {
+  const engine = new LaBruteAuthenticEngine();
+  const rolls = [0, 1];
+  engine.random = () => rolls.shift();
+  const attacker = engine.createDetailedFighter({ strength: 10, agility: 10 }, 0, 'L');
+  const defender = engine.createDetailedFighter({ strength: 10, agility: 10 }, 1, 'R');
+  attacker.activeSkills = [{ name: SkillName.hammer }];
+  const { damage } = engine.getDamage(attacker, defender);
+  assert.equal(damage, 51);
+});
+
+test('getDamage reduced by leadSkeleton', () => {
+  const engine = new LaBruteAuthenticEngine();
+  const makeRandom = () => { const rolls = [0, 1]; return () => rolls.shift(); };
+  const attacker = engine.createDetailedFighter({ strength: 10, agility: 10 }, 0, 'L');
+  attacker.activeWeapon = { name: 'sword', damage: 5, types: ['melee'] };
+
+  engine.random = makeRandom();
+  const defenderNoSkill = engine.createDetailedFighter({ strength: 10, agility: 10 }, 1, 'R');
+  const { damage: normal } = engine.getDamage(attacker, defenderNoSkill);
+
+  engine.random = makeRandom();
+  const defenderLead = engine.createDetailedFighter({ strength: 10, agility: 10, skills: [SkillName.leadSkeleton] }, 1, 'R');
+  const { damage: reduced } = engine.getDamage(attacker, defenderLead);
+
+  assert.equal(normal, 7);
+  assert.equal(reduced, 3);
 });
