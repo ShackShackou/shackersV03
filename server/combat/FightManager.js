@@ -9,6 +9,8 @@ const { getFighterStat } = require('../engine/labrute-core/getFighterStat');
 class FightManager {
   constructor() {
     this.activeFights = new Map(); // Store active fights for validation
+    // Periodically purge expired fights automatically
+    setInterval(() => this.cleanup(), 60 * 1000);
   }
 
   /**
@@ -19,8 +21,15 @@ class FightManager {
    * @returns {Object} Fight result with steps for client animation
    */
   generateFight(brute1, brute2, seed = Date.now()) {
-    // Set deterministic seed for reproducible fights
-    Math.seedrandom = this.seedRandom(seed);
+    // Set deterministic seed for reproducible fights and capture RNG sequence
+    const rngSequence = [];
+    const rng = this.seedRandom(seed);
+    const originalRandom = Math.random;
+    Math.random = () => {
+      const value = rng();
+      rngSequence.push(value);
+      return value;
+    };
 
     try {
       // Convert brute data to fighter format
@@ -82,6 +91,8 @@ class FightManager {
       const fightId = `${brute1.id}_${brute2.id}_${seed}`;
       this.activeFights.set(fightId, {
         ...result,
+        seed,
+        rng: rngSequence,
         timestamp: Date.now(),
         validated: false
       });
@@ -92,12 +103,16 @@ class FightManager {
         fighters: result.fighters,
         winner: result.winner,
         loser: result.loser,
-        seed: seed
+        seed,
+        rng: rngSequence
       };
 
     } catch (error) {
       console.error('Fight generation error:', error);
       throw new Error('Combat calculation failed');
+    } finally {
+      // Restore original Math.random
+      Math.random = originalRandom;
     }
   }
 

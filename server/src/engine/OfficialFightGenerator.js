@@ -10,74 +10,96 @@ const { weapons, getWeapon } = require('../../../server/engine/labrute-official/
 /**
  * Generate a complete fight using official LaBrute rules
  */
-async function generateOfficialFight(fighter1Data, fighter2Data) {
+async function generateOfficialFight(fighter1Data, fighter2Data, seed = Date.now()) {
   console.log('🎯 Generating fight with OFFICIAL LaBrute engine');
-  
-  // Initialize fighters with official stats
-  const fighters = [
-    createOfficialFighter(fighter1Data, 0),
-    createOfficialFighter(fighter2Data, 1),
-  ];
-  
-  const steps = [];
-  let turn = 0;
-  const maxTurns = 500;
-  
-  // Add arrival steps
-  steps.push({ type: 'arrive', fighter: 0 });
-  steps.push({ type: 'arrive', fighter: 1 });
-  
-  // Main combat loop
-  while (turn < maxTurns) {
-    // Determine turn order based on initiative
-    const turnOrder = determineTurnOrder(fighters);
-    
-    for (const fighterIndex of turnOrder) {
-      const fighter = fighters[fighterIndex];
-      const opponent = fighters[1 - fighterIndex];
-      
-      // Skip if fighter is dead
-      if (fighter.hp <= 0) continue;
-      
-      // Fighter turn
-      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
-      steps.push(...turnSteps);
-      
-      // Check for death
-      if (opponent.hp <= 0) {
-        steps.push({ type: 'death', fighter: 1 - fighterIndex });
-        steps.push({ 
-          type: 'end', 
-          winner: fighterIndex,
-          loser: 1 - fighterIndex 
-        });
-        
-        return {
-          steps,
-          fighters,
-          winner: fighter,
-          loser: opponent,
-        };
-      }
-    }
-    
-    turn++;
-  }
-  
-  // Time out - fighter with more HP wins
-  const winner = fighters[0].hp > fighters[1].hp ? 0 : 1;
-  steps.push({ 
-    type: 'end', 
-    winner: winner,
-    loser: 1 - winner 
-  });
-  
-  return {
-    steps,
-    fighters,
-    winner: fighters[winner],
-    loser: fighters[1 - winner],
+
+  // Seed RNG and capture sequence
+  const rngSequence = [];
+  const rng = seedRandom(seed);
+  const originalRandom = Math.random;
+  Math.random = () => {
+    const value = rng();
+    rngSequence.push(value);
+    return value;
   };
+
+  try {
+    // Initialize fighters with official stats
+    const fighters = [
+      createOfficialFighter(fighter1Data, 0),
+      createOfficialFighter(fighter2Data, 1),
+    ];
+
+    const steps = [];
+    let turn = 0;
+    const maxTurns = 500;
+
+    // Add arrival steps
+    steps.push({ type: 'arrive', fighter: 0 });
+    steps.push({ type: 'arrive', fighter: 1 });
+
+    // Main combat loop
+    while (turn < maxTurns) {
+      // Determine turn order based on initiative
+      const turnOrder = determineTurnOrder(fighters);
+
+      for (const fighterIndex of turnOrder) {
+        const fighter = fighters[fighterIndex];
+        const opponent = fighters[1 - fighterIndex];
+
+        // Skip if fighter is dead
+        if (fighter.hp <= 0) continue;
+
+        // Fighter turn
+        const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
+        steps.push(...turnSteps);
+
+        // Check for death
+        if (opponent.hp <= 0) {
+          steps.push({ type: 'death', fighter: 1 - fighterIndex });
+          steps.push({
+            type: 'end',
+            winner: fighterIndex,
+            loser: 1 - fighterIndex
+          });
+
+          const fightId = `${fighter1Data.id}_${fighter2Data.id}_${seed}`;
+          return {
+            fightId,
+            steps,
+            fighters,
+            winner: fighter,
+            loser: opponent,
+            seed,
+            rng: rngSequence,
+          };
+        }
+      }
+
+      turn++;
+    }
+
+    // Time out - fighter with more HP wins
+    const winner = fighters[0].hp > fighters[1].hp ? 0 : 1;
+    steps.push({
+      type: 'end',
+      winner: winner,
+      loser: 1 - winner
+    });
+
+    const fightId = `${fighter1Data.id}_${fighter2Data.id}_${seed}`;
+    return {
+      fightId,
+      steps,
+      fighters,
+      winner: fighters[winner],
+      loser: fighters[1 - winner],
+      seed,
+      rng: rngSequence,
+    };
+  } finally {
+    Math.random = originalRandom;
+  }
 }
 
 /**
@@ -316,8 +338,16 @@ function attemptHit(fighter, opponent) {
   if (roll < hitChance) {
     return { hit: true };
   }
-  
+
   return { hit: false };
+}
+
+// Simple seeded RNG used for deterministic fights
+function seedRandom(seed) {
+  return function() {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
 }
 
 module.exports = {
