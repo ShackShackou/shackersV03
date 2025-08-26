@@ -130,26 +130,25 @@ export function computeDodgeChance(stats) {
  * Accuracy base and weapon modifiers
  */
 export function computeAccuracy(attackerStats, weaponType) {
-  // Try LaBrute weapons first
+  // Official LaBrute logic:
+  // - Fighters have a base 90% chance to hit
+  // - Each weapon adds its accuracy as a percentage bonus
+  // - Missing accuracy data on a weapon means no additional bonus (0)
+  // - Final hit chance is capped at 98%
+  let acc = 0.90; // base 90%
+
+  // Try LaBrute weapons first for official accuracy bonuses
   const labruteWeapon = LABRUTE_WEAPONS[weaponType];
-  let weaponAcc = 0.75; // Default accuracy
-  
-  if (labruteWeapon) {
-    // LaBrute weapons have different accuracy system, many have 0
-    // Convert to reasonable accuracy values
-    if (labruteWeapon.accuracy !== undefined && labruteWeapon.accuracy > 0) {
-      weaponAcc = labruteWeapon.accuracy / 100; // Convert to percentage
-    } else {
-      // Default accuracy for LaBrute weapons without specific accuracy
-      weaponAcc = 0.85; // Good default hit chance
-    }
+  if (labruteWeapon && typeof labruteWeapon.accuracy === 'number') {
+    acc += labruteWeapon.accuracy * 0.01; // convert bonus from 0-100 to 0-1
   } else if (weaponType && weaponStats[weaponType] && typeof weaponStats[weaponType].accuracy === 'number') {
-    weaponAcc = weaponStats[weaponType].accuracy;
+    // Our custom weapons use direct accuracy values
+    acc = weaponStats[weaponType].accuracy;
   }
-  
+
   const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
   const bonus = (attackerStats.accuracyBonus || 0) + (agg.accuracy || 0);
-  return clamp01(weaponAcc + bonus);
+  return Math.min(0.98, acc + bonus); // official cap
 }
 
 /**
