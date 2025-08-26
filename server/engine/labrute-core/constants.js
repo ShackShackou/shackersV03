@@ -20,6 +20,7 @@ const StepType = {
   Saboteur: 'saboteur',
   SkillActivate: 'skillActivate',
   SkillExpire: 'skillExpire',
+  Spy: 'spy',
   Trap: 'trap',
   Bomb: 'bomb',
   Hammer: 'hammer',

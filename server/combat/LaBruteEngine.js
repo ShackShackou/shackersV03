@@ -12,44 +12,8 @@
  */
 
 // ===== TYPES DE STEPS OFFICIELS =====
-const StepType = {
-  Saboteur: 0,
-  Leave: 1,
-  Arrive: 2,
-  Trash: 3,
-  Steal: 4,
-  Trap: 5,
-  Heal: 6,
-  Resist: 7,
-  Survive: 8,
-  Hit: 9,
-  FlashFlood: 10,
-  Hammer: 11,
-  Poison: 12,
-  Bomb: 13,
-  Hypnotise: 14,
-  Move: 15,
-  Eat: 16,
-  MoveBack: 17,
-  Equip: 18,
-  AttemptHit: 19,
-  Block: 20,
-  Evade: 21,
-  Sabotage: 22,
-  Disarm: 23,
-  Death: 24,
-  Throw: 25,
-  End: 26,
-  Counter: 27,
-  SkillActivate: 28,
-  SkillExpire: 29,
-  Spy: 30,
-  Vampirism: 31,
-  Haste: 32,
-  Treat: 33,
-  DropShield: 34,
-  Regeneration: 35
-};
+// Utilise l'énumération commune basée sur des chaînes pour éviter les divergences
+const { StepType } = require('../engine/labrute-core/constants');
 
 // ===== ARMES OFFICIELLES AVEC VRAIES STATS =====
 const WeaponData = {
