@@ -573,7 +573,7 @@ export class CombatEngine {
     attacker.stats.stamina -= 20;
     
     // Check for counter-attack chance BEFORE the attack
-    const counterChance = this.formulas.computeCounterChance(defender.stats);
+    const counterChance = this.formulas.computeCounterChance(attacker.stats, defender.stats);
     const willCounter = defender.stats.stamina >= 25 && this.rng.chance(counterChance);
     this.logDebug('counter_check', { attacker: attacker.stats.name, defender: defender.stats.name, counterChance, willCounter, defenderStamina: defender.stats.stamina });
     
@@ -600,7 +600,7 @@ export class CombatEngine {
     }
     
     // Block check based on defender's defense stat
-    const blockChance = this.formulas.computeBlockChance(defender.stats);
+    const blockChance = this.formulas.computeBlockChance(attacker.stats, defender.stats);
     const hasStaminaForBlock = defender.stats.stamina >= 15;
     const blockSuccess = hasStaminaForBlock && this.rng.float() < blockChance;
     this.logDebug('block_check', { attacker: attacker.stats.name, defender: defender.stats.name, blockChance, hasStaminaForBlock, blockSuccess });
@@ -633,7 +633,7 @@ export class CombatEngine {
     
     // Dodge check based on defender's agility
     // AGI provides a 0.8% chance to dodge per point.
-    const dodgeChance = this.formulas.computeDodgeChance(defender.stats);
+    const dodgeChance = this.formulas.computeDodgeChance(attacker.stats, defender.stats);
     const dodgeSuccess = this.rng.float() < dodgeChance;
     this.logDebug('dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
     
@@ -700,7 +700,7 @@ export class CombatEngine {
     finalDamage = Math.max(1, finalDamage - Math.floor(effectiveDefense * 0.5));
     
     // Weapon-specific critical hit chances via formulas adapter
-    const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
+    const criticalChance = this.formulas.computeCritChance(attacker.stats);
     const critical = this.rng.float() < criticalChance;
     if (critical) {
       finalDamage *= 2;
