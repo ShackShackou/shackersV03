@@ -6,7 +6,8 @@
  * server implementation is authoritative.
  */
 
-import { SkillName, WeaponName, PetName, StepType } from '../config/enums.js';
+import constants from '../../server/engine/labrute-core/constants.js';
+const { SkillName, WeaponName, PetName, StepType } = constants;
 
 export class LaBruteAuthenticEngine {
   constructor() {
@@ -166,15 +167,12 @@ export class LaBruteAuthenticEngine {
       this.fighters[1].initiative = 0;
     }
     
-    // Step d'initialisation
-    this.steps.push({
-      a: StepType.Init,
-      fighters: this.fighters.map(f => ({
-        index: f.index,
-        name: f.name,
-        hp: f.hp,
-        maxHp: f.maxHp
-      }))
+    // Steps d'arrivée
+    this.fighters.forEach((fighter) => {
+      this.steps.push({
+        a: StepType.Arrive,
+        f: fighter.index,
+      });
     });
   }
 
@@ -286,34 +284,3 @@ export class LaBruteAuthenticEngine {
     }));
   }
 }
-
-// Enum des types de steps (basé sur LaBrute officiel)
-export const StepTypes = {
-  Init: 'init',
-  Move: 'move',
-  MoveBack: 'moveBack',
-  Hit: 'hit',
-  Miss: 'miss',
-  Block: 'block',
-  Evade: 'evade',
-  Counter: 'counter',
-  Throw: 'throw',
-  Heal: 'heal',
-  Death: 'death',
-  End: 'end',
-  Hammer: 'hammer',
-  Poison: 'poison',
-  FlashFlood: 'flashFlood',
-  Bomb: 'bomb',
-  Vampirism: 'vampirism',
-  Haste: 'haste',
-  Resist: 'resist',
-  Survive: 'survive',
-  Skill: 'skill',
-  Equip: 'equip',
-  Saboteur: 'saboteur',
-  Disarm: 'disarm',
-  Steal: 'steal',
-  Trap: 'trap',
-  NetTrap: 'netTrap'
-};
