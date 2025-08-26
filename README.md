@@ -75,6 +75,14 @@ The project requires the following script libraries:
 
 You can add your script nodes to the `src/script-nodes` folder.
 
+## Mode de combats personnalisés
+
+Le constructeur de `CombatEngine` accepte un drapeau `enableCustomMoves`.
+Lorsqu'il est activé, le moteur charge des coups spéciaux additionnels qui
+modifient le déroulement des combats (Berserker Rage, Defensive Shield, etc.).
+Ce mode est **désactivé par défaut** afin de rester fidèle au comportement du
+jeu original.
+
 ## Join the Phaser Community!
 
 We love to see what developers like you create with Phaser! It really motivates us to keep improving. So please join our community and show off your work 😄

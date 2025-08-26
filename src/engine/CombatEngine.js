@@ -80,9 +80,22 @@ export class CombatEngine {
     
     // Initialize pets if fighters have them
     this.initializePets();
-    
-    // Initialize special moves for both fighters
-    this.initializeSpecialMoves();
+
+    // Flag to enable custom special moves (disabled by default)
+    this.enableCustomMoves = Boolean(options.enableCustomMoves);
+
+    if (this.enableCustomMoves) {
+      // Initialize special moves for both fighters
+      this.initializeSpecialMoves();
+    } else {
+      // Ensure structure exists but skip custom moves to match original behavior
+      this.specialMoves = {};
+      [this.fighter1, this.fighter2].forEach(fighter => {
+        fighter.specialMoves = { unlocked: [], active: {} };
+      });
+      // Still calculate initiative even when special moves are disabled
+      this.calculateInitiative();
+    }
   }
   
   initializePets() {
