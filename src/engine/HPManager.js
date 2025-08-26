@@ -151,64 +151,6 @@ export class HPManager {
     }
 
     /**
-     * Apply damage to a fighter
-     * @param {string} fighterName - Name of the fighter
-     * @param {number} damage - Amount of damage to apply
-     * @returns {Object} Result with new HP and if fighter died
-     */
-    applyDamage(fighterName, damage) {
-        const fighter = this.fighters.get(fighterName);
-        if (!fighter) {
-            this.log(`Fighter not found: ${fighterName}`);
-            return null;
-        }
-
-        // Protection against damage on dead fighters
-        if (fighter.isDead) {
-            this.log(`Fighter ${fighterName} is already dead, ignoring damage`);
-            return {
-                newHp: 0,
-                isDead: true,
-                damageDealt: 0
-            };
-        }
-
-        const oldHp = fighter.currentHp;
-        const actualDamage = Math.min(damage, fighter.currentHp); // Overhit protection
-        fighter.currentHp = Math.max(0, fighter.currentHp - actualDamage);
-        
-        // Check for death
-        if (fighter.currentHp <= 0) {
-            fighter.isDead = true;
-            this.log(`Fighter ${fighterName} has died!`);
-        }
-
-        this.log(`${fighterName}: ${oldHp} HP - ${actualDamage} dmg = ${fighter.currentHp} HP`);
-        
-        // Add to history
-        this.addToHistory('damage', fighterName, {
-            damage: actualDamage,
-            oldHp,
-            newHp: fighter.currentHp
-        });
-        
-        // Notify listeners
-        this.notifyListeners('damage', {
-            fighter: fighterName,
-            damage: actualDamage,
-            oldHp,
-            newHp: fighter.currentHp,
-            isDead: fighter.isDead
-        });
-        
-        return {
-            newHp: fighter.currentHp,
-            isDead: fighter.isDead,
-            damageDealt: actualDamage
-        };
-    }
-
-    /**
      * Applique des soins à un combattant
      */
     applyHeal(fighterId, healAmount) {
