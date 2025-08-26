@@ -21,12 +21,15 @@ An active subscription to Phaser Editor is required to load and use this templat
 | `npm install`   | Install project dependencies |
 | `npm start`     | Launch a development web server |
 | `npm run build` | Create a production build in the `dist` folder |
+| `npm test`      | Run the server tests from the project root |
 
 ## Writing Code
 
 After cloning the repo, run `npm install` from your project directory.
 
 To start the local development server use `npm run dev`.
+
+To run the test suite, execute `npm test` from the project root. This forwards the command to the server package.
 
 ## Deploying to Production
 
