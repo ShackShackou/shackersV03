@@ -13,6 +13,7 @@ export {
   computeAccuracy,
   computeBaseDamage,
   computeDamageVariation,
+  computeThrowDamage,
   computeCritChance,
   computeComboChance,
   computeMaxCombo,
