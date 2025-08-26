@@ -2,14 +2,64 @@
 // Purpose: centralize combat formulas so we can later map to official LaBrute mechanics
 // Current implementation mirrors existing in-engine behavior for parity.
 
-import { weaponStats, getWeaponDamageModifier } from '../game/weapons.js';
-import { SkillModifiers, FightStat } from '../game/skills.js';
+import { weaponStats, getWeaponDamageModifier, WeaponType } from '../game/weapons.js';
+import { SkillModifiers, FightStat, SkillName } from '../game/skills.js';
 import { LABRUTE_WEAPONS } from './labrute-complete.js';
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
   if (Number.isNaN(v)) return 0;
   return Math.max(0, Math.min(0.99, v));
+}
+
+// Base fighter stats when no weapon is equipped (critical related)
+const BASE_FIGHTER_STATS = {
+  critical: 0,
+  criticalDamage: 2,
+};
+
+// Skill damage modifiers adapted from official LaBrute data
+// Only the subset useful for current engine is included
+export const SkillDamageModifiers = [
+  // Fighter skills that increase damage
+  { skill: SkillName.herculeanStrength, percent: 0.5, opponent: false },
+  { skill: SkillName.weaponsMaster, percent: 0.5, opponent: false, weaponType: 'any' },
+  { skill: SkillName.martialArts, percent: 1.0, opponent: false, weaponType: null },
+  { skill: SkillName.fierceBrute, percent: 1.0, opponent: false }, // x2 damage
+  { skill: SkillName.hammer, percent: 3.0, opponent: false }, // x4 damage
+
+  // Opponent skills that reduce damage
+  { skill: SkillName.armor, percent: -0.25, opponent: true },
+  { skill: SkillName.toughenedSkin, percent: -0.1, opponent: true },
+  { skill: SkillName.leadSkeleton, percent: -0.5, opponent: true, weaponType: 'melee' },
+  { skill: SkillName.resistant, percent: -0.15, opponent: true },
+
+  // Weapon specific modifiers
+  { skill: SkillName.saboteur, percent: 0.3, opponent: false, weaponType: WeaponType.THROWN },
+  { skill: SkillName.bodybuilder, percent: 0.4, opponent: false, weaponType: WeaponType.HEAVY },
+  { skill: SkillName.relentless, percent: 0.35, opponent: false, weaponType: WeaponType.FAST },
+];
+
+// Aggregate weapon and skill bonuses for critical stats
+export function getFighterStat(fighter, stat, onlyStat) {
+  if (!fighter) return BASE_FIGHTER_STATS[stat] || 0;
+
+  const stats = fighter.stats || {};
+  let total = onlyStat === 'weapon' ? 0 : (stats[stat] || 0);
+
+  if (onlyStat !== 'fighter') {
+    if (fighter.hasWeapon && fighter.weaponType) {
+      const weapon = weaponStats[fighter.weaponType];
+      if (weapon) {
+        if (stat === 'critical') total += weapon.critChance || 0;
+        else if (stat === 'criticalDamage') total += weapon.critDamage || 0;
+      }
+    } else {
+      total += BASE_FIGHTER_STATS[stat] || 0;
+    }
+  }
+
+  return total;
 }
 
 // Aggregate skill effects relevant to formulas
@@ -191,14 +241,59 @@ export function computeDamageVariation(rng) {
 }
 
 /**
- * Critical chance: base 10%, overridable by weapon stats
+ * Compute final damage between attacker and defender
+ * Applies skill damage modifiers and critical hit
  */
-export function computeCritChance(weaponType) {
-  let criticalChance = 0.10;
-  if (weaponType && weaponStats[weaponType]) {
-    criticalChance = weaponStats[weaponType].critChance || 0.10;
+export function computeDamage(attacker, defender, rng, damageModifier = 1) {
+  let baseDamage = computeBaseDamage(attacker.stats, attacker.hasWeapon, attacker.weaponType);
+
+  // Base variation
+  const variation = computeDamageVariation(rng);
+
+  // Skill damage modifiers
+  let skillsMultiplier = 1;
+  const attackerSkills = attacker.stats?.skills || [];
+  const defenderSkills = defender.stats?.skills || [];
+  const weaponType = attacker.weaponType ? weaponStats[attacker.weaponType]?.type : undefined;
+
+  for (const modifier of SkillDamageModifiers) {
+    const hasSkill = modifier.opponent ? defenderSkills.includes(modifier.skill) : attackerSkills.includes(modifier.skill);
+    if (!hasSkill) continue;
+
+    // Check weapon type conditions
+    if (typeof modifier.weaponType !== 'undefined') {
+      if (modifier.weaponType === null) {
+        if (attacker.hasWeapon) continue;
+      } else if (modifier.weaponType === 'any') {
+        if (!attacker.hasWeapon) continue;
+      } else if (modifier.weaponType === 'melee') {
+        if (!attacker.hasWeapon || weaponType === WeaponType.THROWN) continue;
+      } else if (weaponType !== modifier.weaponType) {
+        continue;
+      }
+    }
+
+    skillsMultiplier *= 1 + (modifier.percent || 0);
   }
-  return criticalChance;
+
+  let damage = Math.floor(baseDamage * variation * skillsMultiplier * damageModifier);
+
+  // Critical hit
+  const critChance = getFighterStat(attacker, 'critical');
+  const critical = rng.float() < critChance;
+  if (critical) {
+    const critMult = getFighterStat(attacker, 'criticalDamage');
+    damage = Math.floor(damage * critMult);
+  }
+
+  return { damage, critical };
+}
+
+/**
+ * Critical chance from fighter stats and weapon
+ */
+export function computeCritChance(attacker) {
+  return clamp01(getFighterStat(attacker, 'critical'));
 }
 
 /**
@@ -225,6 +320,7 @@ export default {
   computeDodgeChance,
   computeAccuracy,
   computeBaseDamage,
+  computeDamage,
   computeDamageVariation,
   computeCritChance,
   computeComboChance,

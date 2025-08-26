@@ -659,45 +659,27 @@ export class CombatEngine {
       };
     }
     
-    // Calculate base damage via formulas adapter
-    let baseDamage = this.formulas.computeBaseDamage(attacker.stats, attacker.hasWeapon, attacker.weaponType);
-    
-    // Berserker rage DISABLED for faster combat
-    // if (attacker.specialMoves.active.berserkerRage) {
-    //   baseDamage *= this.specialMoves.berserkerRage.multiplier;
-    // }
-    
-    // RNG damage variation (±25%)
-    const damageVariation = this.formulas.computeDamageVariation(this.rng);
-    let finalDamage = Math.floor(baseDamage * damageVariation * damageModifier);
-    
+    // Calculate damage via formulas adapter (includes crit handling)
+    const dmgRes = this.formulas.computeDamage(attacker, defender, this.rng, damageModifier);
+    let finalDamage = dmgRes.damage;
+
     // Apply defense
     let effectiveDefense = defender.stats.defense;
-    
+
     // Defensive shield DISABLED for faster combat
     // if (defender.specialMoves.active.defensiveShield) {
     //   finalDamage *= this.specialMoves.defensiveShield.multiplier;
     // }
-    
+
     // La défense réduit les dégâts mais ne peut pas les annuler complètement
     // Minimum 1 dégât si l'attaque touche
     finalDamage = Math.max(1, finalDamage - Math.floor(effectiveDefense * 0.5));
-    
-    // Weapon-specific critical hit chances via formulas adapter
-    const criticalChance = this.formulas.computeCritChance(attacker.weaponType);
-    const critical = this.rng.float() < criticalChance;
-    if (critical) {
-      finalDamage *= 2;
-    }
+
     this.logDebug('damage_calc', {
       attacker: attacker.stats.name,
       defender: defender.stats.name,
-      baseDamage,
-      damageVariation,
-      effectiveDefense,
-      criticalChance,
-      critical,
       finalDamage,
+      critical: dmgRes.critical,
       damageModifier
     });
     
