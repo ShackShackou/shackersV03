@@ -11,6 +11,7 @@
 // ============================================================================
 
 import { hpManager } from './HPManager.js';
+// @ts-ignore - JSON data without types
 import LABRUTE_WEAPONS from '../game/data/labrute-weapons.json' assert { type: 'json' };
 
 // ================================================
