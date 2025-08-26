@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { generateFight, BOSS_GOLD_REWARD } = require('./generateFight');
+const { generateFight, BOSS_GOLD_REWARD, BOSS_XP_REWARD } = require('./generateFight');
 
 test('achievements store tracks wins and losses', () => {
   const team1 = { brutes: [{ id: 'a', name: 'A', strength: 100, hp: 100 }] };
@@ -27,14 +27,13 @@ test('handles boss fights and rewards gold', () => {
   const seq = [0.1, 0.2, 0.3, 0.4, 0.5];
   let i = 0;
   Math.random = () => { const r = seq[i % seq.length]; i += 1; return r; };
-  const team1 = { brutes: [{ id: 'a', name: 'A', strength: 100, hp: 100 }] };
-  const team2 = {
-    bosses: [{ id: 'boss1', name: 'Boss', hp: 30, level: 1, count: 2 }],
-  };
+  const team1 = { brutes: [{ id: 'a', name: 'A', strength: 1000000, hp: 1000000 }] };
+  const team2 = { bosses: true };
   try {
     const result = generateFight({ team1, team2 });
     assert.strictEqual(result.boss.defeated, true);
     assert.strictEqual(result.boss.gold, BOSS_GOLD_REWARD);
+    assert.strictEqual(result.boss.xp, BOSS_XP_REWARD);
   } finally {
     Math.random = originalRandom;
   }
