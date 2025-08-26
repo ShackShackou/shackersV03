@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import { CombatEngine } from '../engine/CombatEngine.js';
 import { UIManager } from '../ui/UIManager.js';
-import { getRandomPet, PetName } from '../game/pets.js';
+import * as pets from '../game/pets.js';
+import * as customPets from '../game/pets_custom.js';
+const CUSTOM_MODE = (typeof process !== 'undefined' && process.env.CUSTOM_MODE) || (import.meta.env && import.meta.env.VITE_CUSTOM_MODE);
+const { getRandomPet, PetName } = CUSTOM_MODE ? customPets : pets;
 import { getRandomSkill, applySkillModifiers } from '../game/skills.js';
 import { getRandomWeapon } from '../game/weapons.js';
 
@@ -299,15 +302,10 @@ export class FightScene extends Phaser.Scene {
         petColor = 0x2F2F2F; // Dark gray
         petSize = { width: 35, height: 25 };
         break;
-      case PetName.dog1:
-      case PetName.dog2:
-      case PetName.dog3:
+      default: // Dogs and other variants
         petColor = 0x964B00; // Dark brown
         petSize = { width: 30, height: 20 };
         break;
-      default:
-        petColor = 0x666666;
-        petSize = { width: 25, height: 20 };
     }
     
     const petX = fighter.baseX + offsetX;

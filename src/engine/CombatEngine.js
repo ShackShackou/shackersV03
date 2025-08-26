@@ -1,4 +1,7 @@
-import { createPet } from '../game/pets.js';
+import * as pets from '../game/pets.js';
+import * as customPets from '../game/pets_custom.js';
+const CUSTOM_MODE = (typeof process !== 'undefined' && process.env.CUSTOM_MODE) || (import.meta.env && import.meta.env.VITE_CUSTOM_MODE);
+const { createPet } = CUSTOM_MODE ? customPets : pets;
 import { RNG } from './rng.js';
 import formulas from './formulas.js';
 

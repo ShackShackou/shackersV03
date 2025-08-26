@@ -24,7 +24,7 @@
         "test:combat": "node scripts/runCombatTest.mjs",
         "test:combat:snap": "node scripts/runCombatTest.mjs --snapshot --seed=42",
         "test:combat:debug": "node scripts/runCombatTest.mjs --debug --seed=42",
-        "test:combat:debug:pets": "node scripts/runCombatTest.mjs --debug --pets --petA=panther --petB=dog1 --seed=42 --snapshot --output=.snapshots/fights/seed-42-debug-pets.json",
+        "test:combat:debug:pets": "node scripts/runCombatTest.mjs --debug --pets --petA=panther --petB=dog --seed=42 --snapshot --output=.snapshots/fights/seed-42-debug-pets.json",
         "test:combat:exact": "node scripts/runCombatTest.mjs --formulas=exact",
         "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42"
     },

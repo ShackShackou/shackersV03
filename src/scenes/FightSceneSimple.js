@@ -1,7 +1,10 @@
 import { CombatEngine } from '../engine/CombatEngine.js';
 import { UIManager } from '../ui/UIManager.js';
 import { applySkillModifiers, getRandomSkill } from '../game/skills.js';
-import { getRandomPet } from '../game/pets.js';
+import * as pets from '../game/pets.js';
+import * as customPets from '../game/pets_custom.js';
+const CUSTOM_MODE = (typeof process !== 'undefined' && process.env.CUSTOM_MODE) || (import.meta.env && import.meta.env.VITE_CUSTOM_MODE);
+const { getRandomPet } = CUSTOM_MODE ? customPets : pets;
 
 export class FightScene extends Phaser.Scene {
   constructor() {
