@@ -24,13 +24,23 @@
         "test:combat:debug": "node scripts/runCombatTest.mjs --debug --seed=42",
         "test:combat:debug:pets": "node scripts/runCombatTest.mjs --debug --pets --petA=panther --petB=dog1 --seed=42 --snapshot --output=.snapshots/fights/seed-42-debug-pets.json",
         "test:combat:exact": "node scripts/runCombatTest.mjs --formulas=exact",
-        "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42"
+        "test:combat:exact:debug": "node scripts/runCombatTest.mjs --formulas=exact --debug --seed=42",
+        "export-meta": "tsx scripts/export-meta.ts",
+        "build-sheets": "tsx scripts/build-sheets.ts",
+        "prebuild": "npm run export-meta && npm run build-sheets"
     },
     "devDependencies": {
         "phaser-asset-pack-hashing": "^1.0.6",
         "terser": "^5.28.1",
         "typescript": "^5.3.3",
-        "vite": "^5.1.4"
+        "vite": "^5.1.4",
+        "fast-csv": "^4.3.6",
+        "sharp": "^0.33.1",
+        "spritesmith": "^1.0.2",
+        "tsx": "^4.7.0",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.1",
+        "@types/jest": "^29.5.6"
     },
     "dependencies": {
         "@esotericsoftware/spine-phaser": "^4.1.55",
