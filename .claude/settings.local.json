@@ -47,7 +47,9 @@
       "Bash(gh auth:*)",
       "Bash(where gh)",
       "Bash(powershell:*)",
-      "Bash(start https://github.com/ShackShackou/shackersV03/compare/main...codex/add-logic-for-remaining-combat-steps)"
+      "Bash(start https://github.com/ShackShackou/shackersV03/compare/main...codex/add-logic-for-remaining-combat-steps)",
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
