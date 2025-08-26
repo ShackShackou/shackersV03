@@ -1,9 +1,8 @@
 // ================================================
-// 💪 SKILLS/COMPÉTENCES LABRUTE (30 skills)
+// 💪 SKILLS/COMPÉTENCES LABRUTE (GÉNÉRÉES)
 // ================================================
 
-export { LABRUTE_SKILLS } from '../engine/labrute-complete.js';
+import LABRUTE_SKILLS from './data/labrute-skills.json' assert { type: 'json' };
 
-// Export direct pour compatibilité
-import { LABRUTE_SKILLS } from '../engine/labrute-complete.js';
+export { LABRUTE_SKILLS };
 export default LABRUTE_SKILLS;

@@ -1,9 +1,8 @@
 // ================================================
-// 🗡️ ARMES OFFICIELLES LABRUTE (28 armes)
+// 🗡️ ARMES OFFICIELLES LABRUTE (GÉNÉRÉES)
 // ================================================
 
-export { LABRUTE_WEAPONS } from '../engine/labrute-complete.js';
+import LABRUTE_WEAPONS from './data/labrute-weapons.json' assert { type: 'json' };
 
-// Export direct pour compatibilité
-import { LABRUTE_WEAPONS } from '../engine/labrute-complete.js';
+export { LABRUTE_WEAPONS };
 export default LABRUTE_WEAPONS;
