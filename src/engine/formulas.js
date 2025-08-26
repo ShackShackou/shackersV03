@@ -4,7 +4,7 @@
 
 import { weaponStats } from '../game/weapons.js';
 import { SkillModifiers, FightStat } from '../game/skills.js';
-import { LABRUTE_WEAPONS } from '../game/labrute-weapons.js';
+import { LABRUTE_WEAPONS } from './labrute-complete.js';
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
@@ -77,37 +77,40 @@ export function computeInitiative(stats, rng) {
 }
 
 /**
- * Counter chance: base 1% per counter point
+ * Counter chance based on official LaBrute logic
+ * @param {object} attacker stats of the attacker
+ * @param {object} defender stats of the potential counter attacker
+ * value = (defender.counter * 10 + reachDiff) * 0.1
  */
-// Every compute function below now accepts both attacker and defender stats.
-// For most formulas the second parameter (defender) is the one actually used
-// but we keep the attacker around to match the official engine signature and
-// allow future cross-stat interactions.
-
-export function computeCounterChance(attackerStats, defenderStats) {
-  const stats = defenderStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const base = (stats.counter || 0) * 0.01;
-  return clamp01(base + (agg.counter || 0));
+export function computeCounterChance(attacker = {}, defender = {}) {
+  const reachAtt = (attacker.reach || 0) + (attacker.weaponReach || 0);
+  const reachDef = (defender.reach || 0) + (defender.weaponReach || 0);
+  const reachDiff = reachDef - reachAtt;
+  const counter = defender.counter || 0;
+  return clamp01((counter * 10 + reachDiff) * 0.1);
 }
 
 /**
  * Counter damage: 50% of defender strength with ±20% variation (0.8..1.2)
  */
-export function computeCounterDamage(attackerStats, defenderStats, rng) {
-  const adjusted = getAdjustedStats(defenderStats || {});
+export function computeCounterDamage(stats, rng) {
+  const adjusted = getAdjustedStats(stats);
   return Math.floor(adjusted.strength * 0.5 * (0.8 + rng.float() * 0.4));
 }
 
 /**
- * Block chance: base 1% per defense point
+ * Block chance from official fight methods
+ * chance = min(block - accuracy, 0.9)
  */
-export function computeBlockChance(attackerStats, defenderStats) {
-  const stats = defenderStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const base = (stats.defense || 0) * 0.01;
-  const extra = (stats.blockChance || 0) + (agg.block || 0);
-  return clamp01(base + extra);
+export function computeBlockChance(attacker = {}, defender = {}, { thrown = false, ease = 1 } = {}) {
+  let block = defender.block;
+  if (block == null) {
+    const agg = aggregateFromSkills(defender && defender.skills);
+    block = (defender.defense || 0) * 0.01 + (defender.blockChance || 0) + (agg.block || 0);
+  }
+  const accuracy = attacker.accuracy || 0;
+  const raw = Math.min(block - accuracy, 0.9 * ease);
+  return clamp01(raw / ease);
 }
 
 /**
@@ -115,29 +118,41 @@ export function computeBlockChance(attackerStats, defenderStats) {
  * potential = STR * (0.75..1.25)
  * final = potential - floor(potential * reduction)
  */
-export function computeBlockDamage(attackerStats, defenderStats, rng, damageReduction = 0.75) {
-  const adjusted = getAdjustedStats(attackerStats || {});
+export function computeBlockDamage(attackerStats, rng, damageReduction = 0.75) {
+  const adjusted = getAdjustedStats(attackerStats);
   const potentialDamage = Math.floor(adjusted.strength * (0.75 + (rng.float() * 0.5)));
   const blockedDamage = Math.floor(potentialDamage * damageReduction);
   return potentialDamage - blockedDamage;
 }
 
 /**
- * Dodge chance: agility provides 0.8% per point
+ * Dodge (evade) chance from official fight methods
+ * chance = min(evasion + agilityDiff*0.01 - accuracy - dexterity, 0.9)
  */
-export function computeDodgeChance(attackerStats, defenderStats) {
-  const stats = defenderStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const adjusted = getAdjustedStats(stats);
-  const base = (adjusted.agility || 0) * 0.008;
-  const extra = (stats.evasionBonus || 0) + (agg.evasion || 0);
-  return clamp01(base + extra);
+export function computeDodgeChance(attacker = {}, defender = {}, difficulty = 1) {
+  let evasion = defender.evasion;
+  if (evasion == null) {
+    const agg = aggregateFromSkills(defender && defender.skills);
+    const adjusted = getAdjustedStats(defender);
+    evasion = (adjusted.agility || 0) * 0.008 + (defender.evasionBonus || 0) + (agg.evasion || 0);
+  }
+  const agilityDifference = Math.min(
+    Math.max(-40, ((defender.agility || 0) - (attacker.agility || 0)) * 2),
+    40,
+  );
+  const accuracy = attacker.accuracy || 0;
+  const dexterity = attacker.dexterity || 0;
+  const raw = Math.min(
+    evasion + agilityDifference * 0.01 - accuracy - dexterity,
+    0.9 * difficulty,
+  );
+  return clamp01(raw / difficulty);
 }
 
 /**
  * Accuracy base and weapon modifiers
  */
-export function computeAccuracy(attackerStats, defenderStats, weaponType) {
+export function computeAccuracy(attackerStats, weaponType) {
   // Official LaBrute logic:
   // - Fighters have a base 90% chance to hit
   // - Each weapon adds its accuracy as a percentage bonus
@@ -154,19 +169,20 @@ export function computeAccuracy(attackerStats, defenderStats, weaponType) {
     acc = weaponStats[weaponType].accuracy;
   }
 
-  const stats = attackerStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const bonus = (stats.accuracyBonus || 0) + (agg.accuracy || 0);
+  const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
+  const bonus = (attackerStats.accuracyBonus || 0) + (agg.accuracy || 0);
   return Math.min(0.98, acc + bonus); // official cap
 }
 
 /**
  * Base damage from strength + weapon modifier (or fists boost)
- * Using official LaBrute weapon damage values already normalized
- * according to the official formula.
+ * Using official LaBrute weapon damage values
+ * FORMULE OFFICIELLE LABRUTE:
+ * - Avec arme: damage = (weapon_damage / 10) + strength
+ * - Sans arme: damage = strength
  */
-export function computeBaseDamage(attackerStats, defenderStats, hasWeapon, weaponType) {
-  const adjusted = getAdjustedStats(attackerStats || {});
+export function computeBaseDamage(attackerStats, hasWeapon, weaponType) {
+  const adjusted = getAdjustedStats(attackerStats);
 
   // VRAIE FORMULE OFFICIELLE LABRUTE (vérifiée dans getDamage.ts)
   // damage = (base + strength * (0.2 + base * 0.05)) * variation * skillMultiplier
@@ -202,45 +218,42 @@ export function computeDamageVariation(rng) {
 }
 
 /**
- * Critical chance: base 10%, overridable by weapon stats
+ * Thrown weapon damage from official formula
  */
-export function computeCritChance(attackerStats, defenderStats, weaponType) {
-  let criticalChance = 0.10;
-  const weapon = weaponStats[weaponType];
-  if (weapon) {
-    const wc = weapon.critChance ?? weapon.criticalChance;
-    if (typeof wc === 'number') {
-      criticalChance = wc || 0.10;
-    }
+export function computeThrowDamage(attackerStats, weaponType, rng) {
+  let base = 0;
+  const labruteWeapon = LABRUTE_WEAPONS[weaponType];
+  if (labruteWeapon && labruteWeapon.damage) {
+    base = labruteWeapon.damage;
+  } else if (weaponType && weaponStats[weaponType] && weaponStats[weaponType].damage) {
+    base = weaponStats[weaponType].damage;
   }
-  return criticalChance;
+  const raw = base
+    + (attackerStats.strength || 0) * 0.1
+    + (attackerStats.agility || 0) * 0.15;
+  return Math.floor(raw * (1 + rng.float() * 0.5));
+}
+
+/**
+ * Critical hit chance from fighter stats (base 5%)
+ */
+export function computeCritChance(stats = {}) {
+  return stats.criticalChance ?? 0.05;
 }
 
 /**
  * Combo chance and length helpers
  */
-export function computeComboChance(attackerStats, defenderStats) {
-  const stats = attackerStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const comboPoints = (stats.combo || 0) + (stats.comboBonus || 0) + (agg.combo || 0);
+export function computeComboChance(attackerStats) {
+  const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
+  const comboPoints = (attackerStats.combo || 0) + (attackerStats.comboBonus || 0) + (agg.combo || 0);
   return clamp01(comboPoints * 0.15); // 15% per combo point
 }
 
-export function computeMaxCombo(attackerStats, defenderStats) {
-  const stats = attackerStats || {};
-  const agg = aggregateFromSkills(stats && stats.skills);
-  const comboPoints = (stats.combo || 0) + (stats.comboBonus || 0) + (agg.combo || 0);
+export function computeMaxCombo(attackerStats) {
+  const agg = aggregateFromSkills(attackerStats && attackerStats.skills);
+  const comboPoints = (attackerStats.combo || 0) + (attackerStats.comboBonus || 0) + (agg.combo || 0);
   return Math.min(5, 3 + Math.floor((comboPoints || 0) / 2));
-}
-
-/**
- * Damage for a thrown weapon using the official base formula.
- * weaponDamage should be the intrinsic damage of the thrown weapon.
- */
-export function computeThrowDamage(attackerStats, defenderStats, rng, weaponDamage = 0) {
-  const adjusted = getAdjustedStats(attackerStats || {});
-  const base = weaponDamage + adjusted.strength * 0.1 + adjusted.agility * 0.15;
-  return Math.floor(base * (1 + rng.float() * 0.5));
 }
 
 export default {
@@ -253,8 +266,8 @@ export default {
   computeAccuracy,
   computeBaseDamage,
   computeDamageVariation,
+  computeThrowDamage,
   computeCritChance,
   computeComboChance,
   computeMaxCombo,
-  computeThrowDamage,
 };
