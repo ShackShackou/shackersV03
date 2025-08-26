@@ -255,15 +255,15 @@ function getFinalStats(brute) {
 }
 
 // ===== CALCUL DES STATS DE COMBAT =====
-function getCombatStats(fighter) {
+function getCombatStats(random, fighter) {
   const stats = getFinalStats(fighter);
-  
+
   return {
     ...stats,
     maxHp: stats.hp,
     baseDamage: 5, // Dégâts à mains nues
     tempo: fighter.activeWeapon?.tempo || 3.5,
-    initiative: this.random() * 100,
+    initiative: random() * 100,
     criticalChance: Math.min(stats.agility / 400, 0.5),
     criticalDamage: 1.5,
     accuracy: 0.90,  // 90% de chance de toucher TOUJOURS
@@ -335,7 +335,7 @@ class LaBruteEngine {
   
   // ===== CRÉATION D'UN FIGHTER DÉTAILLÉ =====
   createDetailedFighter(brute, index, team) {
-    const stats = getCombatStats(brute);
+    const stats = getCombatStats(this.random, brute);
     
     // Équiper une arme aléatoire si pas déjà équipée
     let activeWeapon = null;
@@ -450,7 +450,7 @@ class LaBruteEngine {
       fighter.usedTrap = true;
     } else if (fighter.skills.find(sk => sk.name === 'bomb') && !fighter.usedBomb) {
       // Bomb : dégâts directs
-      const { damage } = getDamage(fighter, target);
+      const { damage } = getDamage(this.random, fighter, target);
       target.hp -= damage;
       this.steps.push({
         a: StepType.Bomb,
@@ -461,7 +461,7 @@ class LaBruteEngine {
       fighter.usedBomb = true;
     } else if (fighter.skills.find(sk => sk.name === 'flashFlood') && !fighter.usedFlashFlood) {
       // Flash Flood : attaque spéciale basée sur l'arme
-      const { damage } = getDamage(fighter, target);
+      const { damage } = getDamage(this.random, fighter, target);
       target.hp -= damage;
       this.steps.push({
         a: StepType.FlashFlood,
@@ -484,9 +484,9 @@ class LaBruteEngine {
         hammerActive = true;
       }
 
-      // Armes jetables
-      if (fighter.activeWeapon?.toss) {
-        const { damage } = getDamage(fighter, target, fighter.activeWeapon);
+        // Armes jetables
+        if (fighter.activeWeapon?.toss) {
+          const { damage } = getDamage(this.random, fighter, target, fighter.activeWeapon);
         target.hp -= damage;
         this.steps.push({
           a: StepType.Throw,
