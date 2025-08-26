@@ -429,11 +429,89 @@ class LaBruteEngine {
   playFighterTurn(fighter) {
     const opponents = this.fighters.filter(f => f.team !== fighter.team && f.hp > 0);
     if (opponents.length === 0) return;
-    
     const target = randomItem(this.random, opponents);
-    
-    // Tentative d'attaque
-    this.attemptHit(fighter, target);
+
+    // Step Move (toujours avant une action)
+    this.steps.push({
+      a: StepType.Move,
+      f: fighter.index,
+      t: target.index
+    });
+
+    // Gestion des supers et actions spéciales
+    // Trap (net)
+    if (fighter.skills.find(sk => sk.name === 'net') && !fighter.usedTrap) {
+      this.steps.push({
+        a: StepType.Trap,
+        f: fighter.index,
+        t: target.index
+      });
+      target.trapped = true;
+      fighter.usedTrap = true;
+    } else if (fighter.skills.find(sk => sk.name === 'bomb') && !fighter.usedBomb) {
+      // Bomb : dégâts directs
+      const { damage } = getDamage(fighter, target);
+      target.hp -= damage;
+      this.steps.push({
+        a: StepType.Bomb,
+        f: fighter.index,
+        t: target.index,
+        d: damage
+      });
+      fighter.usedBomb = true;
+    } else if (fighter.skills.find(sk => sk.name === 'flashFlood') && !fighter.usedFlashFlood) {
+      // Flash Flood : attaque spéciale basée sur l'arme
+      const { damage } = getDamage(fighter, target);
+      target.hp -= damage;
+      this.steps.push({
+        a: StepType.FlashFlood,
+        f: fighter.index,
+        t: target.index,
+        d: damage
+      });
+      fighter.usedFlashFlood = true;
+    } else {
+      // Hammer : active skill pour l'attaque
+      let hammerActive = false;
+      if (fighter.skills.find(sk => sk.name === 'hammer') && !fighter.usedHammer) {
+        fighter.activeSkills.push({ name: 'hammer' });
+        this.steps.push({
+          a: StepType.Hammer,
+          f: fighter.index,
+          t: target.index
+        });
+        fighter.usedHammer = true;
+        hammerActive = true;
+      }
+
+      // Armes jetables
+      if (fighter.activeWeapon?.toss) {
+        const { damage } = getDamage(fighter, target, fighter.activeWeapon);
+        target.hp -= damage;
+        this.steps.push({
+          a: StepType.Throw,
+          f: fighter.index,
+          t: target.index,
+          w: fighter.activeWeapon.id,
+          d: damage
+        });
+        fighter.activeWeapon = null;
+      } else {
+        // Tentative d'attaque standard
+        this.attemptHit(fighter, target);
+      }
+
+      // Retirer le buff hammer après l'attaque
+      if (hammerActive) {
+        fighter.activeSkills = fighter.activeSkills.filter(sk => sk.name !== 'hammer');
+      }
+    }
+
+    // Step MoveBack pour terminer l'action
+    this.steps.push({
+      a: StepType.MoveBack,
+      f: fighter.index
+    });
   }
   
   // ===== TENTATIVE D'ATTAQUE =====
