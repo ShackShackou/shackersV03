@@ -8,6 +8,32 @@ const { SkillName, WeaponName } = require('./constants');
 const { getFighterStat } = require('./getFighterStat');
 const { SkillDamageModifiers } = require('./skillModifiers');
 
+// Helper to check if a fighter has a skill (supports string or object format)
+function hasSkill(fighter, skill) {
+  if (!fighter || !fighter.skills) {
+    return false;
+  }
+  return fighter.skills.some((sk) => {
+    if (typeof sk === 'string') {
+      return sk === skill;
+    }
+    return sk.name === skill;
+  });
+}
+
+// Helper to check active skills (which may also be strings)
+function hasActiveSkill(fighter, skill) {
+  if (!fighter || !fighter.activeSkills) {
+    return false;
+  }
+  return fighter.activeSkills.some((sk) => {
+    if (typeof sk === 'string') {
+      return sk === skill;
+    }
+    return sk.name === skill;
+  });
+}
+
 /**
  * Calculate damage dealt by a fighter to an opponent
  * @param {Object} fighter - The attacking fighter
@@ -24,12 +50,12 @@ const getDamage = (fighter, opponent, thrown = null) => {
   let skillsMultiplier = 1;
 
   // Check if Piledriver (hammer skill) is active
-  const piledriver = fighter.activeSkills.find((sk) => sk.name === SkillName.hammer);
+  const piledriver = hasActiveSkill(fighter, SkillName.hammer);
 
   // Apply fighter skill damage modifiers
   for (const modifier of SkillDamageModifiers) {
     // Skip if fighter doesn't have the skill
-    if (!fighter.skills.find((sk) => sk.name === modifier.skill)) {
+    if (!hasSkill(fighter, modifier.skill)) {
       continue;
     }
 
@@ -70,7 +96,7 @@ const getDamage = (fighter, opponent, thrown = null) => {
   // Apply opponent skill damage modifiers (damage reduction)
   for (const modifier of SkillDamageModifiers) {
     // Skip if opponent doesn't have the skill
-    if (!opponent.skills.find((sk) => sk.name === modifier.skill)) {
+    if (!hasSkill(opponent, modifier.skill)) {
       continue;
     }
 
@@ -102,7 +128,7 @@ const getDamage = (fighter, opponent, thrown = null) => {
   }
 
   // x2 damage if fierceBrute skill is active
-  if (fighter.activeSkills.find((sk) => sk.name === 'fierceBrute')) {
+  if (hasActiveSkill(fighter, 'fierceBrute')) {
     skillsMultiplier *= 2;
   }
 
