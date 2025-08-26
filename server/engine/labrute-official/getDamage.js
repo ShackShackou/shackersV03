@@ -15,7 +15,7 @@ const { SkillDamageModifiers } = require('./skillModifiers');
  * @param {Object} thrown - Optional thrown weapon
  * @returns {Object} {damage: number, criticalHit: boolean}
  */
-const getDamage = (fighter, opponent, thrown = null) => {
+const getDamage = (fighter, opponent, thrown = null, rng) => {
   // Base damage calculation
   const base = thrown
     ? thrown.damage
@@ -118,19 +118,19 @@ const getDamage = (fighter, opponent, thrown = null) => {
     // Thrown weapon damage formula
     damage = Math.floor(
       (base + fighter.strength * 0.1 + fighter.agility * 0.15)
-      * (1 + Math.random() * 0.5) * skillsMultiplier
+      * (1 + rng.float() * 0.5) * skillsMultiplier
     );
   } else if (piledriver) {
     // Piledriver damage formula (uses opponent's strength against them)
     damage = Math.floor(
       (10 + opponent.strength * 0.6)
-      * (0.8 + Math.random() * 0.4) * skillsMultiplier
+      * (0.8 + rng.float() * 0.4) * skillsMultiplier
     );
   } else {
     // Normal attack damage formula
     damage = Math.floor(
       (base + fighter.strength * (0.2 + base * 0.05))
-      * (0.8 + Math.random() * 0.4) * skillsMultiplier
+      * (0.8 + rng.float() * 0.4) * skillsMultiplier
     );
   }
 
@@ -141,7 +141,7 @@ const getDamage = (fighter, opponent, thrown = null) => {
 
   // Critical hit calculation
   const criticalChance = getFighterStat(fighter, 'CRITICAL_CHANCE');
-  const criticalHit = !!criticalChance && Math.random() < criticalChance;
+  const criticalHit = !!criticalChance && rng.float() < criticalChance;
   if (criticalHit) {
     damage = Math.floor(damage * getFighterStat(fighter, 'CRITICAL_DAMAGE'));
   }

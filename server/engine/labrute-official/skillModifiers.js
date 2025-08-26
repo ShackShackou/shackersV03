@@ -3,7 +3,7 @@
  * All skill effects on damage calculation
  */
 
-const { SkillName } = require('./constants');
+const { SkillName, FightStat } = require('./constants');
 
 const SkillDamageModifiers = [
   // Fighter skills that increase damage
@@ -79,4 +79,16 @@ const SkillDamageModifiers = [
   },
 ];
 
-module.exports = { SkillDamageModifiers };
+// Misc skill stat modifiers needed for hit calculations
+// Only the values required by the simplified server engine are listed here
+const SkillModifiers = {
+  [SkillName.hideaway]: {
+    [FightStat.BLOCK]: { percent: 0.25 },
+  },
+  [SkillName.survival]: {
+    [FightStat.BLOCK]: { percent: 0.2 },
+    [FightStat.EVASION]: { percent: 0.2 },
+  },
+};
+
+module.exports = { SkillDamageModifiers, SkillModifiers };

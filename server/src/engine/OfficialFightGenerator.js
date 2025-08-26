@@ -5,13 +5,18 @@
  */
 
 const { getDamage } = require('../../../server/engine/labrute-official/getDamage');
+const { getFighterStat } = require('../../../server/engine/labrute-official/getFighterStat');
+const { SkillModifiers } = require('../../../server/engine/labrute-official/skillModifiers');
 const { weapons, getWeapon } = require('../../../server/engine/labrute-official/weapons');
+const { RNG } = require('../../../server/engine/labrute-official/rng');
 
 /**
  * Generate a complete fight using official LaBrute rules
  */
-async function generateOfficialFight(fighter1Data, fighter2Data) {
+async function generateOfficialFight(fighter1Data, fighter2Data, seed = Date.now()) {
   console.log('🎯 Generating fight with OFFICIAL LaBrute engine');
+
+  const rng = new RNG(seed);
   
   // Initialize fighters with official stats
   const fighters = [
@@ -30,7 +35,7 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
   // Main combat loop
   while (turn < maxTurns) {
     // Determine turn order based on initiative
-    const turnOrder = determineTurnOrder(fighters);
+    const turnOrder = determineTurnOrder(fighters, rng);
     
     for (const fighterIndex of turnOrder) {
       const fighter = fighters[fighterIndex];
@@ -40,7 +45,7 @@ async function generateOfficialFight(fighter1Data, fighter2Data) {
       if (fighter.hp <= 0) continue;
       
       // Fighter turn
-      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex);
+      const turnSteps = playFighterTurn(fighter, opponent, fighterIndex, rng);
       steps.push(...turnSteps);
       
       // Check for death
@@ -154,11 +159,11 @@ function calculateArmor(fighter) {
 /**
  * Determine turn order based on initiative
  */
-function determineTurnOrder(fighters) {
+function determineTurnOrder(fighters, rng) {
   // Calculate initiative for each fighter
   const initiatives = fighters.map((f, i) => ({
     index: i,
-    initiative: calculateInitiative(f),
+    initiative: calculateInitiative(f, rng),
   }));
   
   // Sort by initiative (higher goes first)
@@ -171,7 +176,7 @@ function determineTurnOrder(fighters) {
 /**
  * Calculate fighter initiative
  */
-function calculateInitiative(fighter) {
+function calculateInitiative(fighter, rng) {
   let initiative = fighter.speed;
   
   // Add weapon tempo bonus
@@ -188,7 +193,7 @@ function calculateInitiative(fighter) {
   }
   
   // Add randomness
-  initiative += Math.random() * 20;
+  initiative += rng.float() * 20;
   
   return initiative;
 }
@@ -196,7 +201,7 @@ function calculateInitiative(fighter) {
 /**
  * Play a fighter's turn
  */
-function playFighterTurn(fighter, opponent, fighterIndex) {
+function playFighterTurn(fighter, opponent, fighterIndex, rng) {
   const steps = [];
   
   // Check if stunned
@@ -213,11 +218,11 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
   });
   
   // Attempt to hit
-  const hitResult = attemptHit(fighter, opponent);
+  const hitResult = attemptHit(fighter, opponent, rng);
   
   if (hitResult.hit) {
     // Calculate damage using official formula
-    const damageResult = getDamage(fighter, opponent);
+    const damageResult = getDamage(fighter, opponent, null, rng);
     
     // Apply damage
     opponent.hp -= damageResult.damage;
@@ -233,15 +238,17 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
     });
     
     // Check for counter attack
-    if (opponent.skills.includes('counterAttack') && Math.random() < 0.3) {
-      const counterDamage = Math.floor(damageResult.damage * 0.5);
-      fighter.hp -= counterDamage;
-      
+    const counterChance = getFighterStat(opponent, 'COUNTER');
+    if (rng.float() < counterChance) {
+      const counterResult = getDamage(opponent, fighter, null, rng);
+      fighter.hp -= counterResult.damage;
+
       steps.push({
         type: 'counter',
         fighter: 1 - fighterIndex,
         target: fighterIndex,
-        damage: counterDamage,
+        damage: counterResult.damage,
+        critical: counterResult.criticalHit,
         targetHP: Math.max(0, fighter.hp),
       });
     }
@@ -276,48 +283,64 @@ function playFighterTurn(fighter, opponent, fighterIndex) {
 /**
  * Attempt to hit an opponent
  */
-function attemptHit(fighter, opponent) {
-  // Base hit chance
-  let hitChance = 0.5;
-  
-  // Add accuracy from weapon
-  if (fighter.activeWeapon) {
-    hitChance += fighter.activeWeapon.accuracy * 0.3;
-  }
-  
-  // Add agility difference
-  hitChance += (fighter.agility - opponent.agility) * 0.02;
-  
-  // Check for evasion
-  let evadeChance = 0.1;
-  evadeChance += opponent.agility * 0.01;
-  if (opponent.activeWeapon) {
-    evadeChance += opponent.activeWeapon.evasion * 0.2;
-  }
-  
-  // Check for block
-  let blockChance = 0.1;
-  if (opponent.activeWeapon) {
-    blockChance += opponent.activeWeapon.block * 0.3;
-  }
-  if (opponent.skills.includes('block')) {
-    blockChance += 0.2;
-  }
-  
-  // Roll the dice
-  const roll = Math.random();
-  
-  if (roll < evadeChance) {
+function attemptHit(fighter, opponent, rng) {
+  // Check evasion using official formula
+  const evaded = checkEvade(fighter, opponent, rng);
+  if (evaded) {
     return { hit: false, evaded: true };
   }
-  if (roll < evadeChance + blockChance) {
+
+  // Check block using official formula
+  const blocked = checkBlock(fighter, opponent, rng);
+  if (blocked) {
     return { hit: false, blocked: true };
   }
-  if (roll < hitChance) {
-    return { hit: true };
+
+  // Hit lands
+  return { hit: true };
+}
+
+function checkBlock(fighter, opponent, rng, thrown = false) {
+  if (opponent.hp <= 0 || opponent.trapped || opponent.stunned) return false;
+
+  let opponentBlock = getFighterStat(opponent, 'BLOCK');
+
+  // Hideaway bonus against thrown weapons
+  if (thrown && opponent.skills.includes('hideaway')) {
+    opponentBlock += SkillModifiers.hideaway?.BLOCK?.percent || 0;
   }
-  
-  return { hit: false };
+
+  // Survival bonus at 1 HP
+  if (opponent.hp === 1 && opponent.skills.includes('survival')) {
+    opponentBlock += SkillModifiers.survival?.BLOCK?.percent || 0;
+  }
+
+  const threshold = Math.min(opponentBlock - getFighterStat(fighter, 'ACCURACY'), 0.9);
+  return rng.float() < threshold;
+}
+
+function checkEvade(fighter, opponent, rng, difficulty = 1) {
+  if (opponent.hp <= 0 || opponent.trapped || opponent.stunned) return false;
+
+  // Ballet shoes auto-evade once
+  if (opponent.balletShoes) {
+    opponent.balletShoes = false;
+    return true;
+  }
+
+  let opponentEvasion = getFighterStat(opponent, 'EVASION');
+
+  // Survival bonus at 1 HP
+  if (opponent.hp === 1 && opponent.skills.includes('survival')) {
+    opponentEvasion += SkillModifiers.survival?.EVASION?.percent || 0;
+  }
+
+  const agilityDiff = Math.min(Math.max(-40, (opponent.agility - fighter.agility) * 2), 40);
+  const threshold = Math.min(
+    opponentEvasion + agilityDiff * 0.01 - getFighterStat(fighter, 'ACCURACY') - getFighterStat(fighter, 'DEXTERITY'),
+    0.9 * difficulty,
+  );
+  return rng.float() * difficulty < threshold;
 }
 
 module.exports = {

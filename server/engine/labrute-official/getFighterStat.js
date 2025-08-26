@@ -110,6 +110,16 @@ function getFighterStat(fighter, stat) {
         value += 0.25;
       }
       break;
+
+    case FightStat.DEXTERITY:
+    case 'DEXTERITY':
+    case 'dexterity':
+      value = fighter.activeWeapon?.dexterity || 0;
+      // Bodybuilder bonus with heavy weapons
+      if (fighter.skills?.includes('bodybuilder') && fighter.activeWeapon?.types?.includes('heavy')) {
+        value += 0.1;
+      }
+      break;
       
     case FightStat.ARMOR:
     case 'ARMOR':
