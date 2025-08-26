@@ -4,6 +4,7 @@ const CUSTOM_MODE = (typeof process !== 'undefined' && process.env.CUSTOM_MODE) 
 const { createPet } = CUSTOM_MODE ? customPets : pets;
 import { RNG } from './rng.js';
 import formulas from './formulas.js';
+import { setupSpecialMoves, executeSpecialMove, tryUnlockSpecialMove, processSpecialMoveEffects } from './specialMoves.js';
 
 // Import du système LaBrute complet
 import { 
@@ -84,19 +85,16 @@ export class CombatEngine {
     // Initialize pets if fighters have them
     this.initializePets();
 
-    // Flag to enable custom special moves (disabled by default)
-    this.enableCustomMoves = Boolean(options.enableCustomMoves);
+    // Option to enable special moves (disabled by default)
+    this.useSpecialMoves = Boolean(options.useSpecialMoves);
 
-    if (this.enableCustomMoves) {
-      // Initialize special moves for both fighters
-      this.initializeSpecialMoves();
+    if (this.useSpecialMoves) {
+      setupSpecialMoves(this);
     } else {
-      // Ensure structure exists but skip custom moves to match original behavior
       this.specialMoves = {};
       [this.fighter1, this.fighter2].forEach(fighter => {
         fighter.specialMoves = { unlocked: [], active: {} };
       });
-      // Still calculate initiative even when special moves are disabled
       this.calculateInitiative();
     }
   }
@@ -109,74 +107,6 @@ export class CombatEngine {
       }
     });
   }
-  
-  initializeSpecialMoves() {
-    // Available special moves
-    this.specialMoves = {
-      berserkerRage: {
-        name: 'Berserker Rage',
-        description: 'Double damage for 3 turns',
-        duration: 3,
-        effect: 'damage_boost',
-        multiplier: 2,
-        unlockChance: 0.15
-      },
-      defensiveShield: {
-        name: 'Defensive Shield', 
-        description: 'Reduces incoming damage by 50% for 3 turns',
-        duration: 3,
-        effect: 'defense_boost',
-        multiplier: 0.5,
-        unlockChance: 0.12
-      },
-      vampiricStrike: {
-        name: 'Vampiric Strike',
-        description: 'Next attack heals for 50% of damage dealt',
-        duration: 1,
-        effect: 'lifesteal',
-        multiplier: 0.5,
-        unlockChance: 0.10
-      },
-      adrenalineRush: {
-        name: 'Adrenaline Rush',
-        description: 'Restores full stamina and increases accuracy',
-        duration: 2,
-        effect: 'stamina_accuracy',
-        multiplier: 1.5,
-        unlockChance: 0.08
-      },
-      lightningReflexes: {
-        name: 'Lightning Reflexes',
-        description: 'Grants a chance for an extra attack each turn',
-        duration: 5,
-        effect: 'multi_attack',
-        multiplier: 0.3, // 30% chance for an extra hit
-        unlockChance: 0.05
-      }
-    };
-    
-    // Initialize fighter special move states
-    [this.fighter1, this.fighter2].forEach(fighter => {
-      fighter.specialMoves = {
-        unlocked: [],
-        active: {}
-      };
-    });
-    
-    // Calculer l'initiative initiale
-    this.calculateInitiative();
-  }
-  
-  // Add a combat step for replay
-  addCombatStep(type, data) {
-    this.combatSteps.push({
-      turn: this.currentTurn,
-      type: type,
-      timestamp: Date.now(),
-      ...data
-    });
-  }
-
   // Debug logging (instrumentation)
   logDebug(event, data = {}) {
     if (!this.debug) return;
@@ -323,12 +253,12 @@ export class CombatEngine {
         };
       }
       
-      // SPECIAL MOVES DISABLED - Too slow for combat rhythm
-      // this.processSpecialMoveEffects(attacker);
-      // this.processSpecialMoveEffects(defender);
-      
-      // Special move unlocking DISABLED
-      const unlockedMove = null; // this.tryUnlockSpecialMove(attacker);
+      if (this.useSpecialMoves) {
+        processSpecialMoveEffects(this, attacker);
+        processSpecialMoveEffects(this, defender);
+      }
+
+      const unlockedMove = this.useSpecialMoves ? tryUnlockSpecialMove(this, attacker) : null;
       
       // Check for skill abilities first
       const skillResult = this.checkSkillAbilities(attacker, defender);
@@ -364,7 +294,7 @@ export class CombatEngine {
       }
       
       // Decide between normal attack, special move, or weapon throw
-      const useSpecialMove = attacker.specialMoves.unlocked.length > 0 && this.rng.chance(0.3);
+      const useSpecialMove = this.useSpecialMoves && attacker.specialMoves.unlocked.length > 0 && this.rng.chance(0.3);
       
       // Calculate weapon throw chance using official LaBrute formula
       let throwChance = 0;
@@ -402,7 +332,7 @@ export class CombatEngine {
         console.log(`${attacker.stats.name} is throwing weapon!`);
         result = this.executeWeaponThrow(attacker, defender);
       } else if (useSpecialMove && attacker.stats.stamina >= 40) {
-        result = this.executeSpecialMove(attacker, defender);
+        result = executeSpecialMove(this, attacker, defender);
       } else {
         // Si on décide d'utiliser les mains nues, on désactive temporairement l'arme
         const originalWeapon = attacker.weaponType;
@@ -855,243 +785,6 @@ export class CombatEngine {
     
     return null;
   }
-
-  executeSpecialMove(attacker, defender) {
-    // Higher stamina cost for special moves
-    attacker.stats.stamina -= 40;
-    
-    // Select random unlocked special move
-    const randomMove = attacker.specialMoves.unlocked[this.rng.int(0, attacker.specialMoves.unlocked.length - 1)];
-    const moveData = this.specialMoves[randomMove];
-    
-    // Activate the special move
-    attacker.specialMoves.active[randomMove] = moveData.duration;
-    
-    // Special move specific effects
-    if (randomMove === 'adrenalineRush') {
-      attacker.stats.stamina = attacker.stats.maxStamina;
-    }
-    
-    return {
-      type: 'special',
-      attacker: attacker,
-      target: defender,
-      specialMove: moveData,
-      message: `${attacker.stats.name} activates ${moveData.name}! ${moveData.description}`
-    };
-  }
-  
-  tryUnlockSpecialMove(fighter) {
-    // Skip if fighter has all special moves
-    const availableMoves = Object.keys(this.specialMoves).filter(move => 
-      !fighter.specialMoves.unlocked.includes(move)
-    );
-    
-    if (availableMoves.length === 0) return null;
-    
-    // Check each available move for unlock
-    for (const moveKey of availableMoves) {
-      const move = this.specialMoves[moveKey];
-      if (this.rng.chance(move.unlockChance)) {
-        fighter.specialMoves.unlocked.push(moveKey);
-        return move;
-      }
-    }
-    
-    return null;
-  }
-  
-  processSpecialMoveEffects(fighter) {
-    // Decrease duration of active special moves
-    Object.keys(fighter.specialMoves.active).forEach(moveKey => {
-      fighter.specialMoves.active[moveKey]--;
-      
-      if (fighter.specialMoves.active[moveKey] <= 0) {
-        delete fighter.specialMoves.active[moveKey];
-      }
-    });
-  }
-  executeWeaponThrow(attacker, defender) {
-    // Record this turn as having a weapon throw
-    this.lastWeaponThrowTurn = this.currentTurn;
-    
-    // Stamina cost for weapon throw (reduced for testing)
-    attacker.stats.stamina -= 20;
-    
-    // Base accuracy for thrown weapons (higher than normal due to surprise)
-    let accuracy = 0.85;
-    
-    // Adrenaline rush DISABLED for faster combat
-    // if (attacker.specialMoves.active.adrenalineRush) {
-    //   accuracy *= this.specialMoves.adrenalineRush.multiplier;
-    // }
-    
-    // Defender can try to dodge the throw
-    const dodgeChance = defender.stats.agility * 0.006; // Lower dodge chance vs throws
-    const dodgeSuccess = this.rng.float() < dodgeChance;
-    this.logDebug('throw_dodge_check', { attacker: attacker.stats.name, defender: defender.stats.name, dodgeChance, dodgeSuccess });
-    
-    // Show debug indicator for weapon throw dodge calculation (guarded)
-    if (defender.scene && typeof defender.scene.showDodgeChanceIndicator === 'function') {
-      defender.scene.showDodgeChanceIndicator(defender, dodgeChance, true, dodgeSuccess);
-    }
-    
-    if (dodgeSuccess) {
-      // Check if weapon is kept (thrown-type weapons)
-      const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
-      if (!thrownWeapons.includes(attacker.weaponType)) {
-        attacker.hasWeapon = false; // Normal weapon is lost
-      }
-      
-      // Track consecutive dodge
-      this.updateConsecutiveStats(defender, 'evade');
-      
-      return {
-        type: 'dodge',
-        attacker: attacker,
-        target: defender,
-        hit: false,
-        damage: 0,
-        weaponLost: true,
-        message: ` ${defender.stats.name} dodges the ${attacker.weaponType}!`,
-        dodgedAction: 'throw'
-      };
-    }
-    
-    // Weapon type affects throw accuracy
-    switch (attacker.weaponType) {
-      case 'dagger':
-        accuracy += 0.10; // Daggers are easier to throw accurately
-        break;
-      case 'spear':
-        accuracy += 0.05; // Spears are designed for throwing
-        break;
-      case 'hammer':
-        accuracy -= 0.20; // Hammers are hard to throw accurately
-        break;
-      case 'axe':
-        accuracy -= 0.10; // Axes are somewhat unwieldy when thrown
-        break;
-    }
-    
-    // RNG hit check
-    const hit = this.rng.chance(accuracy);
-    this.logDebug('throw_hit_check', { attacker: attacker.stats.name, defender: defender.stats.name, accuracy, hit, weaponType: attacker.weaponType });
-    
-    if (!hit) {
-      // Weapon is still thrown and lost even on miss
-      // Check if weapon is kept (thrown-type weapons)
-      const thrownWeapons2 = ['shuriken', 'piopio', 'noodleBowl'];
-      if (!thrownWeapons2.includes(attacker.weaponType)) {
-        attacker.hasWeapon = false; // Normal weapon is lost
-      }
-      
-      return {
-        type: 'throw',
-        attacker: attacker,
-        target: defender,
-        hit: false,
-        damage: 0,
-        weaponLost: true,
-        message: `${attacker.stats.name} throws and misses! ${attacker.weaponType} lost!`
-      };
-    }
-    
-    // Calculate throw damage (higher than normal attack due to momentum)
-    let baseDamage = attacker.stats.strength * 1.4; // Throwing bonus
-    
-    // Weapon-specific throw damage modifiers
-    switch (attacker.weaponType) {
-      case 'hammer':
-        baseDamage *= 1.5; // Heavy weapons hit very hard when thrown
-        break;
-      case 'axe':
-        baseDamage *= 1.4; // Axes are devastating when thrown
-        break;
-      case 'spear':
-        baseDamage *= 1.3; // Spears are designed for throwing
-        break;
-      case 'sword':
-        baseDamage *= 1.2; // Swords aren't ideal for throwing
-        break;
-      case 'dagger':
-        baseDamage *= 1.1; // Daggers are light but precise
-        break;
-    }
-    
-    // Berserker rage DISABLED for faster combat
-    // if (attacker.specialMoves.active.berserkerRage) {
-    //   baseDamage *= this.specialMoves.berserkerRage.multiplier;
-    // }
-    
-    // RNG damage variation
-    const damageVariation = 0.8 + (this.rng.float() * 0.4); // Less variation for throws
-    let finalDamage = Math.floor(baseDamage * damageVariation);
-    
-    // Apply defense (reduced effectiveness against thrown weapons)
-    let effectiveDefense = Math.floor(defender.stats.defense * 0.7);
-    
-    // Defensive shield DISABLED for faster combat
-    // if (defender.specialMoves.active.defensiveShield) {
-    //   finalDamage *= this.specialMoves.defensiveShield.multiplier;
-    // }
-    
-    finalDamage = Math.max(2, finalDamage - effectiveDefense); // Minimum 2 damage for throws
-    
-    // Higher critical hit chance for throws (15%)
-    const critical = this.rng.chance(0.15);
-    if (critical) {
-      finalDamage *= 2.2; // Slightly higher crit multiplier
-    }
-    this.logDebug('throw_damage_calc', {
-      attacker: attacker.stats.name,
-      defender: defender.stats.name,
-      baseDamage,
-      damageVariation,
-      effectiveDefense,
-      critical,
-      finalDamage
-    });
-    
-    // Vampiric healing (if active)
-    if (attacker.specialMoves.active.vampiricStrike) {
-      const healing = Math.floor(finalDamage * this.specialMoves.vampiricStrike.multiplier);
-      attacker.stats.health = Math.min(attacker.stats.maxHealth, attacker.stats.health + healing);
-    }
-    
-    // Apply damage
-    defender.stats.health = Math.max(0, defender.stats.health - finalDamage);
-    
-    // Check if weapon is kept after throwing (thrown-type weapons)
-    const thrownWeapons = ['shuriken', 'piopio', 'noodleBowl'];
-    if (!thrownWeapons.includes(attacker.weaponType)) {
-      // Normal weapon is lost after throwing
-      attacker.hasWeapon = false;
-    }
-    // Thrown-type weapons are kept
-    
-    // Track consecutive throws
-    this.updateConsecutiveStats(attacker, 'throw');
-    this.updateConsecutiveStats(defender, 'hit'); // Reset defender's defensive stats
-    
-    const critText = critical ? ' CRITICAL THROW!' : '';
-    const rageText = attacker.specialMoves.active.berserkerRage ? ' [RAGE]' : '';
-    const shieldText = defender.specialMoves.active.defensiveShield ? ' [SHIELDED]' : '';
-    const lifeStealText = attacker.specialMoves.active.vampiricStrike ? ` +${Math.floor(finalDamage * this.specialMoves.vampiricStrike.multiplier)} HP` : '';
-    
-    const result = {
-      type: 'throw',
-      attacker: attacker,
-      target: defender,
-      hit: true,
-      damage: finalDamage,
-      critical: critical,
-      weaponLost: true,
-      message: `${attacker.stats.name} hurls their ${attacker.weaponType} for ${finalDamage} damage!${critText}${rageText}${shieldText}${lifeStealText} Weapon is lost!`
-    };
-    return result;
-  }
-
   switchTurns() {
     // Passer au joueur suivant dans l'ordre d'initiative, sans toucher à currentTurn
     const prevPlayer = this.activePlayer;
