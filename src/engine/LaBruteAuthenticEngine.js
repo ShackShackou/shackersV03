@@ -2,6 +2,8 @@
  * LaBrute Authentic Combat Engine
  * Basé sur le code source officiel de LaBrute
  * Formules et mécaniques exactes extraites du repository officiel
+ * Client-side mirror of server/combat/LaBruteEngine.js;
+ * server implementation is authoritative.
  */
 
 import { SkillName, WeaponName, PetName, StepType } from '../config/enums.js';
