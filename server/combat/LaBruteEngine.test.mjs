@@ -75,7 +75,7 @@ test('generates trap step with skill', () => {
 test('getDamage applies piledriver multiplier', () => {
   const engine = new LaBruteAuthenticEngine();
   const rolls = [0, 1];
-  engine.random = () => rolls.shift();
+  engine.random = { next: () => rolls.shift() };
   const attacker = engine.createDetailedFighter({ strength: 10, agility: 10 }, 0, 'L');
   const defender = engine.createDetailedFighter({ strength: 10, agility: 10 }, 1, 'R');
   attacker.activeSkills = [{ name: SkillName.hammer }];
@@ -85,7 +85,7 @@ test('getDamage applies piledriver multiplier', () => {
 
 test('getDamage reduced by leadSkeleton', () => {
   const engine = new LaBruteAuthenticEngine();
-  const makeRandom = () => { const rolls = [0, 1]; return () => rolls.shift(); };
+  const makeRandom = () => { const rolls = [0, 1]; return { next: () => rolls.shift() }; };
   const attacker = engine.createDetailedFighter({ strength: 10, agility: 10 }, 0, 'L');
   attacker.activeWeapon = { name: 'sword', damage: 5, types: ['melee'] };
 

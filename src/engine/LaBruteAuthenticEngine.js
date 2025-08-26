@@ -7,6 +7,7 @@
  */
 
 import constants from '../../server/engine/labrute-core/constants.js';
+import Rand from 'rand-seed';
 const { SkillName, WeaponName, PetName, StepType } = constants;
 
 // Modificateurs de dégâts liés aux compétences
@@ -40,25 +41,12 @@ export class LaBruteAuthenticEngine {
    */
   initialize(seed = Date.now()) {
     this.seed = seed;
-    this.random = this.createSeededRandom(seed);
+    this.random = new Rand(seed);
     this.steps = [];
     this.initiative = 0;
     this.turn = 0;
   }
 
-  /**
-   * Générateur de nombres aléatoires avec seed (Mulberry32)
-   */
-  createSeededRandom(seed) {
-    let state = seed;
-    return () => {
-      state |= 0;
-      state = state + 0x6D2B79F5 | 0;
-      let t = Math.imul(state ^ state >>> 15, 1 | state);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
 
   /**
    * Configure les combattants
@@ -206,17 +194,17 @@ export class LaBruteAuthenticEngine {
     if (thrown) {
       damage = Math.floor(
         (base + attacker.strength * 0.1 + attacker.agility * 0.15)
-        * (1 + this.random() * 0.5) * skillsMultiplier
+        * (1 + this.random.next() * 0.5) * skillsMultiplier
       );
     } else if (piledriver) {
       damage = Math.floor(
         (10 + defender.strength * 0.6)
-        * (0.8 + this.random() * 0.4) * skillsMultiplier
+        * (0.8 + this.random.next() * 0.4) * skillsMultiplier
       );
     } else {
       damage = Math.floor(
         (base + attacker.strength * (0.2 + base * 0.05))
-        * (0.8 + this.random() * 0.4) * skillsMultiplier
+        * (0.8 + this.random.next() * 0.4) * skillsMultiplier
       );
     }
 
@@ -227,7 +215,7 @@ export class LaBruteAuthenticEngine {
 
     // Coup critique (5% de base)
     const criticalChance = 0.05;
-    const criticalHit = this.random() < criticalChance;
+    const criticalHit = this.random.next() < criticalChance;
     if (criticalHit) {
       damage = Math.floor(damage * 2);
     }
@@ -249,8 +237,8 @@ export class LaBruteAuthenticEngine {
    * Détermine qui joue en premier
    */
   determineFirstFighter() {
-    const f1Initiative = this.fighters[0].initiative + this.random() * 10;
-    const f2Initiative = this.fighters[1].initiative + this.random() * 10;
+    const f1Initiative = this.fighters[0].initiative + this.random.next() * 10;
+    const f2Initiative = this.fighters[1].initiative + this.random.next() * 10;
     
     if (f1Initiative > f2Initiative) {
       this.fighters[0].initiative = 0;
