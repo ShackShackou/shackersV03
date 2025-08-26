@@ -9,6 +9,7 @@ import fightsRouter from './routes/fights';
 import fightsTestRouter from './routes/fights-test';
 import fightsOfficialRouter from './routes/fights-official';
 import matchmakingRouter from './routes/matchmaking';
+import miscRouter from './routes';
 
 const app = express();
 app.use(cors());
@@ -42,6 +43,7 @@ app.use('/api/fights', fightsTestRouter); // Use test router for now
 app.use('/api/fights', fightsOfficialRouter); // OFFICIAL LABRUTE ENGINE
 // app.use('/api/fights', fightsRouter); // Original with DB
 app.use('/api/matchmaking', matchmakingRouter);
+app.use(miscRouter);
 
 // Serve static public/ from project root
 const rootDir = path.resolve(__dirname, '..', '..');
