@@ -20,7 +20,8 @@ class FightManager {
    */
   generateFight(brute1, brute2, seed = Date.now()) {
     // Set deterministic seed for reproducible fights
-    Math.seedrandom = this.seedRandom(seed);
+    const originalRandom = Math.random;
+    Math.random = this.seedRandom(seed);
 
     try {
       // Convert brute data to fighter format
@@ -98,6 +99,8 @@ class FightManager {
     } catch (error) {
       console.error('Fight generation error:', error);
       throw new Error('Combat calculation failed');
+    } finally {
+      Math.random = originalRandom;
     }
   }
 
