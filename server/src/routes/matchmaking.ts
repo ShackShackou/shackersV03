@@ -38,10 +38,10 @@ router.post('/queue/join', requireAuth, async (req: AuthRequest, res) => {
 
   try {
     // Get brute data from database
-    const brute = await prisma.shacker.findUnique({ 
+    const brute = await prisma.shacker.findUnique({
       where: { id: bruteId },
       include: {
-        owner: true // Include user data
+        user: true // Include user data
       }
     });
 
