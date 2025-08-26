@@ -6,10 +6,9 @@ import { RNG } from './rng.js';
 import formulas from './formulas.js';
 
 // Import du système LaBrute complet
-import { 
-  LaBruteCombatEngine, 
+import {
+  LaBruteCombatEngine,
   LaBruteCombatFormulas,
-  LABRUTE_WEAPONS,
   LABRUTE_SKILLS,
   LABRUTE_PETS,
   LABRUTE_CONFIG

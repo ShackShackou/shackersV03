@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computeAccuracy } from './formulas.js';
-import { LABRUTE_WEAPONS } from './labrute-complete.js';
+import { LABRUTE_WEAPONS } from '../game/labrute-weapons.js';
 
 function officialAccuracy(weapon) {
   const base = 0.90;
@@ -14,7 +14,7 @@ test('knife uses only base accuracy (90%)', () => {
   assert.equal(res, officialAccuracy('knife'));
 });
 
-test('sai adds weapon accuracy bonus and caps at 98%', () => {
-  const res = computeAccuracy({}, 'sai');
-  assert.equal(res, officialAccuracy('sai'));
+test('leek adds weapon accuracy bonus', () => {
+  const res = computeAccuracy({}, 'leek');
+  assert.equal(res, officialAccuracy('leek'));
 });

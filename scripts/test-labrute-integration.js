@@ -2,18 +2,18 @@
 // 🧪 SCRIPT DE TEST - SYSTÈME LABRUTE COMPLET
 // ================================================
 
-import { 
+import {
   LaBruteCombatEngine,
   LaBruteLevelSystem,
   LaBruteTournament,
   LaBruteDestinyTree,
   LaBrutePupilSystem,
   LaBruteCombatFormulas,
-  LABRUTE_WEAPONS,
-  LABRUTE_SKILLS,
   LABRUTE_PETS,
   LABRUTE_CONFIG
 } from '../src/engine/labrute-complete.js';
+import { LABRUTE_WEAPONS } from '../src/game/labrute-weapons.js';
+import { LABRUTE_SKILLS } from '../src/game/labrute-skills.js';
 
 console.log('================================================');
 console.log('🎮 TEST DU SYSTÈME LABRUTE COMPLET');
@@ -26,16 +26,16 @@ console.log('================================================\n');
 console.log('📋 TEST 1: VÉRIFICATION DES DONNÉES');
 console.log('------------------------------------');
 
-console.log(`✅ Nombre d'armes: ${Object.keys(LABRUTE_WEAPONS).length} (attendu: 28)`);
-console.log(`✅ Nombre de skills: ${Object.keys(LABRUTE_SKILLS).length} (attendu: 30)`);
+console.log(`✅ Nombre d'armes: ${Object.keys(LABRUTE_WEAPONS).length} (attendu: 26)`);
+console.log(`✅ Nombre de skills: ${Object.keys(LABRUTE_SKILLS).length} (attendu: 50)`);
 console.log(`✅ Nombre de pets: ${Object.keys(LABRUTE_PETS).length} (attendu: 3)`);
 console.log(`✅ Niveau max: ${LABRUTE_CONFIG.MAX_LEVEL} (attendu: 80)`);
 
 // Vérifier quelques armes spécifiques
 console.log('\n🗡️ Vérification armes spéciales:');
-console.log(`- Poireau (100% précision): ${LABRUTE_WEAPONS.leek.accuracy === 100 ? '✅' : '❌'}`);
-console.log(`- Fléau (ignore esquive/parade): ${LABRUTE_WEAPONS.flail.accuracy === 100 ? '✅' : '❌'}`);
-console.log(`- Marteau de pierre (20 dégâts): ${LABRUTE_WEAPONS.stoneHammer.damage === 20 ? '✅' : '❌'}`);
+console.log(`- Poireau (bonus précision 2): ${LABRUTE_WEAPONS.leek.accuracy === 2 ? '✅' : '❌'}`);
+console.log(`- Fléau (bonus précision 1.5): ${LABRUTE_WEAPONS.flail.accuracy === 1.5 ? '✅' : '❌'}`);
+console.log(`- Hache (55 dégâts): ${LABRUTE_WEAPONS.axe.damage === 55 ? '✅' : '❌'}`);
 
 // ================================================
 // TEST 2: SYSTÈME DE NIVEAUX
