@@ -21,7 +21,8 @@ class FightManager {
   generateFight(brute1, brute2, seed = Date.now()) {
     // Set deterministic seed for reproducible fights
     const originalRandom = Math.random;
-    Math.random = this.seedRandom(seed);
+    const seededRandom = this.seedRandom(seed);
+    Math.random = seededRandom;
 
     try {
       // Convert brute data to fighter format
