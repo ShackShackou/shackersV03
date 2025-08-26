@@ -7,7 +7,8 @@ import {
   LABRUTE_SKILLS,
   LABRUTE_PETS
 } from '../../../src/engine/labrute-complete.js';
-import { LABRUTE_WEAPONS } from '../../../src/game/labrute-weapons.js';
+// @ts-ignore - JSON module without types
+import LABRUTE_WEAPONS from '../../../src/game/labrute-weapons.js';
 import { getRandomBonus, getLevelUpChoices } from '../../../src/game/leveling.js';
 
 const router = Router();

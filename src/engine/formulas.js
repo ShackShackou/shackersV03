@@ -4,7 +4,8 @@
 
 import { weaponStats } from '../game/weapons.js';
 import { SkillModifiers, FightStat } from '../game/skills.js';
-import { LABRUTE_WEAPONS } from '../game/labrute-weapons.js';
+// @ts-ignore - JSON module without types
+import LABRUTE_WEAPONS from '../game/labrute-weapons.js';
 
 // Utility: clamp value to [0, 0.99]
 function clamp01(v) {
