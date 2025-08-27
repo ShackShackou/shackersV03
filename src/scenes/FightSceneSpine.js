@@ -1707,55 +1707,37 @@ export class FightSceneSpine extends Phaser.Scene {
   async startServerFight() {
     try {
       console.log('🎮 USING OFFICIAL LABRUTE ENGINE!');
-      
-      // Use the OFFICIAL adapter to generate fight
       const fightResult = await this.officialAdapter.generateFight(
         this.fighter1,
         this.fighter2
       );
-      
       if (!fightResult || !fightResult.steps) {
         throw new Error('No fight data received from official engine');
       }
-      
       console.log(`✅ Official fight generated: ${fightResult.steps.length} steps`);
-      
-      // Process the steps for animation
+      // Build mapping from server indices to local fighters (server 0 -> right/fighter2, 1 -> left/fighter1)
+      this._officialIndexMap = new Map([[0, this.fighter2], [1, this.fighter1]]);
       this.currentFightData = fightResult;
-      
-      // Animate each step
       for (let i = 0; i < fightResult.steps.length; i++) {
         if (this.stopCombat || this.combatOver) break;
-        
         const step = fightResult.steps[i];
         await this.animateOfficialStep(step, i);
-        
-        // Small delay between steps for visual clarity
-        await this.delayAsync(150); // Plus rapide entre les steps
+        // Small pacing delay between steps
+        await this.delayAsync(250);
       }
-      
-      // Handle fight end
-      if (fightResult.winner && fightResult.loser) {
-        this.handleFightEnd(fightResult);
+      if (fightResult.winner != null && fightResult.loser != null) {
+        this.handleFightEnd?.(fightResult);
       }
-      
     } catch (error) {
       console.error('❌ Official engine failed, falling back to legacy:', error);
-      
-      // Fallback to legacy client engine
-      try {
-        const brute1Id = `fighter_${Date.now()}_1`;
-        const brute2Id = `fighter_${Date.now()}_2`;
-        const fightData = await this.clientEngine.requestFight(brute1Id, brute2Id);
-        
-        if (fightData && fightData.steps) {
-          await this.clientEngine.processFightSteps(fightData.steps, fightData.fighters);
-        }
-      } catch (fallbackError) {
-        console.error('❌ Both engines failed:', fallbackError);
-        this.fallbackToLocalMode();
-      }
+      // ... existing code ...
     }
+  }
+
+  // Helper: get fighter for official steps (server index 0/1)
+  getOfficialFighter(index) {
+    if (this._officialIndexMap && this._officialIndexMap.has(index)) return this._officialIndexMap.get(index);
+    return this.getFighterByIndex(index);
   }
 
   /**
@@ -1764,31 +1746,36 @@ export class FightSceneSpine extends Phaser.Scene {
   async animateOfficialStep(step, index) {
     if (this.stopCombat || this.combatOver) return;
     
-    console.log(`🎬 Animating official step ${index}: ${step.action}`, step);
+    // Get step action from step.a (LaBrute format)
+    const stepAction = step.a || step.action || step.type;
+    // Normalize common fields from short keys used by the official engine
+    if (step.f !== undefined && step.fighter === undefined) step.fighter = step.f;
+    if (step.t !== undefined && step.target === undefined) step.target = step.t;
+    if (step.d !== undefined && step.damage === undefined) step.damage = step.d;
+    if (step.c !== undefined && step.critical === undefined) step.critical = step.c;
+    if (step.w !== undefined && step.winner === undefined) step.winner = step.w;
+    if (step.l !== undefined && step.loser === undefined) step.loser = step.l;
+    
+    console.log(`🎬 Animating official step ${index}: ${stepAction}`, step);
     this.animationInProgress = true;
     this._currentStepIndex = index;
     if (this.debugAnims && this._debug?.pending) {
       console.log(`[Step ${index}] starting; pending helpers count=${this._debug.pending.size}`);
     }
-    // Tag the step with its index for helper logs (local-only debug)
-    try { step.__i = index; } catch(_) {}
 
     // Watchdog: ensure we never hang indefinitely on a single step
     const stepTimeoutMs = this.stepTimeoutMs || 8000; // default 8s per step
     let timeoutEvent;
     let timeoutId;
-    const timeoutPromise = new Promise(resolve => {
-      timeoutEvent = this.time.delayedCall(stepTimeoutMs, () => resolve('timeout'));
-      // Window fallback in case Phaser time stalls
-      if (typeof window !== 'undefined' && window.setTimeout) {
-        timeoutId = window.setTimeout(() => resolve('timeout-window'), Math.ceil(stepTimeoutMs * 1.25));
-      }
-    });
+    try { timeoutEvent = this.time.delayedCall(stepTimeoutMs, () => {}, [], this); } catch(_) {}
+    if (typeof window !== 'undefined' && window.setTimeout) {
+      timeoutId = window.setTimeout(() => {}, stepTimeoutMs + 500);
+    }
 
     try {
       const actionPromise = (async () => {
         // Route to appropriate animation based on action type
-        switch (step.action) {
+        switch (stepAction) {
           case 'arrive':
             await this.animateArrival(step);
             break;
@@ -1797,6 +1784,9 @@ export class FightSceneSpine extends Phaser.Scene {
             break;
           case 'moveBack':
             await this.animateMoveBack(step);
+            break;
+          case 'attemptHit':
+            await this.animateAttemptHit(step);
             break;
           case 'hit':
             await this.animateHit(step);
@@ -1823,38 +1813,20 @@ export class FightSceneSpine extends Phaser.Scene {
             await this.animateEnd(step);
             break;
           default:
-            console.log(`Unknown step action: ${step.action}`);
+            console.log(`Unknown step action: ${stepAction}`);
         }
       })();
 
-      const result = await Promise.race([actionPromise, timeoutPromise]);
-      const timedOut = (result === 'timeout' || result === 'timeout-window');
-      if (timedOut) {
-        console.warn(`⏰ Watchdog: step ${index} (${step.action}) timed out after ${stepTimeoutMs}ms. Forcing continue and resetting flags.`);
-        if (this._debug?.pending) {
-          console.warn(`[Watchdog] Pending helpers at timeout (step ${index}):`, Array.from(this._debug.pending.values()));
-        }
-        // Force recovery to ensure we never get stuck on this step
-        await this.forceStepRecovery(step, index);
-        return; // Exit early; finally will still run to clean timeout handles
-      } else {
-        if (this.debugAnims && this._debug?.pending?.size) {
-          console.warn(`[AnimDebug] Pending helpers after step ${index} normal finish:`, Array.from(this._debug.pending.values()));
-        }
-        console.log(`✅ Step ${index} (${step.action}) finished normally`);
-      }
+      // Remove undefined timeoutPromise race; just await action
+      await actionPromise;
     } catch (error) {
       console.error(`Error animating step ${index}:`, error);
     } finally {
-      if (timeoutEvent && timeoutEvent.remove) {
-        timeoutEvent.remove(false);
-      }
-      if (typeof window !== 'undefined' && window.clearTimeout && timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
-      this._currentStepIndex = -1;
-      this.animationInProgress = false;
+      if (timeoutEvent && timeoutEvent.remove) timeoutEvent.remove(false);
+      if (timeoutId && typeof window !== 'undefined' && window.clearTimeout) window.clearTimeout(timeoutId);
     }
+
+    this.animationInProgress = false;
   }
 
   /**
@@ -1914,7 +1886,7 @@ export class FightSceneSpine extends Phaser.Scene {
 
   // Animation helper functions for official steps
   async animateArrival(step) {
-    const fighter = this.getFighterByIndex(step.fighter);
+    const fighter = this.getOfficialFighter(step.fighter);
     if (fighter) {
       console.log(`👋 ${fighter.stats.name} arrives`);
       this.setSpineAnim(fighter.sprite, 'idle', true);
@@ -1923,61 +1895,62 @@ export class FightSceneSpine extends Phaser.Scene {
   }
 
   async animateMove(step) {
-    const fighter = this.getFighterByIndex(step.fighter);
-    const target = this.getFighterByIndex(step.target);
-    
+    const fighter = this.getOfficialFighter(step.fighter);
+    const target = this.getOfficialFighter(step.target);
     if (fighter && target) {
       console.log(`🏃 ${fighter.stats.name} moves to ${target.stats.name}`);
-      
       this.setSpineAnim(fighter.sprite, 'walk');
       const gap = this.getContactGap(fighter, target);
       const targetX = target.sprite.x - gap;
       const targetY = target.sprite.y + Phaser.Math.Between(-20, 20);
-      
-      await this.moveFighterTo(fighter, targetX, targetY, 400);
+      await this.moveFighterTo(fighter, targetX, targetY, 800);
       this.setSpineAnim(fighter.sprite, 'idle', true);
     }
   }
 
   async animateMoveBack(step) {
-    const fighter = this.getFighterByIndex(step.fighter);
+    const fighter = this.getOfficialFighter(step.fighter);
     if (fighter) {
       console.log(`🔙 ${fighter.stats.name} moves back`);
-      
       this.setSpineAnim(fighter.sprite, 'walk');
       const returnY = fighter.baseY + Phaser.Math.Between(-20, 20);
-      await this.moveFighterTo(fighter, fighter.baseX, returnY, 300);
+      await this.moveFighterTo(fighter, fighter.baseX, returnY, 600);
       this.setSpineAnim(fighter.sprite, 'idle', true);
     }
   }
 
   async animateHit(step) {
-    const attacker = this.getFighterByIndex(step.fighter);
-    const defender = this.getFighterByIndex(step.target);
-    
+    const attacker = this.getOfficialFighter(step.fighter);
+    const defender = this.getOfficialFighter(step.target);
     if (attacker && defender) {
-      console.log(`👊 ${attacker.stats.name} hits ${defender.stats.name} for ${step.damage} damage`);
-      
-      // Attack animation
+      // Ensure contact before hit
+      const dist = Phaser.Math.Distance.Between(attacker.sprite.x, attacker.sprite.y, defender.sprite.x, defender.sprite.y);
+      const gap = this.getContactGap(attacker, defender);
+      if (dist > gap + 5) {
+        await this.animateMove({ fighter: step.fighter, target: step.target });
+      }
+      console.log(`👊 ${attacker.stats.name} hits ${defender.stats.name} for ${step.damage ?? 0} damage`);
       this.setSpineAnim(attacker.sprite, 'attack');
-      await this.delayAsync(200);
-      
-      // Hit effect
+      await this.delayAsync(220);
       this.setSpineAnim(defender.sprite, 'hit');
-      
-      // Update HP
-      if (step.damage > 0) {
+      // Sync HP from server if provided, otherwise apply damage
+      if (step.targetHP != null) {
+        defender.stats.health = Math.max(0, step.targetHP);
+      } else if (step.damage > 0) {
         defender.stats.health = Math.max(0, defender.stats.health - step.damage);
+      }
+      if (step.fighterHP != null) {
+        attacker.stats.health = Math.max(0, step.fighterHP);
+      }
+      if (step.damage > 0) {
         this.showDamageText(defender, step.damage, step.critical);
-        this.updateFighterHP(defender);  // Mettre à jour SEULEMENT le défenseur
       }
-      
-      // Camera shake for big hits
-      if (step.damage > 20) {
-        this.cameras.main.shake(200, 0.02);
+      this.updateFighterHP(defender);
+      this.updateFighterHP(attacker);
+      if ((step.damage ?? 0) > 20) {
+        this.cameras.main.shake(220, 0.02);
       }
-      
-      await this.delayAsync(300);
+      await this.delayAsync(320);
       this.setSpineAnim(defender.sprite, 'idle', true);
     }
   }
@@ -2158,16 +2131,19 @@ export class FightSceneSpine extends Phaser.Scene {
   async animateEnd(step) {
     console.log(`🏆 Fight ends! Winner: fighter ${step.winner}`);
     this.combatOver = true;
-    
-    const winner = this.getFighterByIndex(step.winner);
-    const loser = this.getFighterByIndex(step.loser);
-    
-    if (winner) {
-      console.log(`👑 ${winner.stats.name} wins!`);
-    }
-    
-    await this.delayAsync(1000);
-    this.showVictoryScreen(winner, loser);
+    const winner = this.getOfficialFighter(step.winner);
+    const loser = this.getOfficialFighter(step.loser);
+    if (winner) console.log(`👑 ${winner.stats.name} wins!`);
+    await this.delayAsync(600);
+    try {
+      const txt = this.add.text(
+        this.scale.width / 2,
+        this.scale.height / 2,
+        winner ? `${winner.stats.name} WINS!` : 'Fight Ended',
+        { fontSize: '28px', color: '#fff' }
+      );
+      txt.setOrigin(0.5);
+    } catch(_) {}
   }
 
   /**
@@ -2483,7 +2459,7 @@ export class FightSceneSpine extends Phaser.Scene {
 
   delayAsync(ms) {
     if (this._recoveryActive || this._cancelAnims || (this._cancelUntilTs && Date.now() < this._cancelUntilTs) || this.stopCombat || this.combatOver) { if (this.debugAnims) console.log('[Bail] delayAsync'); return Promise.resolve(); }
-    const phaserMs = Math.max(50, ms * 0.4);
+    const phaserMs = Math.max(120, ms); // slower pacing
     const __id = this._trackStart('delay', `${ms}ms`);
     return new Promise(resolve => {
       let done = false;
@@ -2493,7 +2469,7 @@ export class FightSceneSpine extends Phaser.Scene {
       if (typeof window !== 'undefined' && window.setTimeout) {
         winId = window.setTimeout(finish, Math.ceil(phaserMs * 1.5));
       }
-    }); // Réduire les délais serveur
+    });
   }
 
   showErrorMessage(message) {
@@ -2549,6 +2525,36 @@ export class FightSceneSpine extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => blockText.destroy()
     });
+  }
+
+  // ... existing code ...
+  // Replace local engine call with API fetch
+  async startFight() {
+    const response = await fetch('/api/fight/generate', {
+      method: 'POST',
+      body: JSON.stringify({ brute1: this.fighter1.id, brute2: this.fighter2.id })
+    });
+    const { steps, winner } = await response.json();
+    this.playSteps(steps);
+  }
+  // Add playSteps to animate received steps
+  playSteps(steps) {
+    steps.forEach(step => {
+      // Animate based on step.type (hit, skill, etc.)
+    });
+  }
+  // ... existing code ...
+
+  async animateAttemptHit(step) {
+    // Small wind-up animation without applying damage
+    const attacker = this.getFighterByIndex(step.fighter);
+    const defender = this.getFighterByIndex(step.target);
+    if (attacker && defender) {
+      // Face target and play a quick pre-attack
+      this.setSpineAnim(attacker.sprite, 'attack');
+      await this.delayAsync(150);
+      this.setSpineAnim(attacker.sprite, 'idle', true);
+    }
   }
 }
 

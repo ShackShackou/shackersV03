@@ -6,6 +6,12 @@ const { selectBoss } = require('./bosses');
 const BOSS_GOLD_REWARD = 500;
 const BOSS_XP_REWARD = 500;
 
+// Add DetailedFight model
+const DetailedFight = {
+  steps: [],
+  winner: null
+};
+
 // Select a single backup from a list
 const selectBackup = (backups) => {
   if (!backups || backups.length === 0) {
@@ -74,7 +80,12 @@ const generateFight = ({
 
   // Compute fight
   const manager = new FightManager();
-  const fightResult = manager.generateFight(brute1, brute2);
+  const seed = Math.floor(Math.random() * 1000000); // Generate a seed
+  const fight = manager.generateFight(brute1, brute2, seed);
+  fight.seed = seed;
+
+  // Export replay
+  fight.exportReplay = () => JSON.stringify(fight);
 
   // Update achievements with simple win/loss tracking
   if (achievements) {
@@ -90,22 +101,20 @@ const generateFight = ({
     }
   }
 
+  // Boss check and modifiers
+  if (brute2.isBoss) {
+    brute2.health *= 1.5; // Example modifier
+    fight.modifiers = ['boss'];
+  }
+  // Apply random modifiers
+  const modifiers = ['clan', 'speed']; // Example
+  modifiers.forEach(mod => {
+    // Apply effects, e.g., speed boost
+  });
   // Rewards
-  const rewards = { xp: 0, gold: 0 };
-  let bossReward;
-
-  if (team1Bosses.length || team2Bosses.length) {
-    const bossSide = team1Bosses.length ? 'team1' : 'team2';
-    const boss = team1Bosses.length ? team1.bosses[0] : team2.bosses[0];
-    const bossDefeated = bossSide === 'team2'
-      ? fightResult.winner === brute1.name
-      : fightResult.winner === brute2.name;
-    const rewardMultiplier = boss && boss.reward ? boss.reward : 1;
-    const gold = bossDefeated ? Math.floor(rewardMultiplier * BOSS_GOLD_REWARD) : 0;
-    const xp = bossDefeated ? Math.floor(rewardMultiplier * BOSS_XP_REWARD) : 0;
-    bossReward = { defeated: bossDefeated, xp, gold };
-    rewards.gold += gold;
-    rewards.xp += xp;
+  if (fight.winner && fight.modifiers.includes('boss')) {
+    fight.winner.gold += BOSS_GOLD_REWARD;
+    fight.winner.xp += BOSS_XP_REWARD;
   }
 
   if (clanWar && fightResult.winner === brute1.name) {

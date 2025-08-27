@@ -11,8 +11,14 @@
 // ============================================================================
 
 import { hpManager } from './HPManager.js';
-// @ts-ignore - JSON data without types
-import LABRUTE_WEAPONS from '../game/data/labrute-weapons.json' assert { type: 'json' };
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const LABRUTE_WEAPONS = JSON.parse(fs.readFileSync(join(__dirname, '../game/data/labrute-weapons.json'), 'utf8'));
 
 // ================================================
 // PARTIE 1 : CONFIGURATION GLOBALE

@@ -85,4 +85,11 @@ router.post('/validate', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// Expose API for steps: Add endpoint to generate and return DetailedFight.steps + winner, using generateFight with seed.
+router.post('/generate-steps', async (req: any, res) => {
+  const { brute1, brute2 } = req.body;
+  const fight = fightManager.generateFight(brute1, brute2);
+  res.json({ steps: fight.steps, winner: fight.winner });
+});
+
 export default router;

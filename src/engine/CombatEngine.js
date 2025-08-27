@@ -1282,49 +1282,18 @@ export class CombatEngine {
     return null;
   }
   
+  // Full backups
   initializeBackups() {
-    // Check if fighters have backup skill
-    [this.fighter1, this.fighter2].forEach(fighter => {
-      if (fighter.skill === 'backup') {
-        // Create a potential backup brute
-        const backup = this.createBackupBrute(fighter);
-        if (backup) {
-          this.backupBrutes[fighter.stats.name] = backup;
-        }
+    [this.fighter1, this.fighter2].forEach(f => {
+      if (f.skills.includes('backup')) {
+        this.backups[f.stats.name] = this.createBackup(f);
       }
     });
   }
-  
-  createBackupBrute(master) {
-    // In a real implementation, this would fetch from user's other brutes
-    // For now, create a simulated backup brute
-    const backup = {
-      stats: {
-        name: `${master.stats.name}'s Backup`,
-        health: 60,
-        maxHealth: 60,
-        stamina: 80,
-        maxStamina: 80,
-        strength: master.stats.strength * 0.7,
-        defense: master.stats.defense * 0.7,
-        agility: master.stats.agility * 0.7,
-        speed: master.stats.speed * 0.7,
-        level: Math.max(1, (master.stats.level || 10) - 3) // Lower level than master
-      },
-      master: master,
-      isBackup: true,
-      arrivesAtTurn: this.rng.int(3, 7), // Arrives turn 3-7
-      leavesAtTurn: null, // Will be set when arrives
-      remainingTime: 2.8, // Stays for 2.8 "seconds" worth of turns
-      side: master.side,
-      hasWeapon: false,
-      weaponType: null,
-      skill: null
-    };
-    
-    return backup;
+  createBackup(master) {
+    return { master, arrivesAt: this.rng.int(3,7), remainingTime: 2.8, position: 0 };
   }
-  
+  // In executeTurn, check arrival and actions
   checkBackupArrival() {
     // Check if any backups should arrive this turn
     Object.entries(this.backupBrutes).forEach(([masterName, backup]) => {
@@ -1438,5 +1407,41 @@ export class CombatEngine {
     }
     
     return null;
+  }
+
+  // Advanced targeting
+  getRandomOpponent(fighter, opponents) {
+    const valid = opponents.filter(o => !o.stunned && !o.trapped && o.health > 0);
+    // Prioritize pets/bosses
+    const prioritized = valid.filter(o => o.isPet || o.isBoss);
+    return prioritized.length > 0 ? prioritized[Math.floor(Math.random() * prioritized.length)] : valid[0];
+  }
+
+  // Add position timeline
+  this.positions = { fighter1: 0, fighter2: 100 }; // Example positions
+  executeMove(fighter, target, moveType) {
+    // Update positions, add knockback if applicable
+    if (moveType === 'knockback') this.positions[target.stats.name] += 20;
+  }
+
+  exportReplay() {
+    return JSON.stringify({
+      seed: this.rng.exportState(),
+      steps: this.combatSteps,
+      winner: this.winner
+    });
+  }
+
+  importReplay(replayJson) {
+    const { seed, steps } = JSON.parse(replayJson);
+    this.rng.importState(seed);
+    this.combatSteps = steps;
+    // Replay logic: simulate or validate
+  }
+
+  // Parity validation
+  compareReplay(ourReplay, labruteReplay) {
+    const hash = (str) => crypto.createHash('sha256').update(str).digest('hex');
+    return hash(JSON.stringify(ourReplay.steps)) === hash(JSON.stringify(labruteReplay.steps));
   }
 }

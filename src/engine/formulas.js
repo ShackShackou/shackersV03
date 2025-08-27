@@ -12,7 +12,18 @@ function clamp01(v) {
   return Math.max(0, Math.min(0.99, v));
 }
 
-// Aggregate skill effects relevant to formulas
+// Buff class
+class Buff {
+  constructor(type, value, duration, priority = 0) {
+    this.type = type;
+    this.value = value;
+    this.remaining = duration;
+    this.priority = priority;
+  }
+  tick() { this.remaining--; }
+}
+
+// Update aggregateFromSkills to handle timed buffs
 function aggregateFromSkills(skills) {
   const res = {
     strength: { percent: 0, flat: 0 },
@@ -24,6 +35,7 @@ function aggregateFromSkills(skills) {
     counter: 0,  // additive to counter chance
     combo: 0,    // additive combo points
     initiative: 0, // flat bonus reducing final initiative score (earlier)
+    buffs: [], // Array of Buff
   };
   if (!Array.isArray(skills) || skills.length === 0) return res;
   for (const s of skills) {
@@ -47,6 +59,10 @@ function aggregateFromSkills(skills) {
     if (m[FightStat.COUNTER]) res.counter += m[FightStat.COUNTER].percent || 0;
     if (m[FightStat.COMBO]) res.combo += m[FightStat.COMBO].percent || 0;
     if (m[FightStat.INITIATIVE]) res.initiative += m[FightStat.INITIATIVE].flat || 0;
+    // Example: if skill has duration, push new Buff
+    if (m.duration) {
+      res.buffs.push(new Buff(s, m.value, m.duration, m.priority));
+    }
   }
   return res;
 }
@@ -256,6 +272,20 @@ export function computeMaxCombo(attackerStats) {
   return Math.min(5, 3 + Math.floor((comboPoints || 0) / 2));
 }
 
+// Piledriver damage
+export function computePiledriverDamage(attacker, defender) {
+  return attacker.strength * 2 - defender.defense; // Example from LaBrute
+}
+// Opponent skills
+export function applyOpponentEffects(damage, opponentSkills) {
+  // Reduce/increase based on skills
+  return damage;
+}
+// Final armor
+export function computeFinalArmor(defender) {
+  return defender.defense + aggregateFromSkills(defender.skills).armor;
+}
+
 export default {
   computeInitiative,
   computeCounterChance,
@@ -270,4 +300,7 @@ export default {
   computeCritChance,
   computeComboChance,
   computeMaxCombo,
+  computePiledriverDamage,
+  applyOpponentEffects,
+  computeFinalArmor,
 };

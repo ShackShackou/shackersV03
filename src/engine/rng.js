@@ -32,5 +32,19 @@ export class RNG {
     if (p >= 1) return true;
     return this.random() < p;
   }
+
+  // Add seed generation
+  generateCombatSeed(brute1Id, brute2Id, date = Date.now()) {
+    this.setSeed(`${brute1Id}-${brute2Id}-${date}`);
+  }
+
+  // Add state export/import
+  exportState() {
+    return this.rand.currentSeed;
+  }
+
+  importState(seed) {
+    this.setSeed(seed);
+  }
 }
 
