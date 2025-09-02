@@ -6,7 +6,9 @@ export class FightSceneSpine extends Phaser.Scene {
   constructor() { super({ key: 'FightSpine' }); }
 
   init(data) {
-    // Expect data: { a: {name, ...stats}, b: {name, ...stats} }
+    // Expect data: { fighters, steps } from server OR legacy { a, b }
+    this.serverFighters = data?.fighters || null;
+    this.serverSteps = data?.steps || null;
     this.initialA = data?.a || null;
     this.initialB = data?.b || null;
   }
@@ -74,8 +76,10 @@ export class FightSceneSpine extends Phaser.Scene {
     this.fighter2 = { sprite: right, shadow: shadowR, side: 'right', scene: this, baseX: rightBaseX, baseY: rightBaseY, baseScale };
 
     // Stats
-    const statsA = this.initialA || { name: 'Brute Alpha', health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 };
-    const statsB = this.initialB || { name: 'Brute Beta',  health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 };
+    const statsA = this.serverFighters ? { name: this.serverFighters[0].name, health: this.serverFighters[0].maxHp ?? this.serverFighters[0].hp, maxHealth: this.serverFighters[0].maxHp ?? this.serverFighters[0].hp, stamina:100, maxStamina:100, strength: this.serverFighters[0].strength, defense:0, agility:this.serverFighters[0].agility, speed:this.serverFighters[0].speed, initiative:0, baseInitiative:1, counter:0, combo:0 }
+      : (this.initialA || { name: 'Brute Alpha', health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 });
+    const statsB = this.serverFighters ? { name: this.serverFighters[1].name, health: this.serverFighters[1].maxHp ?? this.serverFighters[1].hp, maxHealth: this.serverFighters[1].maxHp ?? this.serverFighters[1].hp, stamina:100, maxStamina:100, strength: this.serverFighters[1].strength, defense:0, agility:this.serverFighters[1].agility, speed:this.serverFighters[1].speed, initiative:0, baseInitiative:1, counter:0, combo:0 }
+      : (this.initialB || { name: 'Brute Beta',  health: 100, maxHealth: 100, stamina: 100, maxStamina: 100, strength: 20, defense: 10, agility: 15, speed: 12, initiative: 0, baseInitiative: 1, counter: 0, combo: 0 });
     this.fighter1.stats = statsA;
     this.fighter2.stats = statsB;
 
@@ -85,11 +89,98 @@ export class FightSceneSpine extends Phaser.Scene {
     this.ui = this.createSimpleUI(W, H);
     this.appendLog('Combat prêt.');
 
-    // Engine
-    this.engine = new CombatEngine(this.fighter1, this.fighter2);
+    // Require server steps. No local fallback to avoid desync/confusion.
+    if (this.serverSteps && Array.isArray(this.serverSteps)) {
+      this.replaySteps(this.serverSteps);
+    } else {
+      this.appendLog('Aucun steps serveur. Lance un combat via "Mes brutes".');
+      const { width, height } = this.scale;
+      this.add.text(width/2, height/2, 'Lance un combat via "Mes brutes"', {
+        fontSize: '22px', color: '#ffcc00', stroke: '#000', strokeThickness: 4
+      }).setOrigin(0.5);
+      // Option: retour automatique après un court délai
+      this.time.delayedCall(1200, () => this.scene.start('MyBrutesScene'));
+      return;
+    }
+  }
 
-    // Start loop
-    this.time.delayedCall(200, () => this.executeTurn());
+  async replaySteps(steps) {
+    const wait = (ms)=> new Promise(r=>this.time.delayedCall(ms, r));
+    for (let i=0;i<steps.length;i++) {
+      const s = steps[i];
+      switch (s.a) {
+        case 2: /* Arrive */ break;
+        case 15: /* Move */ {
+          const a = s.f === 0 ? this.fighter1 : this.fighter2;
+          const t = s.t === 0 ? this.fighter1 : this.fighter2;
+          const gap = this.getContactGap(a, t, 12 + ((a.stats && a.stats.reach ? a.stats.reach*8 : 0)));
+          const targetX = t.sprite.x + (a.side === 'left' ? -gap : gap);
+          const targetY = Phaser.Math.Clamp(t.sprite.y, this.combatZone.minY, this.combatZone.maxY);
+          const dist = Math.abs(targetX - a.sprite.x);
+          // Si déjà à portée, ne pas bouger (évite ping-pong)
+          if (dist <= 2) break;
+          const duration = Math.max(90, (dist / 650) * 1000);
+          this.playRun(a);
+          await this.moveFighterTo(a, targetX, targetY, duration, 'Linear');
+          break;
+        }
+        case 19: /* AttemptHit */ {
+          const a = s.f === 0 ? this.fighter1 : this.fighter2;
+          this.playAttack(a);
+          await wait(100);
+          break;
+        }
+        case 21: /* Evade */ {
+          const t = s.f === 0 ? this.fighter1 : this.fighter2;
+          this.playDodge(t);
+          await wait(100);
+          break;
+        }
+        case 20: /* Block */ {
+          const t = s.f === 0 ? this.fighter1 : this.fighter2;
+          this.showBlockIndicator(t);
+          await wait(100);
+          break;
+        }
+        case 27: /* Counter */ {
+          // Visual hint; actual damage will come as a Hit step right after
+          const c = s.f === 0 ? this.fighter1 : this.fighter2;
+          this.playAttack(c);
+          await wait(120);
+          break;
+        }
+        case 9: /* Hit */ {
+          const a = s.f === 0 ? this.fighter1 : this.fighter2;
+          const t = s.t === 0 ? this.fighter1 : this.fighter2;
+          this.shakeMedium();
+          this.showDamageNumber(t, s.d, !!s.c);
+          t.stats.health = Math.max(0, t.stats.health - (s.d||0));
+          this.updateUI();
+          await wait(100);
+          break;
+        }
+        case 17: /* MoveBack */ {
+          const a = s.f === 0 ? this.fighter1 : this.fighter2;
+          const dist = Math.abs(a.baseX - a.sprite.x);
+          const duration = Math.max(80, (dist / 700) * 1000);
+          await this.moveFighterTo(a, a.baseX, a.baseY, duration, 'Linear');
+          this.playIdle(a);
+          break;
+        }
+        case 24: /* Death */ {
+          const d = s.f === 0 ? this.fighter1 : this.fighter2;
+          d.stats.health = 0; this.updateUI();
+          d.sprite.alpha = 0.2; await wait(100);
+          break;
+        }
+        case 26: /* End */ {
+          const winner = s.w === 0 ? this.fighter1 : this.fighter2;
+          this.appendLog(`Vainqueur: ${winner.stats.name}`);
+          return; // stop replay after End
+        }
+      }
+      await wait(30);
+    }
   }
 
   setSpineAnim(spineObj, name, loop=false) {
@@ -300,8 +391,10 @@ export class FightSceneSpine extends Phaser.Scene {
   updateUI() {
     const p1 = this.fighter1.stats.health / this.fighter1.stats.maxHealth;
     const p2 = this.fighter2.stats.health / this.fighter2.stats.maxHealth;
-    this.ui.f1.width = this.ui.w * Math.max(0, Math.min(1, p1));
-    this.ui.f2.width = this.ui.w * Math.max(0, Math.min(1, p2));
+    const s1 = Math.max(0, Math.min(1, p1));
+    const s2 = Math.max(0, Math.min(1, p2));
+    this.ui.f1.setScale(s1, 1);
+    this.ui.f2.setScale(s2, 1);
   }
 
   showDamageNumber(target, amount, critical=false) {
@@ -309,4 +402,7 @@ export class FightSceneSpine extends Phaser.Scene {
     this.tweens.add({ targets: t, y: t.y - 40, alpha: 0, duration: 600, ease: 'Power2', onComplete: () => t.destroy() });
   }
 }
+
+
+
 

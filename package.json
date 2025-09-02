@@ -13,10 +13,11 @@
         "url": "https://github.com/phaserjs/template-vite-ts/issues"
     },
     "homepage": "https://github.com/phaserjs/template-vite-ts#readme",
-    "scripts": {
+  "scripts": {
         "start": "vite --config vite/config.dev.mjs",
+        "dev": "vite --config vite/config.dev.mjs",
         "build": "vite build --config vite/config.prod.mjs && phaser-asset-pack-hashing -j -r dist"
-    },
+  },
     "devDependencies": {
         "phaser-asset-pack-hashing": "^1.0.6",
         "terser": "^5.28.1",

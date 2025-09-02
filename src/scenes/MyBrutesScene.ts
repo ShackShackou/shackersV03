@@ -128,17 +128,25 @@ export default class MyBrutesScene extends Phaser.Scene {
     const bruteA = this.brutes.find(b => b.id === this.bruteAId)!;
     const bruteB = this.brutes.find(b => b.id === this.bruteBId)!;
 
+    let fightData: any = null;
     try {
-      await fetch(`${API_BASE}/fights`, {
+      const res = await fetch(`${API_BASE}/fights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ bruteAId: this.bruteAId, bruteBId: this.bruteBId }),
+        body: JSON.stringify({ bruteAId: this.bruteAId, bruteBId: this.bruteBId, seed: Date.now() >>> 0 }),
       });
-    } catch {}
+      fightData = await res.json();
+      if (!res.ok) throw new Error(fightData?.error || 'Fight generation failed');
+    } catch (e: any) {
+      alert(e.message || String(e));
+      return;
+    }
 
     this.scene.start('FightSpine', {
-      a: this.mapToEngineStats(bruteA),
-      b: this.mapToEngineStats(bruteB),
+      fighters: fightData.fight.fighters,
+      steps: fightData.steps,
+      seed: fightData.seed,
     });
   }
 }
+
