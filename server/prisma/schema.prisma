@@ -51,4 +51,7 @@ model Fight {
 
   winnerId String
   log      String
+  // JSON payloads for deterministic replays
+  steps    String   @default("")
+  fighters String   @default("")
 }

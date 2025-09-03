@@ -108,6 +108,10 @@ export class FightSceneSpine extends Phaser.Scene {
     const wait = (ms)=> new Promise(r=>this.time.delayedCall(ms, r));
     for (let i=0;i<steps.length;i++) {
       const s = steps[i];
+      // Tempo pacing from server: if step carries dt, wait before executing it
+      if (typeof s.dt === 'number' && s.dt > 0) {
+        await wait(s.dt);
+      }
       switch (s.a) {
         case 2: /* Arrive */ break;
         case 15: /* Move */ {

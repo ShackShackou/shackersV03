@@ -48,12 +48,32 @@ export default class Preload extends Phaser.Scene {
 	}
 
 	create() {
-		const start = new URLSearchParams(location.search).get("start");
+		const params = new URLSearchParams(location.search);
+		const start = params.get("start");
+		const fightId = params.get("fight");
 		if (start) {
 			console.log(`[Preload] Jump to ${start}`);
 			this.scene.start(start);
 			return;
 		}
+
+		// Direct replay mode: /?fight=ID (uses public GET on API)
+		if (fightId) {
+			const API_BASE = 'http://localhost:4000/api';
+			fetch(`${API_BASE}/fights/${fightId}`)
+				.then(async (res) => {
+					if (!res.ok) throw new Error(`GET /fights/${fightId} failed (${res.status})`);
+					const data = await res.json();
+					if (!data || !Array.isArray(data.steps)) throw new Error('Missing steps');
+					this.scene.start('FightSpine', { fighters: data.fighters || null, steps: data.steps });
+				})
+				.catch((e) => {
+					console.warn('Replay fetch failed:', e);
+					this.scene.start('LoginScene');
+				});
+			return;
+		}
+
 		// Default: always go to LoginScene
 		this.scene.start('LoginScene');
 	}
